@@ -31,3 +31,6 @@ FE/_writetest.txt
 
 # ── Disabled nested git repo (preserved BE history) ──
 .git.disabled/
+
+# ── Claude Code 로컬 설정 ──
+.claude/settings.local.json

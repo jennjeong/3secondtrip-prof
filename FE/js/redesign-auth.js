@@ -1,12 +1,12 @@
 /* 3초 여행 — Redesign Auth
- *  - Social login buttons (Google / Kakao / Apple / Naver-stub)
+ *  - Social login buttons (Google / Kakao / Apple / Naver)
  *  - Email login + signup UI (calls existing backend if available)
  *  - Profile card on My page
  *
- * NOTE: backend OAuth routes /auth/{google|kakao|apple}/login already
- * exist in the legacy FastAPI app.  Naver is a stub — the button is
- * shown but if the backend returns 501/404 we surface a friendly toast
- * and don't crash.  See "Optional backend stubs" in the main response.
+ * NOTE: backend OAuth routes /auth/{google|kakao|naver|apple}/login are all
+ * implemented in the FastAPI app.  A provider only returns 501 when its
+ * credentials are missing from the backend .env — in that case the full-page
+ * redirect lands on the backend's JSON error, same as any unconfigured one.
  */
 
 import { api, startSocialLogin, getAccessToken, clearAccessToken } from './redesign-api-adapter.js';
@@ -19,18 +19,11 @@ let authMode = 'login'; // 'login' | 'signup'
 export function initAuth(state) {
   appState = state;
 
-  // Social buttons
+  // Social buttons — all four providers go through the same redirect flow.
   document.querySelectorAll('[data-oauth-provider]').forEach(b => {
     b.addEventListener('click', (e) => {
       e.preventDefault();
-      const p = b.dataset.oauthProvider;
-      if (p === 'naver') {
-        // Frontend-ready but backend may still be a stub
-        try { startSocialLogin('naver'); }
-        catch (_) { showToast('네이버 로그인은 곧 지원될 예정이에요'); }
-        return;
-      }
-      startSocialLogin(p);
+      startSocialLogin(b.dataset.oauthProvider);
     });
   });
 

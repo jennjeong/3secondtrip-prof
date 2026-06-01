@@ -71,8 +71,8 @@ export async function apiRequest(path, opts = {}) {
 }
 
 /* ============ Auth helpers ============
- * Backend OAuth route layout (already implemented for google/kakao/apple,
- * naver is a TODO stub — see optional backend section in main response).
+ * Backend OAuth routes are implemented for all four providers
+ * (google/kakao/naver/apple) under /auth/{provider}/login.
  */
 const SUPPORTED_PROVIDERS = ['google', 'kakao', 'apple', 'naver'];
 
