@@ -1,0 +1,16 @@
+.env
+*.sqlite3
+*.sqlite3-journal
+*.db
+data/*.sqlite3
+data/*.db
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+secrets/
+*.p8
+*.pem
+*.key
+.DS_Store

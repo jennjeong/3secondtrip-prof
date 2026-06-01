@@ -1,0 +1,33 @@
+# ── Secrets — NEVER commit ─────────────────────────────
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*.p8
+
+# ── Python / Backend ───────────────────────────────────
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# ── Database (local SQLite) ────────────────────────────
+*.sqlite3
+*.sqlite3-journal
+*.db
+BE/data/*.sqlite3
+BE/data/*.db
+
+# ── OS / Editor cruft ──────────────────────────────────
+.DS_Store
+
+# ── Temp / scratch files ───────────────────────────────
+*.bak
+FE/_test2.txt
+FE/_writetest.txt
+
+# ── Disabled nested git repo (preserved BE history) ──
+.git.disabled/

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>3초 여행 · 관리자</title>
+  <link rel="stylesheet" href="./admin.css" />
+  <script>
+    // 백엔드 주소 (필요 시 수정)
+    window.__ADMIN_API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'http://localhost:8000' : '';
+  </script>
+</head>
+<body data-screen="loading">
+
+<!-- 로딩 화면 -->
+<div class="screen" data-screen-for="loading">
+  <div class="spinner-box">
+    <div class="spinner"></div>
+    <p>로딩 중…</p>
+  </div>
+</div>
+
+<!-- 로그인 화면 -->
+<div class="screen" data-screen-for="login">
+  <div class="card">
+    <h1>3초 여행 <span class="muted">관리자</span></h1>
+    <p class="muted">관리자 권한이 부여된 계정의 토큰으로 로그인하세요.</p>
+
+    <div class="tabs">
+      <button class="tab is-on" data-tab="token">소셜 토큰</button>
+      <button class="tab" data-tab="password">이메일·비번</button>
+    </div>
+
+    <!-- 토큰 입력 -->
+    <div class="tab-pane is-on" data-pane="token">
+      <p class="hint">① 메인 앱에 로그인한 상태에서<br/>② <strong>F12</strong> 콘솔에 다음 실행:</p>
+      <code class="code">copy(localStorage.getItem('tst_token_v1'))</code>
+      <p class="hint">③ 아래에 붙여넣고 로그인</p>
+      <textarea id="tokenInput" rows="3" placeholder="eyJhbGciOiJIUzI1NiI..."></textarea>
+      <div class="err" id="loginErr" hidden></div>
+      <button class="btn primary" id="btnTokenLogin">토큰으로 로그인</button>
+    </div>
+
+    <!-- 비번 입력 -->
+    <div class="tab-pane" data-pane="password">
+      <input id="loginEmail" type="email" placeholder="이메일" autocomplete="username" />
+      <input id="loginPw" type="password" placeholder="비밀번호" autocomplete="current-password" />
+      <div class="err" id="loginErr2" hidden></div>
+      <button class="btn primary" id="btnPwLogin">로그인</button>
+    </div>
+  </div>
+</div>
+
+<!-- 관리자 화면 -->
+<div class="screen" data-screen-for="app">
+  <aside class="side">
+    <div class="brand">3초 여행 · 관리자</div>
+    <nav class="nav">
+      <button class="nav-btn is-on" data-route="dashboard">📊 대시보드</button>
+      <button class="nav-btn"        data-route="users">👥 사용자</button>
+      <button class="nav-btn"        data-route="roadmaps">🗺️ 로드맵</button>
+      <button class="nav-btn"        data-route="reviews">⭐ 리뷰</button>
+      <button class="nav-btn"        data-route="blogs">📝 블로그</button>
+      <button class="nav-btn"        data-route="feedback">💬 피드백</button>
+      <button class="nav-btn"        data-route="trips">📅 여행</button>
+      <button class="nav-btn"        data-route="schedules">📋 일정</button>
+    </nav>
+    <div class="bottom">
+      <div class="me">
+        <div class="me-label">로그인 중</div>
+        <div id="meName">-</div>
+        <div class="me-id" id="meEmail">-</div>
+      </div>
+      <button class="btn ghost" id="btnLogout">로그아웃</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <h2 id="pageTitle">대시보드</h2>
+      <div class="topbar-act">
+        <button class="btn ghost" id="btnRefresh">🔄 새로고침</button>
+      </div>
+    </header>
+
+    <div class="content" id="content">
+      <p class="muted">불러오는 중…</p>
+    </div>
+  </main>
+</div>
+
+<!-- 토스트 -->
+<div class="toast" id="toast"></div>
+
+<script type="module" src="./admin.js"></script>
+</body>
+</html>

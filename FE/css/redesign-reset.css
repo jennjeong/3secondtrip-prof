@@ -1,0 +1,94 @@
+/* 3초 여행 — Redesign Reset
+ * Mobile-first, minimal modern reset.
+ * Keep predictable box sizing, neutralize margins/padding,
+ * preserve form element inheritance and safe media handling.
+ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html { overflow-x: hidden; }   /* belt-and-suspenders — no horizontal scroll, ever */
+
+body {
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", "Malgun Gothic", "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--c-text, #1d1d1f);
+  background: var(--c-bg, #FAF6EE);
+  overflow: hidden;       /* main scrolls inside .app-main, not body */
+  overscroll-behavior: none;
+}
+
+h1, h2, h3, h4, h5, h6, p, ul, ol, dl, dd, figure, blockquote {
+  margin: 0;
+  padding: 0;
+}
+
+ul, ol { list-style: none; }
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img, picture, svg, video, canvas {
+  max-width: 100%;
+  display: block;
+}
+
+img { height: auto; }
+
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input, textarea, select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+textarea { resize: vertical; }
+
+input::placeholder, textarea::placeholder { color: #aaa; }
+
+[hidden] { display: none !important; }
+
+:focus-visible {
+  outline: 2px solid var(--c-focus, #FF8E5C);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Disable text selection on chrome elements but allow on content */
+.tab-button, .tab-fab-button, .chip, .step-dot,
+.icon-btn, .my-tile, .choice-card, .concept-card {
+  user-select: none;
+  -webkit-user-select: none;
+}

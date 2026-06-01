@@ -1,0 +1,99 @@
+/* 3초 여행 — Redesign Responsive (v3 / unified axis)
+ *
+ *  Mobile-first base lives in layout/components.  This file only owns
+ *  the per-tier overrides of --app-content-max and --app-side-padding
+ *  plus grid column counts.  Because the topbar, main, page-scroll and
+ *  bottom-tab-nav all read --app-content-max, they share the same
+ *  center axis at every breakpoint — no left-shift, no axis drift.
+ */
+
+/* Global safety — guarantee no horizontal scroll, sensible box model. */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { width: 100%; min-height: 100%; }
+html { overflow-x: hidden; }
+img, svg, video { max-width: 100%; height: auto; }
+
+/* ===== SMALL MOBILE (≤ 374px) ===== */
+@media (max-width: 374px) {
+  :root {
+    --app-content-max: 100%;
+    --app-side-padding: 12px;
+  }
+  .roadmap-grid { grid-template-columns: 1fr; gap: 10px; }
+  .my-grid { grid-template-columns: repeat(2, 1fr); }
+  .dest-quick { grid-template-columns: repeat(2, 1fr); }
+  .choice-grid--3 { grid-template-columns: repeat(2, 1fr); }
+  .bottom-tab-nav { grid-template-columns: 1fr 1fr 72px 1fr 1fr; }
+  .tab-button { font-size: 10.5px; }
+  .tab-fab-button { width: 56px; height: 56px; margin-top: -18px; }
+}
+
+/* ===== MOBILE (375–767px) ===== */
+@media (min-width: 375px) and (max-width: 767px) {
+  :root {
+    --app-content-max: 100%;        /* fill the phone viewport */
+    --app-side-padding: 16px;
+  }
+  .roadmap-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ===== TABLET (768–1023px) ===== */
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root {
+    --app-content-max: 720px;
+    --app-side-padding: 24px;
+  }
+  .roadmap-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .my-grid { grid-template-columns: repeat(4, 1fr); }
+  .dest-quick { grid-template-columns: repeat(6, 1fr); }
+  .hero-card { min-height: 220px; padding: 26px; }
+  .hero-title { font-size: 30px; }
+}
+
+/* ===== LAPTOP (1024–1279px) ===== */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  :root {
+    --app-content-max: 960px;
+    --app-side-padding: 28px;
+  }
+  body { background: linear-gradient(135deg, #FFF6E5 0%, #FFEFD4 100%); }
+  .roadmap-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .my-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ===== DESKTOP (≥ 1280px) ===== */
+@media (min-width: 1280px) {
+  :root {
+    --app-content-max: 1120px;
+    --app-side-padding: 32px;
+  }
+  body { background: linear-gradient(135deg, #FFF6E5 0%, #FFEFD4 100%); }
+  .roadmap-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+  .my-grid { grid-template-columns: repeat(6, 1fr); }
+  .hero-card { min-height: 240px; }
+  .hero-title { font-size: 34px; }
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===== DARK MODE OPT-IN (set via Settings sheet) ===== */
+@media (prefers-color-scheme: dark) {
+  :root.allow-dark {
+    --c-bg:           #1A1815;
+    --c-surface:      #221F1B;
+    --c-surface-2:    #2A2620;
+    --c-border:       #34302A;
+    --c-divider:      #2C2823;
+    --c-text:         #F8F3E8;
+    --c-text-soft:    #B5AE9F;
+    --c-text-mute:    #777067;
+  }
+}

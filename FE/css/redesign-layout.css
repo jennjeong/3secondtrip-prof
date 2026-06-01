@@ -1,0 +1,275 @@
+/* 3초 여행 — Redesign Layout
+ * Mobile-first app shell.  Soft cream base, central scrollable main,
+ * fixed bottom nav with safe-area insets.
+ */
+
+:root {
+  /* Brand */
+  --c-primary:        #FFB84D;
+  --c-primary-strong: #FF8E5C;
+  --c-accent:         #FFD66B;
+  --c-mint:           #6EE7B7;
+  --c-sky:            #93C5FD;
+
+  /* Surface */
+  --c-bg:             #FAF6EE;
+  --c-surface:        #FFFFFF;
+  --c-surface-2:      #FFF8EA;
+  --c-border:         #EFE7D6;
+  --c-divider:        #F2EBDC;
+
+  /* Text */
+  --c-text:           #1D1D1F;
+  --c-text-soft:      #6B6B70;
+  --c-text-mute:      #A2A0A0;
+
+  /* States */
+  --c-focus:          #FF8E5C;
+  --c-danger:         #EF4444;
+  --c-success:        #10B981;
+
+  /* Gradients */
+  --g-hero:    linear-gradient(135deg, #FFE9B3 0%, #FFC773 60%, #FF9A6E 100%);
+  --g-tokyo:   linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+  --g-paris:   linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+  --g-jeju:    linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+  --g-osaka:   linear-gradient(135deg, #fcb69f 0%, #ffecd2 100%);
+  --g-bangkok: linear-gradient(135deg, #2af598 0%, #009efd 100%);
+  --g-seoul:   linear-gradient(135deg, #c471f5 0%, #fa71cd 100%);
+  --g-newyork: linear-gradient(135deg, #5ee7df 0%, #b490ca 100%);
+  --g-sydney:  linear-gradient(135deg, #fddb92 0%, #d1fdff 100%);
+
+  /* Sizes */
+  --topbar-h: 44px;
+  --nav-h:    68px;
+  /* Unified content axis — every centered element (topbar, main, page-scroll,
+   * bottom-tab-nav) shares this max-width.  Overridden per breakpoint in
+   * redesign-responsive.css so the axis stays consistent. */
+  --app-content-max: 100%;
+  --app-side-padding: 16px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+  --shadow-sm: 0 2px 6px rgba(0,0,0,.05);
+  --shadow-md: 0 8px 24px rgba(255, 140, 60, .14);
+  --shadow-lg: 0 12px 36px rgba(255, 140, 60, .22);
+
+  /* Safe area */
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ===================== APP SHELL =====================
+ * Mobile-first: shell fills viewport.
+ * Wider devices: shell still spans full width but content (page-scroll +
+ *   bottom-tab-nav) gets a max-width.  This means no fixed "phone frame".
+ */
+.app-shell {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  max-width: 100%;
+  margin: 0 auto;
+  background: var(--c-bg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===================== TOP BAR =====================
+ * Symmetric grid keeps content centered.  Width is bounded by
+ * --app-content-max so it shares the same center axis as .app-main and
+ * .bottom-tab-nav.  Height collapses to just safe-area inset on tab
+ * pages where the back button is hidden (no wasted empty space).
+ */
+.app-topbar {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: var(--app-content-max);
+  margin-inline: auto;
+  height: calc(var(--topbar-h) + var(--safe-top));
+  padding-top: var(--safe-top);
+  background: var(--c-bg);
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding-left: 8px;
+  padding-right: 8px;
+  position: relative;
+  z-index: 30;
+}
+/* Modern browsers: auto-collapse when back button is hidden (no back = no chrome) */
+.app-topbar:has(.topbar-back[hidden]) {
+  height: var(--safe-top);
+  min-height: 0;
+  padding: 0;
+  padding-top: var(--safe-top);
+  overflow: hidden;
+}
+/* Fallback class set by redesign-navigation.js for browsers without :has() */
+.app-topbar.topbar--collapsed {
+  height: var(--safe-top);
+  min-height: 0;
+  padding: 0;
+  padding-top: var(--safe-top);
+  overflow: hidden;
+}
+
+.topbar-back {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text);
+  transition: background .15s;
+}
+.topbar-back:hover { background: rgba(0,0,0,.04); }
+
+/* Accessibility — title stays in DOM for screen readers / aria-live, but is
+ * visually hidden so the top-left no longer shows a duplicate page name. */
+.sr-only,
+.topbar-title.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.topbar-spacer { width: 40px; height: 40px; }
+
+/* ===================== MAIN / PAGES =====================
+ * Main is bounded by --app-content-max and centered.  Pages and
+ * .page-scroll inside therefore fill that bounded width — no per-child
+ * max-width hack needed.  Bottom-tab-nav uses the same variable so
+ * everything sits on the same center axis.
+ */
+.app-main {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: var(--app-content-max);
+  margin-inline: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-page {
+  position: absolute;
+  inset: 0;
+  display: none;
+  background: var(--c-bg);
+  overflow: hidden;
+}
+.app-page.is-active { display: block; }
+
+.page-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px var(--app-side-padding) calc(var(--nav-h) + var(--safe-bottom) + 24px);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.page-scroll > * { min-width: 0; }   /* allow text to wrap inside grid/flex children */
+.page-scroll::-webkit-scrollbar { width: 4px; }
+.page-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.1); border-radius: 4px; }
+
+.page-header {
+  margin: 6px 0 14px;
+}
+.page-header.schedule-head {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+}
+.page-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.4px;
+  color: var(--c-text);
+}
+.page-sub {
+  margin-top: 4px;
+  font-size: 13.5px;
+  color: var(--c-text-soft);
+}
+
+.section-block { margin: 22px 0; }
+.section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.section-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--c-text);
+  letter-spacing: -.3px;
+}
+.section-more {
+  font-size: 13px;
+  color: var(--c-primary-strong);
+  font-weight: 600;
+}
+
+/* ===================== BOTTOM NAV ===================== */
+.bottom-tab-nav {
+  flex: 0 0 auto;
+  height: calc(var(--nav-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  padding-inline: var(--app-side-padding);    /* gutters match .page-scroll */
+  width: 100%;
+  max-width: var(--app-content-max);          /* same axis as topbar + main */
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr 84px 1fr 1fr;
+  align-items: stretch;
+  background: rgba(255,255,255,.96);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  border-top: 1px solid var(--c-divider);
+  position: relative;
+  z-index: 50;
+  box-shadow: 0 -4px 20px rgba(0,0,0,.04);
+}
+
+.tab-button {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--c-text-mute);
+  font-size: 11px;
+  font-weight: 600;
+  height: var(--nav-h);
+  transition: color .15s, transform .15s;
+}
+.tab-button .tab-ico { transition: transform .15s; }
+.tab-button.is-active { color: var(--c-primary-strong); }
+.tab-button.is-active .tab-ico { transform: translateY(-1px) scale(1.06); }
+.tab-button:active .tab-ico { transform: scale(.94); }
+
+.tab-fab-button {
+  align-self: center;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto;
+  margin-top: -22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--c-accent) 0%, var(--c-primary) 60%, var(--c-primary-strong) 100%);
+  color: #fff;
+  font-size: 30px;
+  font-weight: 300;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 24px rgba(255,140,60,.34), 0 0 0 4px #fff;
+  transition: transform .18s ease;
+}
+.tab-fab-button:active { transform: scale(.94); }
+.fab-plus { line-height: 1; margin-top: -3px; }

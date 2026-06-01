@@ -1,0 +1,48 @@
+# Render Blueprint — auto-detects on each deploy.
+# Push this file + the rest of BE/ to a Git repo, then on Render dashboard:
+#   New → Blueprint → connect repo → confirm.
+# Set the env vars (JWT_SECRET, GOOGLE_*, OPENAI_API_KEY, etc.) in the
+# Render dashboard one-by-one (NEVER commit .env).
+services:
+  - type: web
+    name: 3sec-trip-backend
+    runtime: python
+    plan: free
+    region: singapore           # or oregon / frankfurt — pick nearest
+    rootDir: .                  # set this to "BE" if you push the parent folder
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      # Secrets — set these via Render dashboard, NOT in this file:
+      - key: JWT_SECRET
+        sync: false             # mark as secret — paste value in dashboard
+      - key: DB_ENCRYPTION_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: GOOGLE_MAPS_SERVER_KEY
+        sync: false
+      - key: GOOGLE_MAPS_BROWSER_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false             # e.g. https://your-app.netlify.app
+      - key: FRONTEND_CALLBACK_PATH
+        value: /index-redesign.html
+      - key: CORS_ORIGINS
+        sync: false             # extra origins comma-separated (Netlify URL)
+      - key: DATABASE_URL
+        value: sqlite:///./data/travel_app.sqlite3
+        # NOTE: free Render web service has ephemeral storage — SQLite resets
+        # on every deploy / cold start.  For persistent data on free tier,
+        # switch to Render Postgres (free) and set DATABASE_URL accordingly:
+        #   postgresql+psycopg://user:pass@host:5432/dbname

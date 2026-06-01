@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#FFD66B"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="format-detection" content="telephone=no"/>
+<meta name="description" content="3초 여행 — 모바일 여행 로드맵 플래너"/>
+<title>3초 여행 · 3 Second Trip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<link rel="stylesheet" href="./css/redesign-reset.css">
+<link rel="stylesheet" href="./css/redesign-layout.css">
+<link rel="stylesheet" href="./css/redesign-components.css">
+<link rel="stylesheet" href="./css/redesign-responsive.css">
+</head>
+<body>
+
+<div id="app" class="app-shell" data-app="redesign">
+
+  <!-- ============== TOP STATUS BAR (back button only — body pages own their titles) ============== -->
+  <header class="app-topbar" id="appTopbar" aria-label="상단 영역">
+    <button type="button" class="topbar-back" data-action="goBack" aria-label="뒤로 가기" hidden>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="topbar-title sr-only" id="topbarTitle" aria-live="polite">3초 여행</div>
+    <div class="topbar-spacer" aria-hidden="true"></div>
+  </header>
+
+  <!-- ============== MAIN PAGES ============== -->
+  <main id="appMain" class="app-main" role="main">
+
+    <!-- ============ HOME ============ -->
+    <section id="homePage" class="app-page is-active" data-page="home" aria-label="홈">
+      <div class="page-scroll">
+
+        <div class="hero-card">
+          <div class="hero-text">
+            <p class="hero-greet" id="homeGreet">오늘은 어디로 떠나볼까요?</p>
+            <h1 class="hero-title">3초만에<br/>나만의 여행 일정</h1>
+            <p class="hero-sub">현지 데이터와 AI가 만드는 맞춤형 로드맵</p>
+            <button type="button" class="hero-cta" data-nav-to="create-trip">+ 새 여행 만들기</button>
+          </div>
+          <div class="hero-illust" aria-hidden="true">
+            <div class="hero-bubble b1"></div>
+            <div class="hero-bubble b2"></div>
+            <div class="hero-bubble b3"></div>
+            <div class="hero-plane">✈️</div>
+          </div>
+        </div>
+
+        <div class="search-card">
+          <span class="search-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input type="search" id="homeSearch" placeholder="도시·국가·컨셉으로 검색" aria-label="검색"/>
+        </div>
+
+        <div class="chip-row chip-row--scroll" role="listbox" aria-label="빠른 컨셉 선택">
+          <button type="button" class="chip" data-quick-concept="가성비">💰 가성비</button>
+          <button type="button" class="chip" data-quick-concept="힐링">🌿 힐링</button>
+          <button type="button" class="chip" data-quick-concept="액티비티">⚡ 액티비티</button>
+          <button type="button" class="chip" data-quick-concept="프리미엄">✨ 프리미엄</button>
+          <button type="button" class="chip" data-quick-concept="효율">🚀 효율</button>
+          <button type="button" class="chip" data-quick-concept="균형">⚖️ 균형</button>
+        </div>
+
+        <section class="section-block" aria-labelledby="popularH">
+          <header class="section-head">
+            <h2 id="popularH" class="section-title">인기 로드맵</h2>
+            <button type="button" class="section-more" data-nav-to="explore">더 보기 →</button>
+          </header>
+          <div class="roadmap-grid" id="popularRoadmaps"></div>
+        </section>
+
+        <section class="section-block" aria-labelledby="recoH">
+          <header class="section-head">
+            <h2 id="recoH" class="section-title">추천 로드맵</h2>
+            <button type="button" class="section-more" data-nav-to="explore">전체 →</button>
+          </header>
+          <div class="roadmap-list" id="recoRoadmaps"></div>
+        </section>
+
+        <section class="section-block" id="recentScheduleSection" hidden aria-labelledby="recentH">
+          <header class="section-head">
+            <h2 id="recentH" class="section-title">최근 저장한 일정</h2>
+          </header>
+          <div id="recentScheduleList" class="recent-list"></div>
+        </section>
+
+        <section class="section-block" id="reviewPreviewSection" hidden aria-labelledby="reviewH">
+          <header class="section-head">
+            <h2 id="reviewH" class="section-title">여행자 후기</h2>
+            <button type="button" class="section-more" data-nav-to="my">전체 →</button>
+          </header>
+          <div id="reviewPreviewList" class="review-preview-list"></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============ EXPLORE ============ -->
+    <section id="explorePage" class="app-page" data-page="explore" aria-label="탐색">
+      <div class="page-scroll">
+        <div class="page-header">
+          <h2 class="page-title">로드맵 탐색</h2>
+          <p class="page-sub">전 세계 여행자가 만든 일정을 둘러보세요</p>
+        </div>
+
+        <div class="search-card">
+          <span class="search-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input type="search" id="exploreSearch" placeholder="도시·태그·컨셉 검색" aria-label="탐색 검색"/>
+        </div>
+
+        <div class="sort-tabs" role="tablist" aria-label="정렬">
+          <button type="button" class="sort-tab is-active" data-sort="popular" role="tab" aria-selected="true">인기순</button>
+          <button type="button" class="sort-tab" data-sort="recent" role="tab" aria-selected="false">최신순</button>
+          <button type="button" class="sort-tab" data-sort="likes" role="tab" aria-selected="false">좋아요순</button>
+        </div>
+
+        <div class="chip-row chip-row--scroll" id="exploreFilters" aria-label="컨셉 필터">
+          <button type="button" class="chip is-active" data-filter-concept="all">전체</button>
+          <button type="button" class="chip" data-filter-concept="가성비">가성비</button>
+          <button type="button" class="chip" data-filter-concept="균형">균형</button>
+          <button type="button" class="chip" data-filter-concept="프리미엄">프리미엄</button>
+          <button type="button" class="chip" data-filter-concept="효율">효율</button>
+          <button type="button" class="chip" data-filter-concept="힐링">힐링</button>
+          <button type="button" class="chip" data-filter-concept="액티비티">액티비티</button>
+        </div>
+
+        <div class="roadmap-grid" id="exploreGrid"></div>
+        <div class="empty-state" id="exploreEmpty" hidden>
+          <div class="empty-icon" aria-hidden="true">🧭</div>
+          <p class="empty-text">조건에 맞는 로드맵이 없어요</p>
+          <button type="button" class="btn btn-soft" id="resetExplore">필터 초기화</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CREATE TRIP ============ -->
+    <section id="createTripPage" class="app-page" data-page="create-trip" aria-label="새 여행 만들기">
+      <div class="page-scroll">
+        <div class="page-header">
+          <h2 class="page-title">새 여행 만들기</h2>
+          <p class="page-sub">4단계로 완성하는 맞춤 일정</p>
+        </div>
+
+        <div class="step-progress" id="tripStepProgress" aria-label="진행 단계">
+          <div class="step-dot is-active" data-step="1">1<span>도시</span></div>
+          <div class="step-line"></div>
+          <div class="step-dot" data-step="2">2<span>일정</span></div>
+          <div class="step-line"></div>
+          <div class="step-dot" data-step="3">3<span>컨셉</span></div>
+          <div class="step-line"></div>
+          <div class="step-dot" data-step="4">4<span>예산</span></div>
+        </div>
+
+        <!-- Step 1 — Origin + Destination (global city search) -->
+        <div class="step-pane is-active" data-step-pane="1">
+          <h3 class="step-h">어디서 어디로 떠나시나요?</h3>
+
+          <!-- 출발 도시 -->
+          <div class="form-row trip-flow-field">
+            <label class="form-label" for="tripOrigin" data-i18n="departureCityLabel">출발 도시</label>
+            <div class="city-search-wrap">
+              <input class="form-input" type="search" id="tripOrigin"
+                     placeholder="예: 서울, 부산, 인천"
+                     data-i18n-placeholder="departureCityPlaceholder"
+                     name="departureCity"
+                     autocomplete="address-level2"
+                     aria-autocomplete="list" aria-controls="originSuggestions"/>
+              <button type="button" class="city-clear" id="originClear" aria-label="초기화" hidden>×</button>
+              <div class="city-suggestions" id="originSuggestions" role="listbox" hidden></div>
+            </div>
+            <p class="form-hint origin-message" id="originMessage" hidden></p>
+          </div>
+
+          <!-- 도착 도시 -->
+          <div class="form-row">
+            <label class="form-label" for="tripCitySearch">도착 도시</label>
+            <div class="city-search-wrap">
+              <input class="form-input" type="search" id="tripCitySearch"
+                     placeholder="전 세계 도시 검색 (예: 도쿄, Paris, バンコク)" autocomplete="off"
+                     aria-autocomplete="list" aria-controls="citySuggestions"/>
+              <button type="button" class="city-clear" id="cityClear" aria-label="초기화" hidden>×</button>
+              <div class="city-suggestions" id="citySuggestions" role="listbox" hidden></div>
+            </div>
+            <p class="form-hint" id="citySelectedHint" hidden></p>
+          </div>
+          <h4 class="step-subh">인기 도시</h4>
+          <div class="dest-quick" id="destQuick"></div>
+          <details class="dest-advanced">
+            <summary>국가/도시 직접 선택</summary>
+            <div class="form-row" style="margin-top:10px">
+              <label class="form-label" for="tripCountry">국가</label>
+              <select class="form-input" id="tripCountry"><option value="">국가 선택</option></select>
+            </div>
+            <div class="form-row">
+              <label class="form-label" for="tripCity">도시</label>
+              <select class="form-input" id="tripCity"><option value="">도시 선택</option></select>
+            </div>
+          </details>
+        </div>
+
+        <!-- Step 2 — Date / Companion (custom calendar) -->
+        <div class="step-pane" data-step-pane="2" hidden>
+          <h3 class="step-h">언제, 누구와 떠나시나요?</h3>
+          <div class="form-row form-row--split">
+            <div>
+              <label class="form-label">출발일</label>
+              <button type="button" class="date-trigger" id="tripStartTrigger" data-cal-target="start">
+                <span class="dt-icon" aria-hidden="true">📅</span>
+                <span class="dt-label" id="tripStartLabel">선택</span>
+              </button>
+            </div>
+            <div>
+              <label class="form-label">도착일</label>
+              <button type="button" class="date-trigger" id="tripEndTrigger" data-cal-target="end">
+                <span class="dt-icon" aria-hidden="true">📅</span>
+                <span class="dt-label" id="tripEndLabel">선택</span>
+              </button>
+            </div>
+          </div>
+          <p class="trip-duration" id="tripDuration">기간: -</p>
+          <h4 class="step-subh">동행자</h4>
+          <div class="choice-grid choice-grid--3">
+            <button type="button" class="choice-card" data-companion="solo"><span class="ch-emoji">🧍</span><span class="ch-label">혼자</span></button>
+            <button type="button" class="choice-card" data-companion="friend"><span class="ch-emoji">👯</span><span class="ch-label">친구</span></button>
+            <button type="button" class="choice-card" data-companion="couple"><span class="ch-emoji">💑</span><span class="ch-label">커플</span></button>
+            <button type="button" class="choice-card" data-companion="family"><span class="ch-emoji">👨‍👩‍👧</span><span class="ch-label">가족</span></button>
+            <button type="button" class="choice-card" data-companion="group"><span class="ch-emoji">👥</span><span class="ch-label">단체</span></button>
+          </div>
+        </div>
+
+        <!-- Step 3 — Concept / Style -->
+        <div class="step-pane" data-step-pane="3" hidden>
+          <h3 class="step-h">어떤 여행을 원하시나요?</h3>
+          <div class="concept-grid" id="conceptGrid"></div>
+          <h4 class="step-subh">세부 스타일 (복수 선택 가능)</h4>
+          <div class="chip-row chip-wrap" id="styleChips"></div>
+        </div>
+
+        <!-- Step 4 — Budget (direct input + smart suggestion) -->
+        <div class="step-pane" data-step-pane="4" hidden>
+          <h3 class="step-h">예산을 알려주세요</h3>
+
+          <div class="budget-input-wrap">
+            <input type="number" id="tripBudgetInput" class="budget-input" min="0" step="1" placeholder="0" inputmode="numeric"/>
+            <span class="bd-unit-fixed">만원</span>
+          </div>
+          <div class="budget-level-badge" id="budgetLevelBadge">정도: -</div>
+
+          <div class="budget-suggest-row">
+            <div class="budget-suggest-text" id="budgetSuggestText">추천 예산 계산 중…</div>
+            <button type="button" class="btn btn-soft budget-apply" id="budgetApplyBtn">추천 적용</button>
+          </div>
+
+          <div class="budget-marks" id="budgetMarks">
+            <button type="button" data-budget-level="낮음">
+              <span class="bm-label">낮음</span>
+              <span class="bm-val" id="bmLow">-</span>
+            </button>
+            <button type="button" data-budget-level="보통">
+              <span class="bm-label">보통</span>
+              <span class="bm-val" id="bmMid">-</span>
+            </button>
+            <button type="button" data-budget-level="높음">
+              <span class="bm-label">높음</span>
+              <span class="bm-val" id="bmHigh">-</span>
+            </button>
+          </div>
+
+          <div class="form-row">
+            <label class="form-label" for="tripCurrency">통화</label>
+            <select class="form-input" id="tripCurrency">
+              <option value="KRW">KRW · 원</option>
+              <option value="USD">USD · $</option>
+              <option value="JPY">JPY · ¥</option>
+              <option value="EUR">EUR · €</option>
+              <option value="THB">THB · ฿</option>
+            </select>
+          </div>
+          <!-- ───── 항공 옵션 ───── -->
+          <div class="form-section">
+            <h4 class="form-section-title">✈ 항공편 옵션</h4>
+
+            <label class="form-label">노선 종류</label>
+            <div class="chip-row" id="flightRouteChips">
+              <button type="button" class="chip" data-flight-route="any">상관없음</button>
+              <button type="button" class="chip" data-flight-route="direct">직항만</button>
+              <button type="button" class="chip" data-flight-route="transit">경유 포함</button>
+            </div>
+
+            <label class="form-label">항공사 등급</label>
+            <div class="chip-row" id="flightClassChips">
+              <button type="button" class="chip" data-flight-class="any">상관없음</button>
+              <button type="button" class="chip" data-flight-class="lcc">저가 (LCC)</button>
+              <button type="button" class="chip" data-flight-class="fsc">대형 (FSC)</button>
+            </div>
+
+            <label class="form-label">선호 항공사 <span class="form-label-meta">중복 선택 가능 · 50+개</span></label>
+            <div class="chip-row chip-row--wrap" id="airlineChips">
+              <!-- 한국 FSC -->
+              <button type="button" class="chip" data-airline="대한항공"     data-airline-type="fsc">대한항공</button>
+              <button type="button" class="chip" data-airline="아시아나"     data-airline-type="fsc">아시아나</button>
+              <!-- 한국 LCC -->
+              <button type="button" class="chip" data-airline="제주항공"     data-airline-type="lcc">제주항공</button>
+              <button type="button" class="chip" data-airline="진에어"       data-airline-type="lcc">진에어</button>
+              <button type="button" class="chip" data-airline="에어부산"     data-airline-type="lcc">에어부산</button>
+              <button type="button" class="chip" data-airline="티웨이"       data-airline-type="lcc">티웨이</button>
+              <button type="button" class="chip" data-airline="에어서울"     data-airline-type="lcc">에어서울</button>
+              <button type="button" class="chip" data-airline="이스타항공"   data-airline-type="lcc">이스타항공</button>
+              <button type="button" class="chip" data-airline="에어프레미아" data-airline-type="lcc">에어프레미아</button>
+              <!-- 일본 -->
+              <button type="button" class="chip" data-airline="JAL"          data-airline-type="fsc">JAL</button>
+              <button type="button" class="chip" data-airline="ANA"          data-airline-type="fsc">ANA</button>
+              <button type="button" class="chip" data-airline="피치"         data-airline-type="lcc">피치</button>
+              <button type="button" class="chip" data-airline="집에어"       data-airline-type="lcc">집에어</button>
+              <!-- 동남아 -->
+              <button type="button" class="chip" data-airline="에어아시아"   data-airline-type="lcc">에어아시아</button>
+              <button type="button" class="chip" data-airline="비엣젯"       data-airline-type="lcc">비엣젯</button>
+              <button type="button" class="chip" data-airline="베트남항공"   data-airline-type="fsc">베트남항공</button>
+              <button type="button" class="chip" data-airline="타이항공"     data-airline-type="fsc">타이항공</button>
+              <button type="button" class="chip" data-airline="타이에어아시아" data-airline-type="lcc">타이에어아시아</button>
+              <button type="button" class="chip" data-airline="말레이시아항공" data-airline-type="fsc">말레이시아항공</button>
+              <button type="button" class="chip" data-airline="필리핀항공"   data-airline-type="fsc">필리핀항공</button>
+              <button type="button" class="chip" data-airline="세부퍼시픽"   data-airline-type="lcc">세부퍼시픽</button>
+              <button type="button" class="chip" data-airline="가루다인도네시아" data-airline-type="fsc">가루다인도네시아</button>
+              <button type="button" class="chip" data-airline="스쿠트"       data-airline-type="lcc">스쿠트</button>
+              <button type="button" class="chip" data-airline="젯스타"       data-airline-type="lcc">젯스타</button>
+              <button type="button" class="chip" data-airline="싱가포르"     data-airline-type="fsc">싱가포르항공</button>
+              <!-- 중화권 -->
+              <button type="button" class="chip" data-airline="캐세이퍼시픽" data-airline-type="fsc">캐세이퍼시픽</button>
+              <button type="button" class="chip" data-airline="중화항공"     data-airline-type="fsc">중화항공</button>
+              <button type="button" class="chip" data-airline="에바항공"     data-airline-type="fsc">에바항공</button>
+              <button type="button" class="chip" data-airline="중국국제항공" data-airline-type="fsc">중국국제항공</button>
+              <button type="button" class="chip" data-airline="중국동방항공" data-airline-type="fsc">중국동방항공</button>
+              <button type="button" class="chip" data-airline="중국남방항공" data-airline-type="fsc">중국남방항공</button>
+              <!-- 중동 -->
+              <button type="button" class="chip" data-airline="에미레이트"   data-airline-type="fsc">에미레이트</button>
+              <button type="button" class="chip" data-airline="카타르항공"   data-airline-type="fsc">카타르항공</button>
+              <button type="button" class="chip" data-airline="에티하드"     data-airline-type="fsc">에티하드</button>
+              <button type="button" class="chip" data-airline="터키항공"     data-airline-type="fsc">터키항공</button>
+              <!-- 유럽 -->
+              <button type="button" class="chip" data-airline="루프트한자"   data-airline-type="fsc">루프트한자</button>
+              <button type="button" class="chip" data-airline="에어프랑스"   data-airline-type="fsc">에어프랑스</button>
+              <button type="button" class="chip" data-airline="KLM"          data-airline-type="fsc">KLM</button>
+              <button type="button" class="chip" data-airline="영국항공"     data-airline-type="fsc">영국항공</button>
+              <button type="button" class="chip" data-airline="핀에어"       data-airline-type="fsc">핀에어</button>
+              <button type="button" class="chip" data-airline="스위스국제항공" data-airline-type="fsc">스위스국제항공</button>
+              <button type="button" class="chip" data-airline="알이탈리아"   data-airline-type="fsc">알이탈리아</button>
+              <button type="button" class="chip" data-airline="라이언에어"   data-airline-type="lcc">라이언에어</button>
+              <button type="button" class="chip" data-airline="이지젯"       data-airline-type="lcc">이지젯</button>
+              <!-- 북미 -->
+              <button type="button" class="chip" data-airline="델타"         data-airline-type="fsc">델타</button>
+              <button type="button" class="chip" data-airline="유나이티드"   data-airline-type="fsc">유나이티드</button>
+              <button type="button" class="chip" data-airline="아메리칸"     data-airline-type="fsc">아메리칸</button>
+              <button type="button" class="chip" data-airline="에어캐나다"   data-airline-type="fsc">에어캐나다</button>
+              <button type="button" class="chip" data-airline="제트블루"     data-airline-type="lcc">제트블루</button>
+              <button type="button" class="chip" data-airline="사우스웨스트" data-airline-type="lcc">사우스웨스트</button>
+              <button type="button" class="chip" data-airline="하와이안항공" data-airline-type="fsc">하와이안항공</button>
+              <button type="button" class="chip" data-airline="알래스카항공" data-airline-type="lcc">알래스카항공</button>
+              <!-- 오세아니아 -->
+              <button type="button" class="chip" data-airline="콴타스"       data-airline-type="fsc">콴타스</button>
+              <button type="button" class="chip" data-airline="에어뉴질랜드" data-airline-type="fsc">에어뉴질랜드</button>
+              <button type="button" class="chip" data-airline="버진오스트레일리아" data-airline-type="fsc">버진오스트레일리아</button>
+              <!-- 인도/기타 -->
+              <button type="button" class="chip" data-airline="에어인디아"   data-airline-type="fsc">에어인디아</button>
+              <button type="button" class="chip" data-airline="인디고"       data-airline-type="lcc">인디고</button>
+              <button type="button" class="chip" data-airline="에티오피아항공" data-airline-type="fsc">에티오피아항공</button>
+              <button type="button" class="chip" data-airline="에어로플로트" data-airline-type="fsc">에어로플로트</button>
+            </div>
+          </div>
+
+          <!-- ───── 호텔 옵션 ───── -->
+          <div class="form-section">
+            <h4 class="form-section-title">🏨 숙소 옵션</h4>
+
+            <label class="form-label">숙소 유형 <span class="form-label-meta">중복 선택 가능</span></label>
+            <div class="chip-row chip-row--wrap" id="hotelTypeChips">
+              <button type="button" class="chip" data-hotel-type="luxury">5성급 호텔</button>
+              <button type="button" class="chip" data-hotel-type="upscale">4성급 호텔</button>
+              <button type="button" class="chip" data-hotel-type="midscale">3성급 호텔</button>
+              <button type="button" class="chip" data-hotel-type="budget">2성급·이코노미</button>
+              <button type="button" class="chip" data-hotel-type="boutique">부티크·디자인</button>
+              <button type="button" class="chip" data-hotel-type="resort">리조트</button>
+              <button type="button" class="chip" data-hotel-type="ryokan">료칸·전통숙</button>
+              <button type="button" class="chip" data-hotel-type="bnb">B&B·민박</button>
+              <button type="button" class="chip" data-hotel-type="hostel">호스텔</button>
+              <button type="button" class="chip" data-hotel-type="apt">아파트·에어비앤비</button>
+              <button type="button" class="chip" data-hotel-type="capsule">캡슐호텔</button>
+            </div>
+
+            <label class="form-label">위치 우선순위 <span class="form-label-meta">중복 선택 가능</span></label>
+            <div class="chip-row chip-row--wrap" id="hotelLocChips">
+              <button type="button" class="chip" data-hotel-loc="downtown">시내 중심</button>
+              <button type="button" class="chip" data-hotel-loc="station">역 근처</button>
+              <button type="button" class="chip" data-hotel-loc="airport">공항 근처</button>
+              <button type="button" class="chip" data-hotel-loc="beach">바다·해변</button>
+              <button type="button" class="chip" data-hotel-loc="nature">자연·외곽</button>
+              <button type="button" class="chip" data-hotel-loc="shopping">쇼핑가</button>
+            </div>
+
+            <label class="form-label">편의 시설 <span class="form-label-meta">중복 선택 가능</span></label>
+            <div class="chip-row chip-row--wrap" id="hotelAmenChips">
+              <button type="button" class="chip" data-hotel-amen="breakfast">조식 포함</button>
+              <button type="button" class="chip" data-hotel-amen="pool">수영장</button>
+              <button type="button" class="chip" data-hotel-amen="spa">스파·온천</button>
+              <button type="button" class="chip" data-hotel-amen="gym">피트니스</button>
+              <button type="button" class="chip" data-hotel-amen="parking">주차</button>
+              <button type="button" class="chip" data-hotel-amen="petfriendly">반려동물 동반</button>
+              <button type="button" class="chip" data-hotel-amen="kitchen">취사 가능</button>
+              <button type="button" class="chip" data-hotel-amen="laundry">세탁 시설</button>
+              <button type="button" class="chip" data-hotel-amen="kids">키즈 친화</button>
+            </div>
+          </div>
+
+          <div class="trip-summary" id="tripSummary"></div>
+        </div>
+
+        <div class="step-nav">
+          <button type="button" class="btn btn-ghost" id="stepPrev">이전</button>
+          <button type="button" class="btn btn-primary" id="stepNext">다음</button>
+          <button type="button" class="btn btn-primary btn-gradient" id="stepGenerate" hidden>일정 생성하기 ✨</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SCHEDULE ============ -->
+    <section id="schedulePage" class="app-page" data-page="schedule" aria-label="일정">
+      <div class="page-scroll">
+        <div class="page-header schedule-head">
+          <div>
+            <h2 class="page-title" id="scheduleTitle">나의 일정</h2>
+            <p class="page-sub" id="scheduleSub">아직 생성된 일정이 없어요</p>
+          </div>
+          <div class="schedule-actions">
+            <button type="button" class="icon-btn" id="btnRegen" title="다시 만들기" aria-label="다시 만들기">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="btnShare" title="공유" aria-label="공유">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="btnSave" title="저장" aria-label="저장">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="day-row">
+          <div class="day-chips" id="dayChips" role="tablist" aria-label="여행일"></div>
+          <button type="button" class="btn-edit" id="btnEditToggle">편집</button>
+        </div>
+
+        <!-- ============ DAY ROUTE MAP (embedded inside schedule) ============ -->
+        <div class="schedule-map-card" id="scheduleMapCard" hidden>
+          <div class="smc-canvas-wrap">
+            <div id="scheduleMapCanvas" class="smc-canvas" role="img" aria-label="여행일 동선 지도"></div>
+            <div class="smc-overlay smc-loading" id="scheduleMapLoading" hidden>지도 불러오는 중…</div>
+            <div class="smc-overlay smc-empty"   id="scheduleMapEmpty"   hidden>
+              <div class="smc-empty-icon" aria-hidden="true">🗺️</div>
+              <p>No places added for this day yet.</p>
+            </div>
+          </div>
+          <p class="smc-warning" id="scheduleMapWarning" hidden></p>
+
+          <div class="smc-toolbar">
+            <div class="map-mode-row" id="scheduleMapModeRow" role="radiogroup" aria-label="이동 수단">
+              <button type="button" class="chip is-active" data-travel-mode="DRIVE" aria-label="자동차">🚗 자동차</button>
+              <button type="button" class="chip" data-travel-mode="WALK"    aria-label="도보">🚶 도보</button>
+              <button type="button" class="chip" data-travel-mode="TRANSIT" aria-label="대중교통">🚇 대중교통</button>
+              <button type="button" class="chip" data-travel-mode="BICYCLE" aria-label="자전거">🚲 자전거</button>
+            </div>
+            <div class="route-info" id="scheduleRouteInfo" aria-label="경로 요약">
+              <span class="ri-row"><span class="ri-label">거리</span><strong class="ri-val" id="riDistance">-</strong></span>
+              <span class="ri-row"><span class="ri-label">시간</span><strong class="ri-val" id="riDuration">-</strong></span>
+              <span class="ri-row"><span class="ri-label">정거장</span><strong class="ri-val" id="riStops">-</strong></span>
+            </div>
+            <button type="button" class="btn btn-soft btn-block" id="scheduleMapOpenExt">Google Maps 에서 길찾기</button>
+          </div>
+        </div>
+
+        <div id="scheduleEmpty" class="empty-state">
+          <div class="empty-icon" aria-hidden="true">🗺️</div>
+          <p class="empty-text">새 여행을 만들면 여기에 일정이 나타나요</p>
+          <button type="button" class="btn btn-primary btn-gradient" data-nav-to="create-trip">+ 새 여행 만들기</button>
+        </div>
+
+        <div class="timeline" id="scheduleTimeline" hidden></div>
+
+        <div class="cost-summary" id="costSummary" hidden>
+          <div class="cs-row cs-row--today">
+            <span class="cs-label">오늘 (<span id="csDayLabel">Day 1</span>)</span>
+            <span class="cs-val cs-day" id="csDayCost">0원</span>
+          </div>
+          <div class="cs-row">
+            <span class="cs-label">전체 합계</span>
+            <span class="cs-val cs-total" id="csTotal">0원</span>
+          </div>
+          <div class="cs-row">
+            <span class="cs-label">예산</span>
+            <span class="cs-val" id="csBudget">-</span>
+          </div>
+          <div class="cs-bar"><div class="cs-bar-fill" id="csBarFill"></div></div>
+        </div>
+
+        <div class="booking-cta" id="bookingCta" hidden>
+          <div>
+            <p class="bcta-title">실제 예약하기</p>
+            <p class="bcta-sub">항공·숙박·맛집을 한 번에</p>
+          </div>
+          <button type="button" class="btn btn-primary" id="openBookingBtn">예약 보기</button>
+        </div>
+
+        <section class="section-block" id="reviewSection" hidden>
+          <h3 class="section-title">여행 후기</h3>
+          <form class="review-form" id="reviewForm">
+            <div class="star-row" id="starRow" role="radiogroup" aria-label="별점">
+              <button type="button" class="star" data-star="1" aria-label="1점">★</button>
+              <button type="button" class="star" data-star="2" aria-label="2점">★</button>
+              <button type="button" class="star" data-star="3" aria-label="3점">★</button>
+              <button type="button" class="star" data-star="4" aria-label="4점">★</button>
+              <button type="button" class="star" data-star="5" aria-label="5점">★</button>
+            </div>
+            <textarea class="form-input" id="reviewText" placeholder="여행은 어떠셨나요?" rows="3"></textarea>
+            <div class="review-tags" id="reviewTags">
+              <button type="button" class="chip-mini" data-rtag="힐링">힐링</button>
+              <button type="button" class="chip-mini" data-rtag="가성비">가성비</button>
+              <button type="button" class="chip-mini" data-rtag="액티비티">액티비티</button>
+              <button type="button" class="chip-mini" data-rtag="프리미엄">프리미엄</button>
+            </div>
+            <label class="toggle-row">
+              <input type="checkbox" id="reviewPublic" checked/> 공개 후기로 게시
+            </label>
+            <button type="submit" class="btn btn-primary">후기 등록</button>
+          </form>
+          <div id="reviewList" class="review-list"></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============ MY ============ -->
+    <section id="myPage" class="app-page" data-page="my" aria-label="마이">
+      <div class="page-scroll">
+        <div class="profile-card" id="profileCard">
+          <div class="profile-avatar" id="profileAvatar">3</div>
+          <div class="profile-info">
+            <div class="profile-name" id="profileName">게스트</div>
+            <div class="profile-email" id="profileEmail">로그인하면 일정을 저장할 수 있어요</div>
+          </div>
+          <button type="button" class="btn btn-soft" id="profileAuthBtn">로그인</button>
+        </div>
+
+        <div class="my-grid">
+          <button type="button" class="my-tile" data-my-nav="saved"><span>💾</span><span>저장한 일정</span></button>
+          <button type="button" class="my-tile" data-my-nav="roadmaps"><span>🗺️</span><span>내 로드맵</span></button>
+          <button type="button" class="my-tile" data-my-nav="blog"><span>✏️</span><span>블로그</span></button>
+          <button type="button" class="my-tile" data-my-nav="reviews"><span>⭐</span><span>내 후기</span></button>
+          <button type="button" class="my-tile" data-my-nav="survey"><span>🎯</span><span>취향 분석</span></button>
+          <button type="button" class="my-tile" data-my-nav="feedback"><span>💬</span><span>피드백</span></button>
+        </div>
+
+        <div class="setting-list">
+          <button type="button" class="setting-row setting-row--accent" id="openSubscriptionBtn">
+            <span><span class="setting-ico">✨</span>구독 · 멤버십</span>
+            <span class="setting-meta" id="subscriptionStatus">7일 무료 체험중</span>
+            <span class="setting-arrow">›</span>
+          </button>
+          <button type="button" class="setting-row" id="openSettingsBtn">
+            <span>설정</span><span class="setting-arrow">›</span>
+          </button>
+          <button type="button" class="setting-row" id="myLogoutBtn" hidden>
+            <span>로그아웃</span><span class="setting-arrow">›</span>
+          </button>
+        </div>
+
+        <p class="version-tag">3초 여행 · Redesign Preview v1.1</p>
+      </div>
+    </section>
+
+    <!-- ============ SUBSCRIPTION ============ -->
+    <section id="subscriptionPage" class="app-page" data-page="subscription" aria-label="구독 · 멤버십">
+      <div class="page-scroll">
+        <header class="sub-hero">
+          <h2 class="sub-hero-title">당신에게 맞는 플랜</h2>
+          <p class="sub-hero-desc">7일 무료 체험 후 회당 결제 또는 월 구독으로 계속 사용하세요. 언제든 해지 가능.</p>
+        </header>
+
+        <div class="sub-toggle" role="tablist">
+          <button type="button" class="sub-toggle-btn is-on" data-billing="monthly" role="tab" aria-selected="true">월 구독</button>
+          <button type="button" class="sub-toggle-btn"       data-billing="payg"    role="tab" aria-selected="false">회당 결제</button>
+        </div>
+
+        <div class="sub-grid" id="subGrid">
+          <!-- ① Free -->
+          <article class="sub-card" data-plan="free">
+            <div class="sub-badge">7일 무료</div>
+            <h3 class="sub-name">Free</h3>
+            <div class="sub-price">
+              <span class="sub-price-num">0<span class="sub-price-unit">원</span></span>
+              <span class="sub-price-sub">7일간 모든 기능</span>
+            </div>
+            <ul class="sub-features">
+              <li>✓ 일정 생성 무제한 (7일)</li>
+              <li>✓ 실측 동선 · 지도</li>
+              <li>✓ Places 자동완성</li>
+              <li>✓ 일정 저장 (최대 3개)</li>
+              <li class="sub-features-mute">7일 후 회당 결제 또는 월 구독 필요</li>
+            </ul>
+            <button type="button" class="sub-cta" data-plan-cta="free">현재 사용중</button>
+          </article>
+
+          <!-- ② 회당 결제 (payg) — 3개 옵션 -->
+          <article class="sub-card" data-plan="payg">
+            <div class="sub-badge">필요할 때만</div>
+            <h3 class="sub-name">회당 결제</h3>
+            <div class="sub-price">
+              <span class="sub-price-num">1,900<span class="sub-price-unit">원~</span></span>
+              <span class="sub-price-sub">건당 결제</span>
+            </div>
+            <div class="payg-options" id="paygOptions">
+              <label class="payg-option">
+                <input type="radio" name="paygOpt" value="5" checked />
+                <span class="payg-opt-row">
+                  <span class="payg-opt-label">5회 묶음</span>
+                  <span class="payg-opt-price">1,900원</span>
+                  <span class="payg-opt-meta">회당 380원</span>
+                </span>
+              </label>
+              <label class="payg-option">
+                <input type="radio" name="paygOpt" value="10" />
+                <span class="payg-opt-row">
+                  <span class="payg-opt-label">10회 묶음</span>
+                  <span class="payg-opt-price">2,900원</span>
+                  <span class="payg-opt-meta">회당 290원 · 24% 할인</span>
+                </span>
+              </label>
+              <label class="payg-option">
+                <input type="radio" name="paygOpt" value="unlimited" />
+                <span class="payg-opt-row">
+                  <span class="payg-opt-label">30일 무제한</span>
+                  <span class="payg-opt-price">4,900원</span>
+                  <span class="payg-opt-meta">생성만 무제한</span>
+                </span>
+              </label>
+            </div>
+            <ul class="sub-features">
+              <li>✓ 일정 생성</li>
+              <li>✓ 실측 동선 기본</li>
+              <li>✓ 일정 저장 (최대 3개)</li>
+            </ul>
+            <button type="button" class="sub-cta" data-plan-cta="payg">결제하기</button>
+          </article>
+
+          <!-- ③ 월 5,900원 Standard -->
+          <article class="sub-card sub-card--accent" data-plan="standard">
+            <div class="sub-badge sub-badge--accent">인기</div>
+            <h3 class="sub-name">Standard</h3>
+            <div class="sub-price">
+              <span class="sub-price-num">5,900<span class="sub-price-unit">원/월</span></span>
+              <span class="sub-price-sub">모든 기능 무제한</span>
+            </div>
+            <ul class="sub-features">
+              <li>✓ 일정 생성 무제한</li>
+              <li>✓ 실측 동선 · 지도</li>
+              <li>✓ Places 자동완성</li>
+              <li>✓ <strong>저장 무제한</strong></li>
+              <li>✓ <strong>예약 딥링크</strong></li>
+              <li>✓ <strong>광고 제거</strong></li>
+              <li class="sub-features-mute">언제든 해지 · 연 39,900원 (43% 할인)</li>
+            </ul>
+            <button type="button" class="sub-cta sub-cta--primary" data-plan-cta="standard">구독하기</button>
+          </article>
+
+        </div>
+
+        <div class="sub-cancel-block" id="subCancelBlock" hidden>
+          <div class="sub-cancel-info" id="subCancelInfo">
+            <span class="sub-cancel-label">현재 구독</span>
+            <span class="sub-cancel-plan" id="subCancelPlan">-</span>
+          </div>
+          <button type="button" class="sub-cancel-btn" id="btnCancelSubscription">구독 취소</button>
+          <p class="sub-cancel-help">취소 시 현재 결제 주기 종료일까지 사용 가능하며, 자동 갱신만 중단됩니다.</p>
+        </div>
+
+        <div class="sub-footnote">
+          <p>· 결제는 첫 7일 무료 체험 종료 후 시작됩니다.</p>
+          <p>· 구독은 마이 → 구독 · 멤버십에서 언제든지 해지할 수 있어요.</p>
+          <p>· 가격은 부가세 포함입니다. 결제는 Apple/Google/카카오페이/네이버페이로 안전하게 처리됩니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ AUTH ============ -->
+    <section id="authPage" class="app-page" data-page="auth" aria-label="로그인">
+      <div class="page-scroll">
+        <div class="auth-hero">
+          <div class="auth-logo" aria-hidden="true">3</div>
+          <h2 class="auth-title">3초 여행</h2>
+          <p class="auth-sub" id="authSub">소셜 계정으로 빠르게 시작</p>
+        </div>
+
+        <div class="social-stack">
+          <button type="button" class="social-btn social-btn--kakao" data-oauth-provider="kakao">
+            <span class="social-ico">💬</span>카카오로 계속하기
+          </button>
+          <button type="button" class="social-btn social-btn--naver" data-oauth-provider="naver">
+            <span class="social-ico">N</span>네이버로 계속하기
+          </button>
+          <button type="button" class="social-btn social-btn--google" data-oauth-provider="google">
+            <span class="social-ico">G</span>Google로 계속하기
+          </button>
+          <button type="button" class="social-btn social-btn--apple" data-oauth-provider="apple">
+            <span class="social-ico"></span>Apple로 계속하기
+          </button>
+        </div>
+
+        <div class="auth-divider"><span>또는 이메일로</span></div>
+
+        <form class="auth-form" id="authForm">
+          <div class="form-row">
+            <label class="form-label" for="authEmail">이메일</label>
+            <input class="form-input" type="email" id="authEmail" autocomplete="email" placeholder="you@example.com"/>
+          </div>
+          <div class="form-row">
+            <label class="form-label" for="authPw">비밀번호</label>
+            <input class="form-input" type="password" id="authPw" autocomplete="current-password" placeholder="8자 이상"/>
+          </div>
+          <div class="form-row" id="authNickRow" hidden>
+            <label class="form-label" for="authNick">닉네임</label>
+            <div class="form-inline">
+              <input class="form-input" type="text" id="authNick" placeholder="닉네임"/>
+              <button type="button" class="btn btn-soft" id="authCheckNick">중복확인</button>
+            </div>
+            <p class="form-hint" id="authNickHint"></p>
+          </div>
+          <div class="form-row" id="authNameRow" hidden>
+            <label class="form-label" for="authName">이름</label>
+            <input class="form-input" type="text" id="authName"/>
+          </div>
+          <div class="form-row form-row--split" id="authExtraRow" hidden>
+            <div>
+              <label class="form-label" for="authPhone">전화번호</label>
+              <input class="form-input" type="tel" id="authPhone" placeholder="010-0000-0000"/>
+            </div>
+            <div>
+              <label class="form-label" for="authBirth">생년월일</label>
+              <input class="form-input" type="date" id="authBirth"/>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-gradient btn-block" id="authSubmit">로그인</button>
+          <button type="button" class="btn btn-ghost btn-block" id="authToggle">이메일 회원가입</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ============ ROADMAP DETAIL ============ -->
+    <section id="roadmapDetailPage" class="app-page" data-page="roadmap-detail" aria-label="로드맵 상세">
+      <div class="page-scroll">
+        <div class="roadmap-cover" id="roadmapCover"></div>
+        <div class="roadmap-meta" id="roadmapMeta"></div>
+        <div id="roadmapBody"></div>
+        <div class="roadmap-cta-row">
+          <button type="button" class="btn btn-primary btn-gradient btn-block" id="useRoadmapBtn">이 로드맵으로 일정 만들기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ BLOG ============ -->
+    <section id="blogPage" class="app-page" data-page="blog" aria-label="블로그 작성">
+      <div class="page-scroll">
+        <div class="page-header">
+          <h2 class="page-title">여행 블로그 작성</h2>
+          <p class="page-sub">기록은 또 다른 여행이 됩니다</p>
+        </div>
+        <form class="blog-form" id="blogForm">
+          <div class="form-row">
+            <label class="form-label" for="blogTitle">제목</label>
+            <input class="form-input" type="text" id="blogTitle" placeholder="예: 도쿄 3일 감성 여행기"/>
+          </div>
+          <div class="form-row">
+            <label class="form-label" for="blogTags">태그 (쉼표 구분)</label>
+            <input class="form-input" type="text" id="blogTags" placeholder="도쿄, 감성, 카페"/>
+            <div class="tag-preview" id="blogTagPreview"></div>
+          </div>
+          <div class="form-row">
+            <label class="form-label" for="blogBody">본문</label>
+            <textarea class="form-input form-textarea" id="blogBody" rows="10" placeholder="여행 이야기를 자유롭게 적어보세요"></textarea>
+          </div>
+          <div class="form-row">
+            <label class="form-label">공개 범위</label>
+            <div class="chip-row" id="blogVisRow">
+              <button type="button" class="chip is-active" data-blog-vis="public">공개</button>
+              <button type="button" class="chip" data-blog-vis="link">링크 공개</button>
+              <button type="button" class="chip" data-blog-vis="private">비공개</button>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" id="blogDraft">초안 저장</button>
+            <button type="submit" class="btn btn-primary btn-gradient">발행</button>
+          </div>
+        </form>
+        <p class="form-hint" id="blogStatus"></p>
+      </div>
+    </section>
+
+    <!-- ============ FEEDBACK ============ -->
+    <section id="feedbackPage" class="app-page" data-page="feedback" aria-label="피드백">
+      <div class="page-scroll">
+        <div class="page-header">
+          <h2 class="page-title">피드백 보내기</h2>
+          <p class="page-sub">의견 한 줄이 큰 도움이 됩니다</p>
+        </div>
+        <form class="feedback-form" id="feedbackForm">
+          <div class="form-row">
+            <label class="form-label">유형</label>
+            <div class="chip-row chip-wrap" id="feedbackTypes">
+              <button type="button" class="chip is-active" data-fb-type="bug">오류 제보</button>
+              <button type="button" class="chip" data-fb-type="feature">기능 요청</button>
+              <button type="button" class="chip" data-fb-type="design">디자인 의견</button>
+              <button type="button" class="chip" data-fb-type="schedule">일정 추천 개선</button>
+              <button type="button" class="chip" data-fb-type="etc">기타</button>
+            </div>
+          </div>
+          <div class="form-row">
+            <label class="form-label" for="fbTitle">제목</label>
+            <input class="form-input" type="text" id="fbTitle"/>
+          </div>
+          <div class="form-row">
+            <label class="form-label" for="fbBody">내용</label>
+            <textarea class="form-input form-textarea" id="fbBody" rows="6"></textarea>
+          </div>
+          <div class="form-row">
+            <label class="form-label" for="fbScreenshot">스크린샷 (선택)</label>
+            <input class="form-input" type="file" id="fbScreenshot" accept="image/*"/>
+          </div>
+          <button type="submit" class="btn btn-primary btn-gradient btn-block">전송</button>
+        </form>
+        <p class="form-hint" id="feedbackStatus"></p>
+      </div>
+    </section>
+
+    <!-- ============ SURVEY ============ -->
+    <section id="surveyPage" class="app-page" data-page="survey" aria-label="취향 분석">
+      <div class="page-scroll">
+        <div class="page-header">
+          <h2 class="page-title">취향 분석</h2>
+          <p class="page-sub" id="surveySub">간단한 질문으로 더 정확한 추천을</p>
+        </div>
+        <div class="step-progress" id="surveyProgress" aria-label="설문 진행"></div>
+        <div id="surveyPane"></div>
+        <div class="step-nav">
+          <button type="button" class="btn btn-ghost" id="surveyPrev">이전</button>
+          <button type="button" class="btn btn-primary" id="surveyNext">다음</button>
+          <button type="button" class="btn btn-primary btn-gradient" id="surveyDone" hidden>완료</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MY · SAVED SCHEDULES ============ -->
+    <section id="mySavedPage" class="app-page" data-page="my-saved" aria-label="저장한 일정">
+      <div class="page-scroll">
+        <div class="page-header">
+          <h2 class="page-title">💾 저장한 일정</h2>
+          <p class="page-sub">하트로 저장해 둔 여행 일정 목록</p>
+        </div>
+        <div id="mySavedList" class="my-list"></div>
+        <div id="mySavedEmpty" class="empty-state" hidden>
+          <div class="empty-icon" aria-hidden="true">💾</div>
+          <p class="empty-text">아직 저장한 일정이 없어요</p>
+          <button type="button" class="btn btn-primary btn-gradient" data-nav-to="schedule">일정 보러 가기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MY · ROADMAPS ============ -->
+    <section id="myRoadmapsPage" class="app-page" data-page="my-roadmaps" aria-label="내 로드맵">
+      <div class="page-scroll">
+        <div class="page-header">
+          <h2 class="page-title">🗺 내 로드맵</h2>
+          <p class="page-sub">내가 만든 여행 로드맵</p>
+        </div>
+        <div id="myRoadmapsList" class="roadmap-grid"></div>
+        <div id="myRoadmapsEmpty" class="empty-state" hidden>
+          <div class="empty-icon" aria-hidden="true">🗺️</div>
+          <p class="empty-text">아직 만든 로드맵이 없어요</p>
+          <button type="button" class="btn btn-primary btn-gradient" data-nav-to="explore">로드맵 둘러보기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MY · REVIEWS ============ -->
+    <section id="myReviewsPage" class="app-page" data-page="my-reviews" aria-label="내 후기">
+      <div class="page-scroll">
+        <div class="page-header">
+          <h2 class="page-title">⭐ 내 후기</h2>
+          <p class="page-sub">내가 남긴 여행 후기 목록</p>
+        </div>
+        <div id="myReviewsList" class="my-list"></div>
+        <div id="myReviewsEmpty" class="empty-state" hidden>
+          <div class="empty-icon" aria-hidden="true">⭐</div>
+          <p class="empty-text">아직 남긴 후기가 없어요</p>
+          <button type="button" class="btn btn-primary btn-gradient" data-nav-to="schedule">일정에서 후기 남기기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MY · BLOGS ============ -->
+    <section id="myBlogsPage" class="app-page" data-page="my-blogs" aria-label="내 블로그">
+      <div class="page-scroll">
+        <div class="page-header schedule-head">
+          <div>
+            <h2 class="page-title">✏️ 내 블로그</h2>
+            <p class="page-sub">내가 쓴 글 + 초안</p>
+          </div>
+          <button type="button" class="btn btn-primary btn-gradient" data-nav-to="blog">+ 새 글</button>
+        </div>
+        <div id="myBlogsList" class="my-list"></div>
+        <div id="myBlogsEmpty" class="empty-state" hidden>
+          <div class="empty-icon" aria-hidden="true">✏️</div>
+          <p class="empty-text">아직 작성한 글이 없어요</p>
+          <button type="button" class="btn btn-primary btn-gradient" data-nav-to="blog">첫 글 쓰기</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============== BOTTOM TAB NAV ============== -->
+  <nav class="bottom-tab-nav" aria-label="메인 네비게이션">
+    <button type="button" class="tab-button is-active" data-nav-to="home" aria-current="page">
+      <svg class="tab-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9 12 2l9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/></svg>
+      <span class="tab-label">홈</span>
+    </button>
+    <button type="button" class="tab-button" data-nav-to="explore">
+      <svg class="tab-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88"/></svg>
+      <span class="tab-label">탐색</span>
+    </button>
+    <button type="button" class="tab-fab-button" data-nav-to="create-trip" aria-label="새 여행 만들기">
+      <span class="fab-plus">+</span>
+    </button>
+    <button type="button" class="tab-button" data-nav-to="schedule">
+      <svg class="tab-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span class="tab-label">일정</span>
+    </button>
+    <button type="button" class="tab-button" data-nav-to="my">
+      <svg class="tab-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="tab-label">마이</span>
+    </button>
+  </nav>
+
+  <!-- ============ BOOKING BOTTOM SHEET ============ -->
+  <div class="sheet-backdrop" id="bookingBackdrop" hidden></div>
+  <aside class="bottom-sheet" id="bookingSheet" role="dialog" aria-modal="true" aria-labelledby="bookingSheetTitle" hidden>
+    <div class="sheet-handle"></div>
+    <header class="sheet-head">
+      <h3 id="bookingSheetTitle">실제 예약</h3>
+      <button type="button" class="icon-btn" id="bookingClose" aria-label="닫기">×</button>
+    </header>
+    <div class="sheet-filters" id="bookingFilters">
+      <button type="button" class="chip is-active" data-book-cat="all">전체</button>
+      <button type="button" class="chip" data-book-cat="flight">항공</button>
+      <button type="button" class="chip" data-book-cat="hotel">숙소</button>
+      <button type="button" class="chip" data-book-cat="restaurant">맛집</button>
+      <button type="button" class="chip" data-book-cat="activity">액티비티</button>
+      <button type="button" class="chip" data-book-cat="transport">교통</button>
+      <button type="button" class="chip" data-book-cat="airport">공항이동</button>
+    </div>
+    <div class="sheet-body" id="bookingList"></div>
+    <footer class="sheet-foot">
+      <div class="sheet-total">
+        <span>예상 합계</span>
+        <strong id="bookingTotal">0원</strong>
+      </div>
+      <button type="button" class="btn btn-primary btn-gradient btn-block" id="bookingConfirm">선택한 항목 예약하기</button>
+    </footer>
+  </aside>
+
+  <!-- ============ EDIT MODAL ============ -->
+  <div class="sheet-backdrop" id="editBackdrop" hidden></div>
+  <aside class="bottom-sheet" id="editSheet" role="dialog" aria-modal="true" aria-labelledby="editSheetTitle" hidden>
+    <div class="sheet-handle"></div>
+    <header class="sheet-head">
+      <h3 id="editSheetTitle">장소 편집</h3>
+      <button type="button" class="icon-btn" id="editClose" aria-label="닫기">×</button>
+    </header>
+    <div class="sheet-body">
+      <div class="form-row form-row--places">
+        <label class="form-label" for="editName">장소명</label>
+        <input class="form-input" type="text" id="editName" placeholder="장소를 검색하거나 직접 입력" autocomplete="off"/>
+        <div class="place-suggestions" id="editSuggestions" hidden></div>
+        <div class="place-hint" id="editPlaceHint" hidden></div>
+      </div>
+      <div class="form-row form-row--split">
+        <div>
+          <label class="form-label" for="editTime">시간</label>
+          <input class="form-input" type="time" id="editTime"/>
+        </div>
+        <div>
+          <label class="form-label" for="editCost">비용</label>
+          <input class="form-input" type="number" id="editCost" min="0"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label" for="editMemo">메모</label>
+        <textarea class="form-input form-textarea" id="editMemo" rows="3"></textarea>
+      </div>
+    </div>
+    <footer class="sheet-foot sheet-foot--split">
+      <button type="button" class="btn btn-ghost" id="editDelete">삭제</button>
+      <button type="button" class="btn btn-primary btn-gradient" id="editSave">저장</button>
+    </footer>
+  </aside>
+
+  <!-- ============ CALENDAR BOTTOM SHEET ============ -->
+  <div class="sheet-backdrop" id="calendarBackdrop" hidden></div>
+  <aside class="bottom-sheet" id="calendarSheet" role="dialog" aria-modal="true" aria-labelledby="calendarSheetTitle" hidden>
+    <div class="sheet-handle"></div>
+    <header class="sheet-head">
+      <h3 id="calendarSheetTitle">여행 날짜 선택</h3>
+      <button type="button" class="icon-btn" id="calendarClose" aria-label="닫기">×</button>
+    </header>
+    <div class="cal-nav">
+      <button type="button" class="icon-btn" id="calPrev" aria-label="이전 달">‹</button>
+      <div class="cal-month-label" id="calMonth">-</div>
+      <button type="button" class="icon-btn" id="calNext" aria-label="다음 달">›</button>
+    </div>
+    <div class="cal-weekdays">
+      <span class="cal-w cal-w-sun">일</span>
+      <span class="cal-w">월</span>
+      <span class="cal-w">화</span>
+      <span class="cal-w">수</span>
+      <span class="cal-w">목</span>
+      <span class="cal-w">금</span>
+      <span class="cal-w cal-w-sat">토</span>
+    </div>
+    <div class="cal-grid" id="calGrid" role="grid" aria-label="달력"></div>
+    <div class="cal-summary" id="calSummary">출발일을 선택해 주세요</div>
+    <footer class="sheet-foot sheet-foot--split">
+      <button type="button" class="btn btn-ghost" id="calReset">초기화</button>
+      <button type="button" class="btn btn-primary btn-gradient" id="calDone">완료</button>
+    </footer>
+  </aside>
+
+  <!-- ============ SETTINGS BOTTOM SHEET ============ -->
+  <div class="sheet-backdrop" id="settingsBackdrop" hidden></div>
+  <aside class="bottom-sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+    <div class="sheet-handle"></div>
+    <header class="sheet-head">
+      <h3 id="settingsTitle">설정</h3>
+      <button type="button" class="icon-btn" id="settingsClose" aria-label="닫기">×</button>
+    </header>
+    <div class="sheet-body">
+      <div class="setting-list">
+        <button type="button" class="setting-row" id="settingLangRow">
+          <span>언어</span>
+          <span class="setting-value" id="settingLangLabel">🇰🇷 한국어</span>
+        </button>
+        <div class="setting-sub" id="settingLangList" hidden></div>
+
+        <label class="setting-row setting-row--toggle">
+          <span>다크 모드 (시스템 설정 따름)</span>
+          <input type="checkbox" id="settingDark" />
+        </label>
+        <label class="setting-row setting-row--toggle">
+          <span>알림 받기</span>
+          <input type="checkbox" id="settingNoti" checked />
+        </label>
+        <button type="button" class="setting-row" data-my-nav="feedback">
+          <span>피드백 보내기</span><span class="setting-arrow">›</span>
+        </button>
+        <button type="button" class="setting-row" id="settingReset">
+          <span style="color:var(--c-danger)">로컬 데이터 초기화</span>
+          <span class="setting-arrow">›</span>
+        </button>
+      </div>
+      <p class="form-hint" style="text-align:center;margin-top:14px">3초 여행 · v1.1</p>
+    </div>
+  </aside>
+
+  <!-- ============ TOAST ============ -->
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+</div>
+
+  <!-- Backend URL configuration — empty for local dev (auto-detects localhost:8000).
+       For deployment (Netlify + Render), set the absolute https URL of your Render service:
+         window.__API_BASE_URL = "https://3sec-trip-backend.onrender.com";
+  -->
+  <script>
+    window.__API_BASE_URL = "";
+  </script>
+<!-- Scripts: ES modules -->
+<script type="module" src="./js/redesign-main.js"></script>
+</body>
+</html>

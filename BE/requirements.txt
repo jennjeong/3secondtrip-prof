@@ -1,0 +1,17 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-dotenv>=1.0
+pydantic-settings>=2.2
+pydantic[email]>=2.7
+sqlalchemy>=2.0
+aiosqlite>=0.20
+httpx>=0.27
+python-jose[cryptography]>=3.3
+passlib[bcrypt]>=1.7.4
+authlib>=1.3
+itsdangerous>=2.2
+openai>=1.30
+python-multipart>=0.0.9
+
+# Uncomment when switching to Render Postgres for persistent storage:
+# psycopg[binary]>=3.1
