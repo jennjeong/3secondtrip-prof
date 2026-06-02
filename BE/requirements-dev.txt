@@ -1,0 +1,4 @@
+# 개발/테스트 전용 의존성 — 프로덕션(requirements.txt)엔 포함 안 됨.
+#   pip install -r requirements-dev.txt
+-r requirements.txt
+pytest>=8.0
