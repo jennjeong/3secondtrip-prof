@@ -34,3 +34,6 @@ FE/_writetest.txt
 
 # ── Claude Code 로컬 설정 ──
 .claude/settings.local.json
+
+# ── 생성된 랜드마크 이미지 캐시 (런타임 산출물) ──
+BE/data/landmark_images/

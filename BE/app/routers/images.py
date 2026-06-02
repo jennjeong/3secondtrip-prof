@@ -1,9 +1,10 @@
-"""AI-generated city landmark images (OpenAI DALL-E).
+"""AI-generated city landmark images (OpenAI image models).
 
 * GET /api/images/landmark/{city}
-    Returns a PNG of the city's famous landmark.  Generated once via
-    OpenAI DALL-E, then cached on disk forever at data/landmark_images/
-    so subsequent requests are instant.
+    Returns a PNG of the city's famous landmark.  Generated once via the
+    OpenAI image model (OPENAI_IMAGE_MODEL, default gpt-image-1), then
+    cached on disk forever at data/landmark_images/ so subsequent
+    requests are instant.
 
 OpenAI key stays in backend/.env (OPENAI_API_KEY).  If the key is
 missing, the endpoint returns 503 cleanly so the frontend can fall back
@@ -84,30 +85,37 @@ async def get_landmark_image(city: str):
             detail="OPENAI_API_KEY not configured — AI image generation unavailable.",
         )
 
+    model = settings.openai_image_model
     prompt = _build_prompt(city)
-    logger.info("[landmark] generating image for %s — prompt=%r", city, prompt[:80])
+    logger.info("[landmark] generating image for %s via %s — prompt=%r", city, model, prompt[:80])
 
     try:
         from openai import AsyncOpenAI
         client = AsyncOpenAI(api_key=settings.openai_api_key)
-        res = await client.images.generate(
-            model="dall-e-3",
-            prompt=prompt,
-            size="1024x1024",
-            quality="standard",
-            n=1,
-        )
-        url = res.data[0].url
+        gen_kwargs = dict(model=model, prompt=prompt, size="1024x1024", n=1)
+        # dall-e-* takes quality="standard"; gpt-image-* rejects it (uses low/medium/high/auto)
+        if model.startswith("dall-e"):
+            gen_kwargs["quality"] = "standard"
+        res = await client.images.generate(**gen_kwargs)
+        item = res.data[0]
     except Exception as e:
         logger.exception("[landmark] OpenAI generation failed for %s", city)
         raise HTTPException(503, f"Image generation failed: {e}")
 
-    # Download immediately — DALL-E URLs expire ~1 hour after generation
+    # gpt-image-* returns base64 (b64_json); dall-e-* returns a short-lived URL.
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            r = await client.get(url)
-            r.raise_for_status()
-        cached.write_bytes(r.content)
+        b64 = getattr(item, "b64_json", None)
+        if b64:
+            import base64
+            cached.write_bytes(base64.b64decode(b64))
+        else:
+            url = getattr(item, "url", None)
+            if not url:
+                raise ValueError("image response had neither b64_json nor url")
+            async with httpx.AsyncClient(timeout=30) as dl:
+                r = await dl.get(url)
+                r.raise_for_status()
+            cached.write_bytes(r.content)
     except Exception as e:
         logger.exception("[landmark] failed to cache image for %s", city)
         raise HTTPException(503, f"Failed to cache image: {e}")

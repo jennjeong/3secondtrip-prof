@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     # ── OpenAI (server-side proxy) ───────────────────────────────────
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    openai_image_model: str = "gpt-image-1"   # dall-e-3 retired — gpt-image-1 returns b64_json
 
     # ── HTTPS (optional local SSL) ───────────────────────────────────
     https_enabled: bool = False
