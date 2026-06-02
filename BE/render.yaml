@@ -3,6 +3,15 @@
 #   New → Blueprint → connect repo → confirm.
 # Set the env vars (JWT_SECRET, GOOGLE_*, OPENAI_API_KEY, etc.) in the
 # Render dashboard one-by-one (NEVER commit .env).
+#
+# This Blueprint provisions a free Postgres DB and wires DATABASE_URL into
+# the web service automatically — so data survives deploys / cold starts
+# (unlike the ephemeral-disk SQLite used for local dev).
+databases:
+  - name: 3sec-trip-db
+    plan: free
+    region: singapore           # MUST match the web service region below
+
 services:
   - type: web
     name: 3sec-trip-backend
@@ -41,8 +50,9 @@ services:
       - key: CORS_ORIGINS
         sync: false             # extra origins comma-separated (Netlify URL)
       - key: DATABASE_URL
-        value: sqlite:///./data/travel_app.sqlite3
-        # NOTE: free Render web service has ephemeral storage — SQLite resets
-        # on every deploy / cold start.  For persistent data on free tier,
-        # switch to Render Postgres (free) and set DATABASE_URL accordingly:
-        #   postgresql+psycopg://user:pass@host:5432/dbname
+        # Auto-injected from the managed Postgres above — no manual paste.
+        # The app normalizes the postgres:// scheme to psycopg3 at startup
+        # (see app/db/database.py::_normalize_db_url).
+        fromDatabase:
+          name: 3sec-trip-db
+          property: connectionString

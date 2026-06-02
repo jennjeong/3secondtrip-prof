@@ -13,5 +13,6 @@ itsdangerous>=2.2
 openai>=1.30
 python-multipart>=0.0.9
 
-# Uncomment when switching to Render Postgres for persistent storage:
-# psycopg[binary]>=3.1
+# PostgreSQL driver (psycopg3) — used in production when DATABASE_URL is a
+# postgres:// / postgresql:// URL.  Harmless to install for local SQLite dev.
+psycopg[binary]>=3.1

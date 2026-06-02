@@ -4,18 +4,26 @@ from app.db.database import engine
 
 
 def ensure_admin_columns() -> None:
-    """ALTER TABLE users ADD COLUMN is_admin/is_active if missing. SQLite-friendly."""
+    """ALTER TABLE users ADD COLUMN is_admin/is_active if missing.
+
+    Works on both SQLite (DEFAULT 0/1) and Postgres (DEFAULT FALSE/TRUE).
+    On a fresh Postgres DB this is a no-op — create_all already makes the
+    columns; it only fires when upgrading an older SQLite DB in place.
+    """
     insp = inspect(engine)
     try:
         cols = {c["name"] for c in insp.get_columns("users")}
     except Exception:
         return  # users table doesn't exist yet — create_all will handle it
 
+    is_pg = engine.dialect.name == "postgresql"
+    false_lit, true_lit = ("FALSE", "TRUE") if is_pg else ("0", "1")
+
     to_add = []
     if "is_admin" not in cols:
-        to_add.append(("is_admin",  "BOOLEAN NOT NULL DEFAULT 0"))
+        to_add.append(("is_admin",  f"BOOLEAN NOT NULL DEFAULT {false_lit}"))
     if "is_active" not in cols:
-        to_add.append(("is_active", "BOOLEAN NOT NULL DEFAULT 1"))
+        to_add.append(("is_active", f"BOOLEAN NOT NULL DEFAULT {true_lit}"))
     if not to_add:
         return
 

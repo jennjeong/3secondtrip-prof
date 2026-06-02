@@ -116,13 +116,14 @@ python make_admin.py <이메일-또는-사용자ID>     # 해제는 끝에 --off
 
 ## ☁️ 배포
 
-Render Blueprint(`BE/render.yaml`)로 백엔드를 배포합니다.
+Render Blueprint(`BE/render.yaml`)로 백엔드 + Postgres를 한 번에 배포합니다.
 
 1. `BE/`를 Git 저장소에 push
-2. Render 대시보드 → New → Blueprint → 저장소 연결
-3. 시크릿 환경변수(`JWT_SECRET`, `GOOGLE_*`, `OPENAI_API_KEY` 등)를 대시보드에서 직접 입력 (`.env`는 커밋 금지)
+2. Render 대시보드 → New → Blueprint → 저장소 연결 → confirm
+   - Blueprint가 **무료 Postgres DB(`3sec-trip-db`)** 를 자동 생성하고, `DATABASE_URL`을 웹 서비스에 자동 주입합니다 (수동 입력 불필요).
+3. 시크릿 환경변수(`JWT_SECRET`, `DB_ENCRYPTION_KEY`, `GOOGLE_*`, `OPENAI_API_KEY` 등)를 대시보드에서 직접 입력 (`.env`는 커밋 금지)
 
-> ⚠️ Render 무료 티어는 디스크가 휘발성이라 **SQLite가 재배포/콜드스타트마다 초기화**됩니다. 데이터 영속화가 필요하면 Render Postgres로 전환하고 `DATABASE_URL`을 변경하세요.
+> 💾 **데이터 영속성**: 앱은 `DATABASE_URL`만 보고 DB를 고릅니다 — 로컬은 SQLite, 프로덕션은 Postgres. Render 웹 서비스 디스크는 휘발성이지만 데이터는 별도 Postgres에 저장되므로 **재배포/콜드스타트에도 보존**됩니다. (코드가 `postgres://` 스킴을 psycopg3로 자동 정규화 — `app/db/database.py`)
 
 프론트엔드는 Netlify 등 정적 호스팅에 올리고, `window.__API_BASE_URL`을 배포된 백엔드 주소로 설정합니다.
 

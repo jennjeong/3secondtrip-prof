@@ -7,6 +7,7 @@ PII columns (name / phone / birth_date) 는 Fernet 대칭 암호화로 at-rest
 보호됩니다.  app/core/crypto.py + app/models/_crypto_type.py 참고.
 """
 from sqlalchemy import Column, Integer, String, DateTime, UniqueConstraint, func, Boolean
+from sqlalchemy.sql import expression
 from app.db.database import Base
 from app.models._crypto_type import EncryptedString, EncryptedDate
 
@@ -38,8 +39,10 @@ class User(Base):
     profile_image_url = Column(String(1024), nullable=True)
 
     # ── 권한 ────────────────────────────────────────────────────────
-    is_admin   = Column(Boolean, nullable=False, default=False, server_default='0', index=True)
-    is_active  = Column(Boolean, nullable=False, default=True,  server_default='1', index=True)
+    # server_default via expression.false()/true() so it renders as 0/1 on
+    # SQLite and FALSE/TRUE on Postgres (a literal '0'/'1' is invalid for a PG boolean).
+    is_admin   = Column(Boolean, nullable=False, default=False, server_default=expression.false(), index=True)
+    is_active  = Column(Boolean, nullable=False, default=True,  server_default=expression.true(),  index=True)
 
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
