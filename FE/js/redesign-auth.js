@@ -9,7 +9,7 @@
  * redirect lands on the backend's JSON error, same as any unconfigured one.
  */
 
-import { api, startSocialLogin, getAccessToken, clearAccessToken } from './redesign-api-adapter.js';
+import { api, startSocialLogin, getAccessToken, setAccessToken, clearAccessToken } from './redesign-api-adapter.js';
 import { navigate, getCurrent } from './redesign-navigation.js';
 import { $, showToast } from './redesign-ui.js';
 
@@ -62,23 +62,62 @@ async function _submit() {
   if (!email || !pw) { showToast('이메일과 비밀번호를 입력해 주세요'); return; }
   if (pw.length < 8) { showToast('비밀번호는 8자 이상이어야 해요'); return; }
 
+  // Build the signup payload (and validate) before we flip the button to busy.
+  let payload = null;
   if (authMode === 'signup') {
     const nick = $('#authNick').value.trim();
     if (!nick) { showToast('닉네임을 입력해 주세요'); return; }
-    // Email/password signup: stub — wire to backend when /auth/email/signup exists
-    showToast('회원가입은 소셜 로그인을 사용해 주세요');
-    return;
+    if (!/(?=.*[A-Za-z])(?=.*\d)/.test(pw)) { showToast('비밀번호는 영문과 숫자를 모두 포함해야 해요'); return; }
+    payload = { email, password: pw, nickname: nick };
+    const name  = $('#authName')?.value.trim();
+    const phone = $('#authPhone')?.value.trim();
+    const birth = $('#authBirth')?.value;          // 'YYYY-MM-DD' or ''
+    if (name)  payload.name = name;
+    if (phone) payload.phone = phone;
+    if (birth) payload.birth_date = birth;
   }
-  // Email/password login: stub — wire to backend when /auth/email/login exists
-  showToast('이메일 로그인은 소셜 로그인을 사용해 주세요');
+
+  const btn = $('#authSubmit');
+  const orig = authMode === 'login' ? '로그인' : '회원가입';
+  if (btn) { btn.disabled = true; btn.textContent = '처리 중…'; }
+  try {
+    const res = authMode === 'signup'
+      ? await api.signup(payload)
+      : await api.loginEmail({ email, password: pw });
+    if (res?.access_token) setAccessToken(res.access_token);
+    await refreshCurrentUser();                    // sets currentUser + routes to My page
+    showToast(authMode === 'signup' ? '회원가입 완료! 환영해요 🎉' : '로그인되었어요');
+  } catch (e) {
+    showToast(_authErrorMessage(e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+}
+
+/** Map a backend/API error to a friendly Korean message. */
+function _authErrorMessage(e) {
+  if (e?.status === 401) return '이메일 또는 비밀번호가 올바르지 않습니다';
+  if (e?.status === 409) return e.message || '이미 사용 중인 이메일 또는 닉네임이에요';
+  if (e?.message === 'NETWORK_ERROR') return '서버에 연결할 수 없어요';
+  // FastAPI 422 returns detail as an array of {msg,...}
+  const detail = e?.body?.detail;
+  if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg.replace(/^Value error,\s*/, '');
+  return e?.message || '요청을 처리하지 못했어요';
 }
 
 async function _checkNickname() {
   const nick = $('#authNick').value.trim();
   const hint = $('#authNickHint');
-  if (!nick) { if (hint) { hint.textContent = '닉네임을 입력해 주세요'; hint.style.color = 'var(--c-danger)'; } return; }
-  // TODO: when backend has /auth/check-nickname, call it.  Best-effort fallback:
-  if (hint) { hint.textContent = '사용 가능한 닉네임이에요'; hint.style.color = 'var(--c-success)'; }
+  const setHint = (msg, ok) => { if (hint) { hint.textContent = msg; hint.style.color = ok ? 'var(--c-success)' : 'var(--c-danger)'; } };
+  if (!nick)            { setHint('닉네임을 입력해 주세요', false); return; }
+  if (nick.length < 2)  { setHint('닉네임은 2자 이상이어야 해요', false); return; }
+  try {
+    const res = await api.checkNickname(nick);
+    const available = !!res?.available;
+    setHint(available ? '사용 가능한 닉네임이에요' : '이미 사용 중인 닉네임이에요', available);
+  } catch (e) {
+    setHint('확인 중 오류가 났어요', false);
+  }
 }
 
 export async function refreshCurrentUser() {
