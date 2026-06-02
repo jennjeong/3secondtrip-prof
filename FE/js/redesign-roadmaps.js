@@ -152,6 +152,16 @@ export async function loadRoadmaps() {
   return POPULAR_ROADMAPS;
 }
 
+/** Fisher–Yates shuffle (returns a new array, leaves the source intact). */
+function _shuffle(list) {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function _filterAndSort(list) {
   let arr = [...list];
   if (explore.concept && explore.concept !== 'all') arr = arr.filter(r => r.concept === explore.concept);
@@ -200,10 +210,11 @@ export function renderHomeRoadmaps() {
     grid.innerHTML = '';
     POPULAR_ROADMAPS.slice(0, 4).forEach(m => grid.appendChild(_cardEl(m)));
   }
+  // 추천 로드맵 — 홈에 진입할 때마다 랜덤 도시로 섞어서 보여준다.
   const list = document.getElementById('recoRoadmaps');
   if (list) {
     list.innerHTML = '';
-    POPULAR_ROADMAPS.slice(2, 8).forEach(m => list.appendChild(_cardEl(m)));
+    _shuffle(POPULAR_ROADMAPS).slice(0, 6).forEach(m => list.appendChild(_cardEl(m)));
   }
 }
 
