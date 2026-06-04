@@ -4,6 +4,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core import jsonsafe
 from app.db.database import get_db
 from app.models.trip import Trip
 from app.models.user import User
@@ -20,9 +21,9 @@ def _to_public(t: Trip) -> TripPublic:
         destination_country=t.destination_country, destination_city=t.destination_city,
         start_date=t.start_date, end_date=t.end_date,
         companion_type=t.companion_type, concept=t.concept,
-        styles=json.loads(t.styles_json or "[]"),
+        styles=jsonsafe.loads(t.styles_json, []),
         budget=t.budget, currency=t.currency,
-        trip_data=(json.loads(t.trip_data_json) if t.trip_data_json else None),
+        trip_data=jsonsafe.loads(t.trip_data_json, None),
         created_at=t.created_at, updated_at=t.updated_at,
     )
 

@@ -203,11 +203,20 @@ function _renderTimeline(g) {
     const costNumeric = _actCost(activeDay, ai, n.cost);
     if (n.category === '숙박') {
       // 모든 호텔 항목(체크인·복귀·체크아웃 등)에 1박 단가를 표시.
-      // SerpApi 실시간 요금 또는 순수 추정치(보정 없음) — 실제 요금과 다를 수 있어 '예상가'로 명시.
+      // 출처(hotelPriceSource)에 따라 라벨 구분: SerpApi 실시간가 vs 순수 추정치.
       // 합계는 각 항목의 실제 cost를 쓰므로 영향 없음.
       if (hotelNightly > 0) {
-        subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' },
-          '1박 예상가 ' + formatCurrency(hotelNightly, g.currency)));
+        const _isReal = g.hotelPriceSource === 'serpapi';
+        const _label  = _isReal ? '1박 실시간가 ' : '1박 예상가 ';
+        const costEl = el('p', { class: 'schedule-place-subinfo schedule-cost' },
+          _label + formatCurrency(hotelNightly, g.currency));
+        // 실시간가는 작은 배지로 신뢰도 표시, 추정가는 '추정' 표기
+        costEl.appendChild(el('span', {
+          class: 'schedule-price-tag',
+          style: 'margin-left:6px;font-size:11px;font-weight:600;'
+               + (_isReal ? 'color:#2dbdb6;' : 'color:#929aa5;'),
+        }, _isReal ? '· 실시간' : '· 추정'));
+        subEls.push(costEl);
       }
     } else if (costNumeric != null && costNumeric > 0) {
       subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' },

@@ -3,6 +3,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core import jsonsafe
 from app.db.database import get_db
 from app.models.booking import Booking
 from app.models.user import User
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/bookings", tags=["bookings"])
 def _to_public(b: Booking) -> BookingPublic:
     return BookingPublic(
         id=b.id, user_id=b.user_id, trip_id=b.trip_id, schedule_id=b.schedule_id,
-        booking_data=json.loads(b.booking_data_json or "{}"),
+        booking_data=jsonsafe.loads(b.booking_data_json, {}),
         total_price=b.total_price, currency=b.currency, created_at=b.created_at,
     )
 

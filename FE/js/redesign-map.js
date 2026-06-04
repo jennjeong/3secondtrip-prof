@@ -247,8 +247,7 @@ export async function renderDayRoute(dayIdx) {
       if (warn) {
         warn.hidden = false;
         warn.innerHTML = '실제 도로 경로를 못 찾아서 <strong>방문 순서대로 직선</strong>으로 표시했어요. ' +
-                         '편집 모드에서 더 구체적인 장소명 (예: <code>도쿄 타워</code>) 으로 바꾸면 실제 경로가 그려집니다. ' +
-                         '<br/><small>콘솔(<code>⌥⌘J</code>)에서 <code>[map] requesting route</code> 로그의 좌표를 확인해 보세요.</small>';
+                         '편집 모드에서 더 구체적인 장소명(예: <strong>도쿄 타워</strong>)으로 바꾸면 실제 경로가 그려집니다.';
       }
       console.warn('[map] route compute failed across all modes', lastErr, 'places=', resolved);
     }

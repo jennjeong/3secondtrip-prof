@@ -1640,6 +1640,8 @@ async function _generateSchedule() {
   }
 
   const totalDays = t.days || 1;
+  // 실데이터(Places) vs 폴백(임시 명소) 슬롯 집계 — 너무 많이 폴백되면 사용자에게 안내.
+  let _realSlots = 0, _fallbackSlots = 0;
 
   for (let i = 0; i < totalDays; i++) {
     const d = new Date(start); d.setDate(start.getDate() + i);
@@ -1673,6 +1675,7 @@ async function _generateSchedule() {
       const pick = _pickUnused(candidates, usedIds);
 
       if (pick) {
+        _realSlots++;
         usedIds.add(pick.place_id);
         const cat = CATEGORY_BY_SLOT[slot] || '관광';
         activities.push({
@@ -1687,6 +1690,7 @@ async function _generateSchedule() {
           googleMapsQuery: pick.name,
         });
       } else {
+        _fallbackSlots++;
         const fallback = _legacyMock(slot, i, si);
         const cat = fallback.c;
         activities.push({
@@ -1741,7 +1745,14 @@ async function _generateSchedule() {
   appState.expenses = {};
 
   if (btn) { btn.disabled = false; btn.textContent = '일정 생성하기 ✨'; }
-  showToast('일정이 생성되었어요!');
+  // 실데이터가 충분치 않으면(절반 이상 임시 명소) 솔직하게 안내 — 데모 중 가짜 명소를 진짜처럼 보이지 않게.
+  const _totalSlots = _realSlots + _fallbackSlots;
+  if (_totalSlots > 0 && _fallbackSlots > _realSlots) {
+    console.warn(`[trip-flow] 실데이터 부족 — 실제 ${_realSlots} / 임시 ${_fallbackSlots} 슬롯`);
+    showToast('현지 장소를 충분히 못 찾아 일부는 임시 명소로 채웠어요. 도시명을 더 구체적으로 바꿔 다시 시도해 보세요.');
+  } else {
+    showToast('일정이 생성되었어요!');
+  }
   navigate('schedule');
 }
 
