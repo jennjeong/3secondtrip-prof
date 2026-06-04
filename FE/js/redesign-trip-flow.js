@@ -393,9 +393,23 @@ function _bindFormHandlers() {
     b.addEventListener('click', () => {
       appState.trip.companion = b.dataset.companion;
       setActiveByData(b.parentElement, 'data-companion', b.dataset.companion);
+      _syncPeopleRow();          // 가족/단체면 인원 입력칸 표시 + 기본값
       _refreshBudget();
     });
   });
+
+  // 인원수 입력(가족/단체) — 입력/증감 시 항공·숙소·예산 추천 갱신
+  const _applyPeople = (v) => {
+    const n = Math.max(_PEOPLE_MIN, Math.min(_PEOPLE_MAX, Math.round(Number(v) || _PEOPLE_MIN)));
+    appState.trip.people = n;
+    const inp = $('#peopleCount'); if (inp) inp.value = String(n);
+    _refreshBudget();
+  };
+  const _curPeople = () => appState.trip.people || _PEOPLE_COUNT[appState.trip.companion] || _PEOPLE_MIN;
+  $('#peopleCount')?.addEventListener('input', (e) => { appState.trip.people = Math.round(Number(e.target.value) || 0) || null; _refreshBudget(); });
+  $('#peopleCount')?.addEventListener('change', (e) => _applyPeople(e.target.value));  // blur 시 범위 보정
+  $('#peopleMinus')?.addEventListener('click', () => _applyPeople(_curPeople() - 1));
+  $('#peoplePlus')?.addEventListener('click',  () => _applyPeople(_curPeople() + 1));
   $('#tripCurrency')?.addEventListener('change', (e) => {
     appState.trip.currency = e.target.value;
     _refreshSummary();
@@ -523,13 +537,13 @@ function _computeSuggested() {
 
   // 3) 숙박 — 1박 가격 × (days - 1) 박 × 방 수
   const nights = Math.max(0, days - 1);
-  const rooms = (t.companion === 'family' ? 2 : t.companion === 'group' ? 3 : 1);
+  const rooms = _roomCount(t);
   const hotelWon = _calcHotelPerNight(t) * nights * rooms;
 
   const totalWon = activityWon + flightWon + hotelWon;
   const totalMW  = Math.round(totalWon / 10000);   // 만원
 
-  const people = _PEOPLE_COUNT[t.companion] || 1;
+  const people = _peopleCount(t);
   // 디버그 — 콘솔에서 산정 내역 확인 가능
   console.log('[추천예산] 활동 ' + Math.round(activityWon/10000) + '만 + 항공 ' +
               Math.round(flightWon/10000) + '만 (' + people + '명) + 숙박 ' +
@@ -574,6 +588,9 @@ function _refreshBudget() {
     // breakdown — 왕복항공 + 숙소(1박×n박) + 타 장소 (계획 페이지와 동일 공식)
     // 1박 단가는 hotelMW/박수로 환산 — 방 수가 반영된 실효 단가라 합계와 일치.
     const bd = t._budgetBreakdown || {};
+    const hotelPart = (bd.nights)
+      ? `숙소 ${Math.round(bd.hotelMW / bd.nights)}만×${bd.nights}박`
+      : `숙소 ${bd.hotelMW}만`;
     const bdLine = (bd.activityMW != null)
       ? `<br/><span style="font-size:11px;color:var(--c-text-soft,#6b6555)">왕복항공 ${bd.flightMW}만 (${bd.people}명) + ${hotelPart} + 타 장소 ${bd.activityMW}만</span>`
       : '';
@@ -588,9 +605,6 @@ function _refreshBudget() {
 
   // Stash for click handlers
   appState.trip._suggested = { low, mid, high };
-    const hotelPart = (bd.nights)
-      ? `숙소 ${Math.round(bd.hotelMW / bd.nights)}만×${bd.nights}박`
-      : `숙소 ${bd.hotelMW}만`;
   _refreshLevelBadge();
 }
 
@@ -772,6 +786,7 @@ function _resetTripState() {
   $$('#conceptGrid .concept-card').forEach(b => b.classList.remove('is-active'));
   $$('#styleChips .chip').forEach(b => b.classList.remove('is-active'));
   $$('[data-companion]').forEach(b => b.classList.toggle('is-active', b.dataset.companion === 'couple'));
+  _syncPeopleRow();   // couple → 인원 입력칸 숨김 + people 초기화
   $$('[data-dest-quick]').forEach(b => b.classList.remove('is-active'));
   // 항공·호텔 chip 초기화
   $$('#flightRouteChips .chip, #flightClassChips .chip').forEach(b => b.classList.remove('is-active'));
@@ -794,6 +809,7 @@ function _applyState() {
   _refreshDateTriggers();
   _refreshDuration();
   if (t.companion) setActiveByData(document.querySelector('.choice-grid'), 'data-companion', t.companion);
+  _syncPeopleRow();   // 복원 시 가족/단체면 인원 입력칸 + 값 복원
   if (t.concept) setActiveByData(document.getElementById('conceptGrid'), 'data-concept-key', t.concept);
   setMultiActive(document.getElementById('styleChips'), 'data-style-key', t.styles);
   if (t.currency) $('#tripCurrency').value = t.currency;
@@ -913,10 +929,39 @@ function _cityTierKeyForFlight(t) {
   return 'mid';
 }
 
-// 동행에 따른 인원수
+// 동행에 따른 기본 인원수 (가족/단체는 사용자 입력으로 덮어씀)
 const _PEOPLE_COUNT = {
   solo: 1, friend: 2, couple: 2, family: 4, group: 6,
 };
+const _PEOPLE_MIN = 2;
+const _PEOPLE_MAX = 20;
+
+/** 실제 인원수 — 가족/단체면 사용자가 입력한 t.people 우선, 아니면 동행 기본값. */
+function _peopleCount(t) {
+  if ((t.companion === 'family' || t.companion === 'group') && t.people) {
+    return Math.max(_PEOPLE_MIN, Math.min(_PEOPLE_MAX, t.people));
+  }
+  return _PEOPLE_COUNT[t.companion] || 1;
+}
+/** 객실 수 — 2인 1실 기준. */
+function _roomCount(t) {
+  return Math.max(1, Math.ceil(_peopleCount(t) / 2));
+}
+
+/** 가족/단체면 인원 입력칸을 보여주고 기본값을 세팅, 그 외엔 숨기고 입력을 비운다. */
+function _syncPeopleRow() {
+  const t = appState.trip;
+  const row = document.getElementById('peopleCountRow');
+  const isMulti = (t.companion === 'family' || t.companion === 'group');
+  if (row) row.hidden = !isMulti;
+  if (isMulti) {
+    if (!t.people) t.people = _PEOPLE_COUNT[t.companion] || _PEOPLE_MIN;   // 가족 4 / 단체 6 기본
+    const inp = document.getElementById('peopleCount');
+    if (inp) { inp.min = String(_PEOPLE_MIN); inp.max = String(_PEOPLE_MAX); inp.value = String(t.people); }
+  } else {
+    t.people = null;   // 고정 인원으로 복귀
+  }
+}
 
 // 비행시간(분)별 1인 왕복 기본가 (피크가 아닌 평시)
 function _flightBaseByDuration(durationMin) {
@@ -975,8 +1020,8 @@ function _calcFlightPrice(t) {
   const perPersonRaw = base * season * routeMult * airlineMult;
   const perPerson = Math.max(minFloor, perPersonRaw);
 
-  // 인원수 곱
-  const people = _PEOPLE_COUNT[t.companion] || 1;
+  // 인원수 곱 (가족/단체는 사용자 입력 반영)
+  const people = _peopleCount(t);
   // 단체는 그룹 할인 -5%
   const groupDisc = t.companion === 'group' ? 0.95 : 1.0;
   const total = perPerson * people * groupDisc;
@@ -1472,7 +1517,7 @@ async function _generateSchedule() {
   // Cost: 1박 단위로 분배 — 첫날 체크인 + 중간일 복귀에 각 1박씩 적용
   const nights = Math.max(0, (t.days || 1) - 1);
   // 호텔 1박 비용 — 사용자 선택 (유형/위치/편의시설) 반영, 방 수도 고려
-  const _rooms = (t.companion === 'family' ? 2 : t.companion === 'group' ? 3 : 1);
+  const _rooms = _roomCount(t);
   const hotelPerNightCost = _calcHotelPerNight(t) * _rooms;
   const transitCost       = _costFor('이동', t.budgetLevel, t.concept);
   console.log('[trip-flow] 숙박 — 1박 ' + hotelPerNightCost.toLocaleString('ko-KR') + '원 (' + _rooms + '실) × ' + nights + '박 = 총 ' + (hotelPerNightCost * nights).toLocaleString('ko-KR') + '원');

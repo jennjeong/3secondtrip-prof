@@ -234,6 +234,15 @@
             <button type="button" class="choice-card" data-companion="family"><span class="ch-emoji">👨‍👩‍👧</span><span class="ch-label">가족</span></button>
             <button type="button" class="choice-card" data-companion="group"><span class="ch-emoji">👥</span><span class="ch-label">단체</span></button>
           </div>
+          <div class="form-row" id="peopleCountRow" hidden style="margin-top:12px">
+            <label class="form-label" for="peopleCount">인원수 (총 몇 명인가요?)</label>
+            <div class="form-inline">
+              <button type="button" class="btn btn-soft" id="peopleMinus" aria-label="인원 감소">−</button>
+              <input class="form-input" type="number" id="peopleCount" min="2" max="20" step="1" inputmode="numeric" style="text-align:center" value="4"/>
+              <button type="button" class="btn btn-soft" id="peoplePlus" aria-label="인원 증가">+</button>
+            </div>
+            <p class="form-hint" id="peopleCountHint">입력한 인원수에 맞춰 항공·숙소·예산을 추천해 드려요</p>
+          </div>
         </div>
 
         <!-- Step 3 — Concept / Style -->
@@ -501,6 +510,7 @@
             <span class="cs-label">전체 합계</span>
             <span class="cs-val cs-total" id="csTotal">0원</span>
           </div>
+          <p class="cs-breakdown" id="csBreakdown" style="font-size:11px;color:var(--c-text-soft,#6b6555);margin:2px 0 0;text-align:right"></p>
           <div class="cs-row">
             <span class="cs-label">예산</span>
             <span class="cs-val" id="csBudget">-</span>
@@ -510,7 +520,6 @@
 
         <div class="booking-cta" id="bookingCta" hidden>
           <div>
-          <p class="cs-breakdown" id="csBreakdown" style="font-size:11px;color:var(--c-text-soft,#6b6555);margin:2px 0 0;text-align:right"></p>
             <p class="bcta-title">실제 예약하기</p>
             <p class="bcta-sub">항공·숙박·맛집을 한 번에</p>
           </div>
