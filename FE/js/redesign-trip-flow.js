@@ -571,10 +571,11 @@ function _refreshBudget() {
     const sm = _seasonMult(t.startDate);
     factors.push(sm > 1.2 ? '성수기' : (sm < 1 ? '비수기' : '준성수기'));
     if (t.concept) factors.push(`${t.concept} 컨셉`);
-    // breakdown — 활동/항공/숙박 표시
+    // breakdown — 왕복항공 + 숙소(1박×n박) + 타 장소 (계획 페이지와 동일 공식)
+    // 1박 단가는 hotelMW/박수로 환산 — 방 수가 반영된 실효 단가라 합계와 일치.
     const bd = t._budgetBreakdown || {};
     const bdLine = (bd.activityMW != null)
-      ? `<br/><span style="font-size:11px;color:var(--c-text-soft,#6b6555)">활동 ${bd.activityMW}만 + 항공 ${bd.flightMW}만 (${bd.people}명) + 숙박 ${bd.hotelMW}만 (${bd.nights}박 × ${bd.rooms}실)</span>`
+      ? `<br/><span style="font-size:11px;color:var(--c-text-soft,#6b6555)">왕복항공 ${bd.flightMW}만 (${bd.people}명) + ${hotelPart} + 타 장소 ${bd.activityMW}만</span>`
       : '';
     sText.innerHTML = `추천 <strong>${mid}만원</strong> · ${factors.filter(Boolean).join(' · ')}` + bdLine;
   }
@@ -587,6 +588,9 @@ function _refreshBudget() {
 
   // Stash for click handlers
   appState.trip._suggested = { low, mid, high };
+    const hotelPart = (bd.nights)
+      ? `숙소 ${Math.round(bd.hotelMW / bd.nights)}만×${bd.nights}박`
+      : `숙소 ${bd.hotelMW}만`;
   _refreshLevelBadge();
 }
 

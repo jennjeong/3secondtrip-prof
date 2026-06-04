@@ -328,19 +328,50 @@ function _nightlyHotelRate(g) {
   return rate;
 }
 
+/** 총 예산 = 왕복 항공권 + 숙소(1박 × n박) + 타 장소 예산.
+ *  카테고리로 분해해서 명시적으로 합산한다(사용자 수정값 expenses 반영). */
+function _computeBudgetBreakdown(g) {
+  let flight = 0, hotel = 0, other = 0, nights = 0;
+  g.days.forEach((d, di) => {
+    d.activities.forEach((a, ai) => {
+      const c = _actCost(di, ai, a.cost);
+      if (a.category === '이동' && a.flightMeta) {
+        flight += c;                          // 왕복 항공권 (도착·출발 편도 합 = 왕복)
+      } else if (a.category === '숙박') {
+        hotel += c;                           // 숙박 — 1박 요금은 '복귀(1박)' 항목에만 실림
+        if (c > 0) nights += 1;
+      } else {
+        other += c;                           // 타 장소 (식사·관광·쇼핑·체험 등)
+      }
+    });
+  });
+  const hotelPerNight = nights ? Math.round(hotel / nights) : 0;
+  return { flight, hotel, other, nights, hotelPerNight, total: flight + hotel + other };
+}
+
 function _renderCostSummary(g) {
-  // 일별 비용 합계
-  const dayCosts = g.days.map((d, di) =>
-    d.activities.reduce((a, _, ai) => a + _actCost(di, ai, d.activities[ai].cost), 0)
-  );
-  const total = dayCosts.reduce((a, b) => a + b, 0);
-  const todayCost = dayCosts[activeDay] || 0;
+  const bd = _computeBudgetBreakdown(g);
+
+  // 오늘(선택일) 합계는 기존대로 일별 합으로 표시
+  const todayCost = (g.days[activeDay]?.activities || [])
+    .reduce((a, _, ai) => a + _actCost(activeDay, ai, g.days[activeDay].activities[ai].cost), 0);
+
   const budgetKRW = g.budget;
   if ($('#csDayLabel')) $('#csDayLabel').textContent = `Day ${activeDay + 1}`;
   if ($('#csDayCost'))  $('#csDayCost').textContent  = formatCurrency(todayCost, g.currency);
   $('#csBudget').textContent = formatCurrency(budgetKRW, g.currency);
-  $('#csTotal').textContent  = formatCurrency(total, g.currency);
-  const pct = Math.min(100, budgetKRW ? (total / budgetKRW) * 100 : 0);
+  $('#csTotal').textContent  = formatCurrency(bd.total, g.currency);
+
+  // 항목별 분해 표시: 왕복항공 + 숙소(1박×n박) + 타 장소
+  const bdEl = $('#csBreakdown');
+  if (bdEl) {
+    const hotelPart = bd.nights > 0
+      ? `숙소 ${_shortMoney(bd.hotelPerNight, g.currency)}×${bd.nights}박`
+      : `숙소 ${_shortMoney(bd.hotel, g.currency)}`;
+    bdEl.textContent = `왕복항공 ${_shortMoney(bd.flight, g.currency)} + ${hotelPart} + 타 장소 ${_shortMoney(bd.other, g.currency)}`;
+  }
+
+  const pct = Math.min(100, budgetKRW ? (bd.total / budgetKRW) * 100 : 0);
   $('#csBarFill').style.width = pct + '%';
 }
 
