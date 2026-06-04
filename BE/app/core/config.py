@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     google_maps_server_key: str = ""
     google_maps_browser_key: str = ""
 
+    # ── SerpApi — Google Hotels (실시간 1박 요금, server-side only) ───
+    serpapi_api_key: str = ""
+
     # ── PII 컬럼 암호화 (Fernet 키 / .env DB_ENCRYPTION_KEY) ─────────
     db_encryption_key: str = ""
 

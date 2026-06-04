@@ -58,7 +58,7 @@ const STATE_KEY = 'tst_app_state_v1';
  * + place cache are wiped automatically.  Auth, language, dark mode and
  * drafts are preserved so users don't get logged out.
  * ───────────────────────────────────────────────────────────────── */
-const BUILD_VERSION = '20260530-hotel-random-pick';
+const BUILD_VERSION = '20260604-serpapi-hotel-price-no-correction';
 const BUILD_VERSION_KEY = 'tst_build_version';
 
 function migrateStaleState() {

@@ -199,6 +199,10 @@ export const api = {
   // ===== OpenAI proxy — API key stays on backend =====
   openaiChat: (prompt) => apiRequest('/openai/chat', { method: 'POST', body: JSON.stringify({ prompt }) }),
 
+  // ===== SerpApi Google Hotels proxy — real nightly prices, server-side key =====
+  // Tolerant: 404 (no results) / 501 → null so the trip flow falls back to estimate.
+  searchHotels: (payload) => tolerant(apiRequest('/api/hotels/search', { method: 'POST', body: JSON.stringify(payload) })),
+
   // ===== Google Maps proxy — server-side keys, never exposed =====
   searchPlaces: (payload) => apiRequest('/api/places/search', { method: 'POST', body: JSON.stringify(payload) }),
   computeRoute: (payload) => apiRequest('/api/routes',        { method: 'POST', body: JSON.stringify(payload) }),

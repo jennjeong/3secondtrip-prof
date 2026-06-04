@@ -203,7 +203,7 @@ function _renderTimeline(g) {
     const costNumeric = _actCost(activeDay, ai, n.cost);
     if (n.category === '숙박') {
       // 모든 호텔 항목(체크인·복귀·체크아웃 등)에 1박 단가를 표시.
-      // Google 가격대로 보정한 추정치 — 실제 요금과 다를 수 있어 '예상가'로 명시.
+      // SerpApi 실시간 요금 또는 순수 추정치(보정 없음) — 실제 요금과 다를 수 있어 '예상가'로 명시.
       // 합계는 각 항목의 실제 cost를 쓰므로 영향 없음.
       if (hotelNightly > 0) {
         subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' },

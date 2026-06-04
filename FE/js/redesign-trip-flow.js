@@ -948,19 +948,6 @@ function _roomCount(t) {
   return Math.max(1, Math.ceil(_peopleCount(t) / 2));
 }
 
-/** Google Places priceLevel → 1박 단가 보정 배수.
- *  실제 그 호텔의 가격대($~$$$$)에 맞춰 추정가를 올리고 내린다.
- *  값이 없거나 미상이면 null(보정 안 함 → 순수 추정값 유지). */
-function _priceLevelMult(level) {
-  switch (level) {
-    case 'PRICE_LEVEL_INEXPENSIVE':    return 0.7;
-    case 'PRICE_LEVEL_MODERATE':       return 1.0;
-    case 'PRICE_LEVEL_EXPENSIVE':      return 1.5;
-    case 'PRICE_LEVEL_VERY_EXPENSIVE': return 2.2;
-    default:                           return null;   // FREE / UNSPECIFIED / 없음
-  }
-}
-
 /** 가족/단체면 인원 입력칸을 보여주고 기본값을 세팅, 그 외엔 숨기고 입력을 비운다. */
 function _syncPeopleRow() {
   const t = appState.trip;
@@ -1531,16 +1518,69 @@ async function _generateSchedule() {
   const nights = Math.max(0, (t.days || 1) - 1);
   // 호텔 1박 비용 — 사용자 선택 (유형/위치/편의시설) 반영, 방 수도 고려
   const _rooms = _roomCount(t);
-  // 1실 1박 단가: 추정 공식을 Google Places 가격대($~$$$$)로 보정.
-  // 선택된 실제 호텔(hotelPlace)의 priceLevel을 받아 그 가격대에 맞게 조정한다.
+  // 1실 1박 단가 결정 — 우선순위:
+  //   1) SerpApi(Google Hotels) 실시간 요금  → 'serpapi'
+  //   2) 실패 시 순수 추정 공식 (보정 없음)   → 'estimate'
   let _perRoomNight = _calcHotelPerNight(t);
   let _hotelPriceSource = 'estimate';
-  const _plMult = _priceLevelMult(hotelPlace?.price_level);
-  if (_plMult) {
-    _perRoomNight = Math.round(_calcHotelPerNight(t) * _plMult / 1000) * 1000;
-    _hotelPriceSource = 'google-pricelevel';
-    console.log('[trip-flow] Google 가격대 보정:', hotelPlace?.price_level, '×' + _plMult,
-                '→ 1박', _perRoomNight.toLocaleString('ko-KR'), '원');
+
+  // ── 1) SerpApi 실시간 호텔 요금 (해당 도시·날짜·인원의 실제 1박가) ──
+  //   check_out 이 check_in 보다 뒤이고, 둘 다 있어야 호출 (SerpApi 요구사항).
+  let _serpNightly = null;
+  try {
+    if (t.startDate && t.endDate && t.endDate > t.startDate) {
+      const adults = Math.max(1, t.people || _PEOPLE_COUNT[t.companion] || 2);
+      const hres = await api.searchHotels({
+        query: t.cityName,
+        check_in_date: t.startDate,
+        check_out_date: t.endDate,
+        adults,
+        currency: 'KRW',
+        country: (_guessRegion(t.country) || 'KR').toLowerCase(),
+        language: 'ko',
+        max_results: 25,
+      });
+      const hotels = (hres?.hotels || []).filter(h => Number.isFinite(h.price_per_night) && h.price_per_night > 0);
+      if (hotels.length) {
+        // 선택된 호텔(hotelPlace)과 이름이 겹치는 매물이 있으면 그 실제가, 없으면 도시 중앙값.
+        let matched = null;
+        if (hotelPlace?.name) {
+          const toks = hotelPlace.name.toLowerCase().replace(/[()]/g, ' ').split(/\s+/).filter(w => w.length >= 2);
+          matched = hotels.find(h => toks.some(tk => (h.name || '').toLowerCase().includes(tk)));
+        }
+        _serpNightly = matched ? matched.price_per_night
+                               : (hres.median_price_per_night || hotels[0].price_per_night);
+        // Google Places 호텔 해석이 실패했다면 SerpApi 매물로 지도 마커·이름 보강.
+        if (!hotelPlace) {
+          const h0 = matched || hotels[0];
+          if (h0 && Number.isFinite(h0.latitude) && Number.isFinite(h0.longitude)) {
+            hotelPlace = {
+              name: h0.name, latitude: h0.latitude, longitude: h0.longitude,
+              place_id: 'serp-hotel', price_level: null,
+            };
+          }
+        }
+        console.log('[trip-flow] SerpApi 호텔', hotels.length, '건 — 적용 1박',
+                    Math.round(_serpNightly).toLocaleString('ko-KR'), '원',
+                    matched ? '(이름 매칭)' : '(도시 중앙값)');
+      } else {
+        console.log('[trip-flow] SerpApi 결과 없음 — 추정값 사용');
+      }
+    }
+  } catch (e) {
+    console.warn('[trip-flow] SerpApi 호텔 요금 조회 실패 — 추정값 폴백:', e?.message);
+  }
+
+  if (Number.isFinite(_serpNightly) && _serpNightly > 0) {
+    _perRoomNight = Math.round(_serpNightly / 1000) * 1000;
+    _hotelPriceSource = 'serpapi';
+  } else {
+    // ── 2) 폴백 — SerpApi 실패 시 순수 추정 공식 결과값을 보정 없이 그대로 사용 ──
+    //   (Google 가격대 priceLevel 보정은 하지 않는다 — 추정치를 임의로 올리고 내리지 않음)
+    _perRoomNight = Math.round(_calcHotelPerNight(t) / 1000) * 1000;
+    _hotelPriceSource = 'estimate';
+    console.log('[trip-flow] SerpApi 미사용 — 순수 추정 1박',
+                _perRoomNight.toLocaleString('ko-KR'), '원 (보정 없음)');
   }
   const hotelPerNightCost = _perRoomNight * _rooms;
   const transitCost       = _costFor('이동', t.budgetLevel, t.concept);
@@ -1695,7 +1735,7 @@ async function _generateSchedule() {
       locations: [...(t.hotelP.locations || [])],
       amenities: [...(t.hotelP.amenities || [])],
     } : null,
-    hotelPriceSource: _hotelPriceSource,   // 'google-pricelevel' | 'estimate'
+    hotelPriceSource: _hotelPriceSource,   // 'serpapi' | 'estimate'
   };
   appState.generated = generated;
   appState.expenses = {};

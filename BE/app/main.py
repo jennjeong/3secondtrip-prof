@@ -21,6 +21,7 @@ from app.routers import feedback as feedback_router
 from app.routers import surveys as surveys_router
 from app.routers import routes_api as routes_api_router
 from app.routers import places as places_router
+from app.routers import hotels as hotels_router
 from app.routers import images as images_router
 from app.routers import openai_proxy as openai_router
 from app.routers import admin as admin_router
@@ -72,6 +73,7 @@ app.include_router(feedback_router.router)
 app.include_router(surveys_router.router)
 app.include_router(routes_api_router.router)
 app.include_router(places_router.router)
+app.include_router(hotels_router.router)
 app.include_router(images_router.router)
 app.include_router(openai_router.router)
 app.include_router(admin_router.router)
