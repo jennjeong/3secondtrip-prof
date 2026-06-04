@@ -166,6 +166,9 @@ function _renderTimeline(g) {
   const day = g.days[activeDay];
   if (!day) return;
 
+  // 표시용 1박 단가 — 모든 호텔 카드에 같은 값을 보여준다(계산엔 미사용).
+  const hotelNightly = _nightlyHotelRate(g);
+
   day.activities.forEach((a, ai) => {
     // Normalize the activity into a stable shape (handles any field-name
     // drift across legacy mock / Google Places / search results / etc.)
@@ -198,7 +201,14 @@ function _renderTimeline(g) {
       subEls.push(el('p', { class: 'schedule-place-subinfo schedule-memo' }, n.memo));
     }
     const costNumeric = _actCost(activeDay, ai, n.cost);
-    if (costNumeric != null && costNumeric > 0) {
+    if (n.category === '숙박') {
+      // 모든 호텔 항목(체크인·복귀·체크아웃 등)에 1박 단가를 표시.
+      // 합계는 각 항목의 실제 cost를 쓰므로 영향 없음.
+      if (hotelNightly > 0) {
+        subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' },
+          '1박 예상 ' + formatCurrency(hotelNightly, g.currency)));
+      }
+    } else if (costNumeric != null && costNumeric > 0) {
       subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' },
         '예상 ' + formatCurrency(costNumeric, g.currency)));
     }
@@ -302,6 +312,20 @@ function _actCost(di, ai, fallback) {
   const k = _actKey(di, ai);
   if (appState.expenses && appState.expenses[k] != null) return appState.expenses[k];
   return fallback || 0;
+}
+
+/** 숙소 1박 단가 — 일정 안의 '숙박' 항목 중 비용이 실린 항목(복귀 1박)의 값.
+ *  표시 전용: 모든 호텔 카드에 같은 1박 단가를 보여주되, 합계 계산은
+ *  각 항목의 실제 cost(0 또는 1박)를 그대로 쓰므로 변하지 않는다. */
+function _nightlyHotelRate(g) {
+  let rate = 0;
+  g.days.forEach((d, di) => d.activities.forEach((a, ai) => {
+    if (a.category === '숙박') {
+      const c = _actCost(di, ai, a.cost);
+      if (c > rate) rate = c;
+    }
+  }));
+  return rate;
 }
 
 function _renderCostSummary(g) {
