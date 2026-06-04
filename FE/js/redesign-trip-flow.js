@@ -948,6 +948,19 @@ function _roomCount(t) {
   return Math.max(1, Math.ceil(_peopleCount(t) / 2));
 }
 
+/** Google Places priceLevel → 1박 단가 보정 배수.
+ *  실제 그 호텔의 가격대($~$$$$)에 맞춰 추정가를 올리고 내린다.
+ *  값이 없거나 미상이면 null(보정 안 함 → 순수 추정값 유지). */
+function _priceLevelMult(level) {
+  switch (level) {
+    case 'PRICE_LEVEL_INEXPENSIVE':    return 0.7;
+    case 'PRICE_LEVEL_MODERATE':       return 1.0;
+    case 'PRICE_LEVEL_EXPENSIVE':      return 1.5;
+    case 'PRICE_LEVEL_VERY_EXPENSIVE': return 2.2;
+    default:                           return null;   // FREE / UNSPECIFIED / 없음
+  }
+}
+
 /** 가족/단체면 인원 입력칸을 보여주고 기본값을 세팅, 그 외엔 숨기고 입력을 비운다. */
 function _syncPeopleRow() {
   const t = appState.trip;
@@ -1518,28 +1531,16 @@ async function _generateSchedule() {
   const nights = Math.max(0, (t.days || 1) - 1);
   // 호텔 1박 비용 — 사용자 선택 (유형/위치/편의시설) 반영, 방 수도 고려
   const _rooms = _roomCount(t);
-  // 1실 1박 단가: 기본은 추정 공식, 가능하면 Amadeus 실시간 시세로 대체.
+  // 1실 1박 단가: 추정 공식을 Google Places 가격대($~$$$$)로 보정.
+  // 선택된 실제 호텔(hotelPlace)의 priceLevel을 받아 그 가격대에 맞게 조정한다.
   let _perRoomNight = _calcHotelPerNight(t);
   let _hotelPriceSource = 'estimate';
-  if (nights > 0 && hotelPlace && Number.isFinite(hotelPlace.latitude) && Number.isFinite(hotelPlace.longitude)) {
-    try {
-      const _ci = new Date(start);
-      const _co = new Date(start); _co.setDate(_co.getDate() + nights);
-      const pr = await api.hotelPrice({
-        latitude: hotelPlace.latitude, longitude: hotelPlace.longitude,
-        check_in:  _ci.toISOString().slice(0, 10),
-        check_out: _co.toISOString().slice(0, 10),
-        adults: _peopleCount(t), rooms: _rooms,
-        currency: t.currency || 'KRW', name: hotelName,
-      });
-      if (pr && pr.available && pr.nightly > 0) {
-        _perRoomNight = pr.nightly;                              // 실시간 1실 1박 시세
-        _hotelPriceSource = pr.matched ? 'amadeus-matched' : 'amadeus';
-        console.log('[trip-flow] Amadeus 실시간 1박 시세:', pr.nightly, pr.currency, '(', pr.hotel, '/ matched=' + pr.matched + ')');
-      }
-    } catch (e) {
-      console.warn('[trip-flow] 호텔 실시간 요금 조회 실패 — 추정값 사용:', e?.message);
-    }
+  const _plMult = _priceLevelMult(hotelPlace?.price_level);
+  if (_plMult) {
+    _perRoomNight = Math.round(_calcHotelPerNight(t) * _plMult / 1000) * 1000;
+    _hotelPriceSource = 'google-pricelevel';
+    console.log('[trip-flow] Google 가격대 보정:', hotelPlace?.price_level, '×' + _plMult,
+                '→ 1박', _perRoomNight.toLocaleString('ko-KR'), '원');
   }
   const hotelPerNightCost = _perRoomNight * _rooms;
   const transitCost       = _costFor('이동', t.budgetLevel, t.concept);

@@ -23,6 +23,7 @@ class PlaceResult(BaseModel):
     rating: Optional[float] = None
     user_rating_count: Optional[int] = None
     types: list[str] = Field(default_factory=list)
+    price_level: Optional[str] = None     # Google Places 가격대 ($~$$$$)
 
 
 class PlaceSearchResponse(BaseModel):

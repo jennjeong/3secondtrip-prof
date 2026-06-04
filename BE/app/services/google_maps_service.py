@@ -132,7 +132,7 @@ async def search_places(*, query: str, language: Optional[str] = "ko",
     headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
-        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.rating,places.userRatingCount",
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.rating,places.userRatingCount,places.priceLevel",
     }
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
@@ -167,5 +167,7 @@ async def search_places(*, query: str, language: Optional[str] = "ko",
             "rating": p.get("rating"),
             "user_rating_count": p.get("userRatingCount"),
             "types": p.get("types") or [],
+            # 가격대 — PRICE_LEVEL_INEXPENSIVE ~ PRICE_LEVEL_VERY_EXPENSIVE (없으면 None)
+            "price_level": p.get("priceLevel"),
         })
     return out
