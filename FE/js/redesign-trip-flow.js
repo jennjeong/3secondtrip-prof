@@ -502,7 +502,15 @@ function _bindStepHandlers() {
   });
   $('#stepGenerate')?.addEventListener('click', async () => {
     if (!_validateStep()) return;
-    await _generateSchedule();
+    try {
+      await _generateSchedule();
+    } catch (e) {
+      console.error('[trip-flow] 일정 생성 실패:', e);
+      showToast('일정 생성 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      _hideGenLoading();
+      const b = $('#stepGenerate'); if (b) { b.disabled = false; b.textContent = '일정 생성하기 ✨'; }
+    }
   });
 }
 
@@ -1332,13 +1340,48 @@ function _addMinutes(hhmm, mins) {
  *  (city / days / concept / budget).  Used by the "다시 만들기" button on
  *  the schedule page so users don't have to re-walk the 4-step flow. */
 export async function regenerateSchedule() {
-  return _generateSchedule();
+  try {
+    return await _generateSchedule();
+  } finally {
+    _hideGenLoading();
+  }
+}
+
+/* ============ 생성 로딩 오버레이 (전체화면 스피너) ============ */
+function _showGenLoading(msg) {
+  if (!document.getElementById('genLoadingStyle')) {
+    const st = document.createElement('style'); st.id = 'genLoadingStyle';
+    st.textContent =
+      '#genLoadingOverlay{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;'
+      + 'align-items:center;justify-content:center;gap:16px;background:rgba(255,255,255,.94);'
+      + "backdrop-filter:blur(2px);font-family:'Pretendard',sans-serif;}"
+      + '#genLoadingOverlay .gl-spin{width:52px;height:52px;border-radius:50%;'
+      + 'border:5px solid #f1f3f5;border-top-color:#fcd535;animation:glspin .8s linear infinite;}'
+      + '#genLoadingOverlay .gl-msg{font-size:16px;font-weight:700;color:#0b0e11;}'
+      + '#genLoadingOverlay .gl-sub{font-size:13px;color:#707a8a;}'
+      + '@keyframes glspin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(st);
+  }
+  let ov = document.getElementById('genLoadingOverlay');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'genLoadingOverlay';
+    ov.innerHTML = '<div class="gl-spin"></div>'
+      + '<div class="gl-msg" id="glMsg">일정을 만드는 중…</div>'
+      + '<div class="gl-sub">현지 데이터로 동선을 짜고 있어요</div>';
+    document.body.appendChild(ov);
+  }
+  const m = ov.querySelector('#glMsg'); if (m && msg) m.textContent = msg;
+  ov.style.display = 'flex';
+}
+function _hideGenLoading() {
+  document.getElementById('genLoadingOverlay')?.remove();
 }
 
 async function _generateSchedule() {
   const t = appState.trip;
   const btn = $('#stepGenerate');
   if (btn) { btn.disabled = true; btn.textContent = `${t.cityName}의 진짜 명소를 찾는 중…`; }
+  _showGenLoading(`${t.cityName || ''} 일정을 만드는 중…`);
 
   const start = new Date(t.startDate);
   const days = [];
@@ -1745,6 +1788,7 @@ async function _generateSchedule() {
   appState.expenses = {};
 
   if (btn) { btn.disabled = false; btn.textContent = '일정 생성하기 ✨'; }
+  _hideGenLoading();
   // 실데이터가 충분치 않으면(절반 이상 임시 명소) 솔직하게 안내 — 데모 중 가짜 명소를 진짜처럼 보이지 않게.
   const _totalSlots = _realSlots + _fallbackSlots;
   if (_totalSlots > 0 && _fallbackSlots > _realSlots) {
