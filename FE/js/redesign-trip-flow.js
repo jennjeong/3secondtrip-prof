@@ -1695,7 +1695,7 @@ async function _generateSchedule() {
       locations: [...(t.hotelP.locations || [])],
       amenities: [...(t.hotelP.amenities || [])],
     } : null,
-    hotelPriceSource: _hotelPriceSource,   // 'amadeus' | 'amadeus-matched' | 'estimate'
+    hotelPriceSource: _hotelPriceSource,   // 'google-pricelevel' | 'estimate'
   };
   appState.generated = generated;
   appState.expenses = {};
