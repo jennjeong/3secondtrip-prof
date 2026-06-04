@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     google_maps_server_key: str = ""
     google_maps_browser_key: str = ""
 
+    # ── Amadeus Self-Service (실시간 호텔 요금) ──────────────────────
+    #   developers.amadeus.com 에서 발급. 기본은 test 환경(무료 한도).
+    #   운영 전환 시 AMADEUS_ENV=production 으로 변경.
+    amadeus_client_id: str = ""
+    amadeus_client_secret: str = ""
+    amadeus_env: str = "test"   # "test" | "production"
+
     # ── PII 컬럼 암호화 (Fernet 키 / .env DB_ENCRYPTION_KEY) ─────────
     db_encryption_key: str = ""
 

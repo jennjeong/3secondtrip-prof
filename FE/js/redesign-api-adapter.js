@@ -199,6 +199,9 @@ export const api = {
   // ===== OpenAI proxy — API key stays on backend =====
   openaiChat: (prompt) => apiRequest('/openai/chat', { method: 'POST', body: JSON.stringify({ prompt }) }),
 
+  // ===== 실시간 호텔 요금 (Amadeus) — 키는 백엔드, 무결과면 available:false =====
+  hotelPrice: (payload) => apiRequest('/api/hotels/price', { method: 'POST', body: JSON.stringify(payload) }),
+
   // ===== Google Maps proxy — server-side keys, never exposed =====
   searchPlaces: (payload) => apiRequest('/api/places/search', { method: 'POST', body: JSON.stringify(payload) }),
   computeRoute: (payload) => apiRequest('/api/routes',        { method: 'POST', body: JSON.stringify(payload) }),

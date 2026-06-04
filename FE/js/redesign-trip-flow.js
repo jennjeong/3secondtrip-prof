@@ -1518,7 +1518,30 @@ async function _generateSchedule() {
   const nights = Math.max(0, (t.days || 1) - 1);
   // 호텔 1박 비용 — 사용자 선택 (유형/위치/편의시설) 반영, 방 수도 고려
   const _rooms = _roomCount(t);
-  const hotelPerNightCost = _calcHotelPerNight(t) * _rooms;
+  // 1실 1박 단가: 기본은 추정 공식, 가능하면 Amadeus 실시간 시세로 대체.
+  let _perRoomNight = _calcHotelPerNight(t);
+  let _hotelPriceSource = 'estimate';
+  if (nights > 0 && hotelPlace && Number.isFinite(hotelPlace.latitude) && Number.isFinite(hotelPlace.longitude)) {
+    try {
+      const _ci = new Date(start);
+      const _co = new Date(start); _co.setDate(_co.getDate() + nights);
+      const pr = await api.hotelPrice({
+        latitude: hotelPlace.latitude, longitude: hotelPlace.longitude,
+        check_in:  _ci.toISOString().slice(0, 10),
+        check_out: _co.toISOString().slice(0, 10),
+        adults: _peopleCount(t), rooms: _rooms,
+        currency: t.currency || 'KRW', name: hotelName,
+      });
+      if (pr && pr.available && pr.nightly > 0) {
+        _perRoomNight = pr.nightly;                              // 실시간 1실 1박 시세
+        _hotelPriceSource = pr.matched ? 'amadeus-matched' : 'amadeus';
+        console.log('[trip-flow] Amadeus 실시간 1박 시세:', pr.nightly, pr.currency, '(', pr.hotel, '/ matched=' + pr.matched + ')');
+      }
+    } catch (e) {
+      console.warn('[trip-flow] 호텔 실시간 요금 조회 실패 — 추정값 사용:', e?.message);
+    }
+  }
+  const hotelPerNightCost = _perRoomNight * _rooms;
   const transitCost       = _costFor('이동', t.budgetLevel, t.concept);
   console.log('[trip-flow] 숙박 — 1박 ' + hotelPerNightCost.toLocaleString('ko-KR') + '원 (' + _rooms + '실) × ' + nights + '박 = 총 ' + (hotelPerNightCost * nights).toLocaleString('ko-KR') + '원');
 
@@ -1671,6 +1694,7 @@ async function _generateSchedule() {
       locations: [...(t.hotelP.locations || [])],
       amenities: [...(t.hotelP.amenities || [])],
     } : null,
+    hotelPriceSource: _hotelPriceSource,   // 'amadeus' | 'amadeus-matched' | 'estimate'
   };
   appState.generated = generated;
   appState.expenses = {};

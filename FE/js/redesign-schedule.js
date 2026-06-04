@@ -205,8 +205,10 @@ function _renderTimeline(g) {
       // 모든 호텔 항목(체크인·복귀·체크아웃 등)에 1박 단가를 표시.
       // 합계는 각 항목의 실제 cost를 쓰므로 영향 없음.
       if (hotelNightly > 0) {
+        const real = (g.hotelPriceSource === 'amadeus' || g.hotelPriceSource === 'amadeus-matched');
+        const label = real ? '1박 시세 ' : '1박 예상 ';
         subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' },
-          '1박 예상 ' + formatCurrency(hotelNightly, g.currency)));
+          label + formatCurrency(hotelNightly, g.currency)));
       }
     } else if (costNumeric != null && costNumeric > 0) {
       subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' },
