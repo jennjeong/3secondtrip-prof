@@ -114,6 +114,7 @@ export function renderSchedule() {
   if (sub) sub.textContent = [g.concept, _companion(g.companion), g.currency].filter(Boolean).join(' · ');
 
   _renderDayChips(g);
+  _renderAiSummary(g);
   _renderTimeline(g);
   _renderCostSummary(g);
 
@@ -773,6 +774,69 @@ async function _toggleSave() {
     console.error('[schedule] save failed', e);
     showToast('저장 중 오류가 발생했어요');
   }
+}
+
+/* ============ AI 코스 요약 (OpenAI 프록시) ============ */
+function _aiPrompt(g) {
+  const days = g.days.map((d, i) => {
+    const ps = (d.activities || [])
+      .filter(a => a.category !== '이동' && a.category !== '숙박')
+      .map(a => a.name);
+    return `${i + 1}일차: ${ps.join(', ')}`;
+  }).join('\n');
+  return `다음은 ${g.city} ${g.days.length}일 ${g.concept || ''} 여행 일정입니다. `
+    + `여행자에게 보여줄 친근한 한국어 요약을 2~3문장으로, 이 코스의 매력과 하루 흐름을 강조해 써주세요. `
+    + `마지막 줄에 짧은 팁 하나를 "💡 "로 시작해 덧붙여 주세요.\n\n${days}`;
+}
+
+async function _genAiSummary() {
+  const g = appState.generated;
+  if (!g) return;
+  const card = document.getElementById('aiSummaryCard');
+  const btn = card?.querySelector('.ai-sum-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '요약하는 중…'; }
+  try {
+    const res = await api.openaiChat(_aiPrompt(g));
+    const text = (res && (res.output_text || res.text) || '').trim();
+    if (text) { g.aiSummary = text; _emitScheduleChanged(); renderSchedule(); }
+    else { showToast('요약을 가져오지 못했어요'); if (btn) { btn.disabled = false; btn.textContent = '✨ AI 코스 요약 보기'; } }
+  } catch (e) {
+    console.warn('[ai] 요약 실패:', e?.message);
+    showToast('AI 요약을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+    if (btn) { btn.disabled = false; btn.textContent = '✨ AI 코스 요약 보기'; }
+  }
+}
+
+function _renderAiSummary(g) {
+  const tl = $('#scheduleTimeline');
+  if (!tl || !tl.parentNode) return;
+  document.getElementById('aiSummaryCard')?.remove();
+  const card = el('div', {
+    id: 'aiSummaryCard',
+    style: 'margin:0 0 12px;padding:16px;background:#fafafa;border:1px solid #eaecef;border-radius:12px;',
+  });
+  card.appendChild(el('div', {
+    style: 'font-size:13px;font-weight:700;color:#2dbdb6;margin-bottom:8px;',
+  }, '✨ AI 코스 요약'));
+  if (g.aiSummary) {
+    card.appendChild(el('p', {
+      style: 'font-size:14px;line-height:1.6;color:#181a20;white-space:pre-wrap;margin:0;',
+    }, g.aiSummary));
+    const re = el('button', {
+      type: 'button', class: 'ai-sum-redo',
+      style: 'margin-top:10px;font-size:12px;color:#707a8a;background:none;border:none;cursor:pointer;padding:0;',
+      onclick: () => { delete g.aiSummary; renderSchedule(); _genAiSummary(); },
+    }, '↻ 다시 요약');
+    card.appendChild(re);
+  } else {
+    card.appendChild(el('button', {
+      type: 'button', class: 'ai-sum-btn',
+      style: 'font-size:14px;font-weight:600;color:#0b0e11;background:#fcd535;border:none;'
+           + 'border-radius:8px;padding:10px 16px;cursor:pointer;',
+      onclick: _genAiSummary,
+    }, '✨ AI 코스 요약 보기'));
+  }
+  tl.parentNode.insertBefore(card, tl);
 }
 
 /* ── 공유: 일정을 URL에 담는 자체 링크 + 일자별 텍스트 요약 ── */

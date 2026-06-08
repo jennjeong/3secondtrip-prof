@@ -3,8 +3,10 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from typing import Optional
+
 from app.core.config import settings
-from app.routers.dependencies import get_current_user
+from app.routers.dependencies import get_current_user_optional
 from app.models.user import User
 
 logger = logging.getLogger("openai_proxy")
@@ -20,7 +22,9 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest, _: User = Depends(get_current_user)):
+async def chat(req: ChatRequest, _: Optional[User] = Depends(get_current_user_optional)):
+    # 데모: 로그인 없이도 AI 요약을 쓸 수 있도록 선택적 인증.
+    # (공개 배포 시에는 레이트리밋/인증 강화 필요)
     if not settings.openai_api_key:
         raise HTTPException(status_code=500, detail="OpenAI is not configured on server")
     try:
