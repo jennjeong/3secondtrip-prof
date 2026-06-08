@@ -1556,7 +1556,7 @@ async function _generateSchedule() {
   }
 
   const airportName = airportPlace?.name || `${t.cityName} 국제공항`;
-  const hotelName   = hotelPlace?.name   || `${t.cityName} 시내 호텔`;
+  let hotelName     = hotelPlace?.name   || `${t.cityName} 시내 호텔`;
   // Cost: 1박 단위로 분배 — 첫날 체크인 + 중간일 복귀에 각 1박씩 적용
   const nights = Math.max(0, (t.days || 1) - 1);
   // 호텔 1박 비용 — 사용자 선택 (유형/위치/편의시설) 반영, 방 수도 고려
@@ -1573,6 +1573,9 @@ async function _generateSchedule() {
   try {
     if (t.startDate && t.endDate && t.endDate > t.startDate) {
       const adults = Math.max(1, t.people || _PEOPLE_COUNT[t.companion] || 2);
+      // 사용자가 고른 성급(2~5)을 SerpApi hotel_class 필터로 전달 → 보여줄 호텔 등급·가격대 일치
+      const _starMap = { luxury: '5', upscale: '4', midscale: '3', budget: '2' };
+      const _stars = [...new Set((t.hotelP?.types || []).map(x => _starMap[x]).filter(Boolean))];
       const hres = await api.searchHotels({
         query: t.cityName,
         check_in_date: t.startDate,
@@ -1581,31 +1584,41 @@ async function _generateSchedule() {
         currency: 'KRW',
         country: (_guessRegion(t.country) || 'KR').toLowerCase(),
         language: 'ko',
+        hotel_class: _stars.length ? _stars.join(',') : undefined,
         max_results: 25,
       });
       const hotels = (hres?.hotels || []).filter(h => Number.isFinite(h.price_per_night) && h.price_per_night > 0);
       if (hotels.length) {
-        // 선택된 호텔(hotelPlace)과 이름이 겹치는 매물이 있으면 그 실제가, 없으면 도시 중앙값.
-        let matched = null;
+        // ★ 표시 호텔을 Google Hotels(SerpApi) 매물 '하나'로 통일한다.
+        //   이름·가격·좌표를 같은 출처로 맞춰야 앱 가격 = 구글 가격이 된다.
+        //   (기존: 이름은 Google Places, 가격은 도시 중앙값이라 서로 달랐음)
+        let chosen = null;
+        // 1) 기존 Places 후보와 이름이 겹치는 매물이 있으면 우선 채택
         if (hotelPlace?.name) {
           const toks = hotelPlace.name.toLowerCase().replace(/[()]/g, ' ').split(/\s+/).filter(w => w.length >= 2);
-          matched = hotels.find(h => toks.some(tk => (h.name || '').toLowerCase().includes(tk)));
+          chosen = hotels.find(h => toks.some(tk => (h.name || '').toLowerCase().includes(tk)));
         }
-        _serpNightly = matched ? matched.price_per_night
-                               : (hres.median_price_per_night || hotels[0].price_per_night);
-        // Google Places 호텔 해석이 실패했다면 SerpApi 매물로 지도 마커·이름 보강.
-        if (!hotelPlace) {
-          const h0 = matched || hotels[0];
-          if (h0 && Number.isFinite(h0.latitude) && Number.isFinite(h0.longitude)) {
-            hotelPlace = {
-              name: h0.name, latitude: h0.latitude, longitude: h0.longitude,
-              place_id: 'serp-hotel', price_level: null,
-            };
-          }
+        // 2) 매칭 실패 시: 가격이 튀지 않게 '중앙값에 가장 가까운' 매물을 대표로 채택
+        if (!chosen) {
+          const med = hres.median_price_per_night;
+          chosen = med
+            ? hotels.reduce((a, b) => Math.abs(b.price_per_night - med) < Math.abs(a.price_per_night - med) ? b : a)
+            : hotels[0];
         }
-        console.log('[trip-flow] SerpApi 호텔', hotels.length, '건 — 적용 1박',
-                    Math.round(_serpNightly).toLocaleString('ko-KR'), '원',
-                    matched ? '(이름 매칭)' : '(도시 중앙값)');
+        _serpNightly = chosen.price_per_night;
+        // 표시 호텔(이름·좌표·주소·링크)을 채택 매물로 교체 → 가격과 동일 출처
+        hotelName = chosen.name || hotelName;
+        hotelPlace = {
+          name: chosen.name || hotelName,
+          latitude:  Number.isFinite(chosen.latitude)  ? chosen.latitude  : hotelPlace?.latitude,
+          longitude: Number.isFinite(chosen.longitude) ? chosen.longitude : hotelPlace?.longitude,
+          address:   hotelPlace?.address || '',
+          place_id:  'serp-hotel',
+          price_level: null,
+          link: chosen.link || null,
+        };
+        console.log('[trip-flow] SerpApi 호텔 채택:', chosen.name,
+                    Math.round(_serpNightly).toLocaleString('ko-KR'), '원 (이름·가격 동일 출처)');
       } else {
         console.log('[trip-flow] SerpApi 결과 없음 — 추정값 사용');
       }
