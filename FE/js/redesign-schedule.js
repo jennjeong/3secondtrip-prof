@@ -111,7 +111,7 @@ export function renderSchedule() {
   if (review) review.hidden = false;
 
   if (title) title.textContent = `${g.city} ${g.days.length}일`;
-  if (sub) sub.textContent = `${g.concept || ''} · ${_companion(g.companion)} · ${g.currency}`;
+  if (sub) sub.textContent = [g.concept, _companion(g.companion), g.currency].filter(Boolean).join(' · ');
 
   _renderDayChips(g);
   _renderTimeline(g);

@@ -52,10 +52,14 @@ async function _submit() {
     city: appState.generated?.city || '',
     at: new Date().toISOString().slice(0, 10),
   };
-  const res = await api.saveReview(payload);
+  // 게스트(401)·네트워크 오류여도 throw로 멈추지 않게 — 로컬 임시 저장으로 폴백.
+  let res = null;
+  try { res = await api.saveReview(payload); }
+  catch (e) { console.warn('[reviews] 후기 서버 저장 실패 — 로컬 임시 저장:', e?.message); }
   // Always store locally so the user sees their review immediately
   _cacheLocal(payload);
   if (res) showToast('후기가 등록되었어요');
+  else if (!appState.currentUser) showToast('로그인하면 공개 후기로 등록돼요 — 임시 저장했어요');
   else showToast('후기를 임시 저장했어요');
   // Reset
   star = 0; tags.clear();
