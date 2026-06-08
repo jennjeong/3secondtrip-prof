@@ -236,6 +236,8 @@ function _renderTimeline(g) {
       ]),
     ]);
 
+    // 공항(이동)·호텔(숙박)은 일정의 고정 골격이므로 순서 변경에서 제외.
+    const movable = n.category !== '이동' && n.category !== '숙박';
     const card = el('article', {
       class: 'schedule-card' + (hasName ? '' : ' schedule-card--no-name'),
       // ⚠ draggable 은 카드 본체가 아닌 .drag-handle 에만 부여 (텍스트 선택 가능)
@@ -244,6 +246,7 @@ function _renderTimeline(g) {
         di: String(activeDay),
         ai: String(ai),
         placeId: n.placeId || n.id || '',
+        movable: movable ? '1' : '0',
       },
     }, [
       el('div', { class: 'schedule-card-main' }, [
@@ -270,12 +273,12 @@ function _renderTimeline(g) {
           title: '장소 편집',
           onclick: (e) => { e.stopPropagation(); _openEdit(activeDay, ai); },
         }, '✏️ 편집'),
-        el('span', {
+        ...(movable ? [el('span', {
           class: 'drag-handle',
           title: '드래그하여 순서 변경',
           ariaHidden: 'true',
           draggable: editMode ? 'true' : 'false',
-        }, '⋮⋮'),
+        }, '⋮⋮')] : []),
       ]),
     ]);
     // 본체 클릭으로는 모달 열지 않음 — 텍스트 자유롭게 선택 가능
@@ -302,7 +305,7 @@ function _renderTimeline(g) {
       } catch (_) {}
     });
 
-    if (editMode) _bindDnd(card);
+    if (editMode && movable) _bindDnd(card);
     tl.appendChild(card);
   });
 
@@ -707,37 +710,39 @@ function _bindDnd(card) {
     showToast('순서 변경 + 시간 자동 재계산');
   });
 
-  // Touch fallback — basic long-press reorder via pointermove (best effort)
-  let touchY = 0; let dragging = false;
+  // Touch fallback — 길게 눌러 끌어서 순서 변경 (모바일).
+  let touchY = 0, dragging = false, pressTimer = null;
   const touchTarget = card.querySelector('.drag-handle') || card;
   touchTarget.addEventListener('touchstart', (e) => {
     if (!editMode) return;
-    const t = e.touches[0]; touchY = t.clientY;
-    setTimeout(() => { dragging = true; card.classList.add('is-dragging'); }, 280);
+    touchY = e.touches[0].clientY;
+    pressTimer = setTimeout(() => { dragging = true; card.classList.add('is-dragging'); }, 220);
   }, { passive: true });
+  // 드래그가 시작되면 페이지 스크롤을 막아야 카드가 손가락을 따라온다 → passive:false + preventDefault
   touchTarget.addEventListener('touchmove', (e) => {
-    if (!dragging) return;
-    const t = e.touches[0];
-    const dy = t.clientY - touchY;
-    card.style.transform = `translateY(${dy}px)`;
-  }, { passive: true });
-  touchTarget.addEventListener('touchend', (e) => {
+    if (!dragging) { clearTimeout(pressTimer); return; }   // 길게누르기 전 움직이면 스크롤로 간주
+    e.preventDefault();
+    card.style.transform = `translateY(${e.touches[0].clientY - touchY}px)`;
+  }, { passive: false });
+  const _endTouch = (e) => {
+    clearTimeout(pressTimer);
     if (!dragging) return;
     dragging = false;
     card.style.transform = '';
     card.classList.remove('is-dragging');
-    const drop = document.elementFromPoint((e.changedTouches[0]||{}).clientX || 0, (e.changedTouches[0]||{}).clientY || 0)?.closest('.timeline-item');
-    if (drop && drop !== card) {
-      const srcAi = Number(card.dataset.ai);
-      const dstAi = Number(drop.dataset.ai);
+    const pt = e.changedTouches && e.changedTouches[0];
+    const drop = pt && document.elementFromPoint(pt.clientX, pt.clientY)?.closest('.schedule-card');
+    if (drop && drop !== card && drop.dataset.movable === '1') {
       const day = appState.generated.days[activeDay];
-      const moved = day.activities.splice(srcAi, 1)[0];
-      day.activities.splice(dstAi, 0, moved);
+      const moved = day.activities.splice(Number(card.dataset.ai), 1)[0];
+      day.activities.splice(Number(drop.dataset.ai), 0, moved);
       _recomputeDayTimes(day);
       renderSchedule();
       showToast('순서 변경 + 시간 자동 재계산');
     }
-  });
+  };
+  touchTarget.addEventListener('touchend', _endTouch);
+  touchTarget.addEventListener('touchcancel', _endTouch);
 }
 
 /* ============ Google Maps deep link ============ */
