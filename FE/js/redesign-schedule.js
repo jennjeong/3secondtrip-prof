@@ -775,16 +775,63 @@ async function _toggleSave() {
   }
 }
 
+/* ── 공유: 일정을 URL에 담는 자체 링크 + 일자별 텍스트 요약 ── */
+function _b64urlEnc(str) {
+  let bin = ''; for (const b of new TextEncoder().encode(str)) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function _b64urlDec(b64) {
+  const bin = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
+  return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+}
+/** 받는 사람이 열면 이 일정이 그대로 보이도록, generated 전체를 URL 해시에 인코딩. */
+function _shareLink(g) {
+  try { return `${location.origin}${location.pathname}#page=schedule&trip=${_b64urlEnc(JSON.stringify(g))}`; }
+  catch (_) { return location.href; }
+}
+/** 일자별 대표 장소(고정 골격 제외)로 짧은 텍스트 요약. */
+function _shareText(g) {
+  const lines = g.days.map((d, i) => {
+    const hi = (d.activities || [])
+      .filter(a => a.category !== '이동' && a.category !== '숙박')
+      .slice(0, 3).map(a => a.name).join(' · ');
+    return `Day ${i + 1}  ${hi}`;
+  });
+  return `${g.city} ${g.days.length}일 · ${g.concept || ''} 일정\n` + lines.join('\n') + '\n— 3초 여행';
+}
+
 async function _share() {
   const g = appState.generated;
   if (!g) { showToast('공유할 일정이 없어요'); return; }
-  const text = `${g.city} ${g.days.length}일 · ${g.concept || ''} 일정\n3초 여행에서 생성`;
+  const text = _shareText(g);
+  const link = _shareLink(g);
   if (navigator.share) {
-    try { await navigator.share({ title: '3초 여행', text, url: location.href }); return; }
-    catch (_) {}
+    try { await navigator.share({ title: `${g.city} ${g.days.length}일 일정 · 3초 여행`, text, url: link }); return; }
+    catch (_) { /* 사용자가 취소했거나 미지원 → 폴백 */ }
   }
-  try { await navigator.clipboard?.writeText(text + '\n' + location.href); showToast('링크를 복사했어요'); }
+  try { await navigator.clipboard.writeText(text + '\n' + link); showToast('일정 링크를 복사했어요 — 붙여넣어 공유하세요'); }
   catch (_) { showToast('공유를 지원하지 않는 환경이에요'); }
+}
+
+/** 공유 링크(#page=schedule&trip=…)로 진입한 경우, URL에서 일정을 복원해 state에 주입.
+ *  부트스트랩에서 restoreAppState 직후·최초 렌더 전에 호출한다. */
+export function importSharedTripFromURL(state) {
+  try {
+    const enc = new URLSearchParams((location.hash || '').replace(/^#/, '')).get('trip');
+    if (!enc) return false;
+    const g = JSON.parse(_b64urlDec(enc));
+    if (!g || !Array.isArray(g.days)) return false;
+    state.generated = g;
+    state.expenses = state.expenses || {};
+    state.trip = Object.assign({}, state.trip, {
+      cityName: g.city, country: g.country, days: g.days.length,
+      concept: g.concept, currency: g.currency, budget: Math.round((g.budget || 0) / 10000),
+    });
+    // 거대한 trip 파라미터를 URL에서 제거(페이지는 schedule 유지)
+    try { history.replaceState(null, '', location.pathname + '#page=schedule'); } catch (_) {}
+    try { showToast('공유된 일정을 불러왔어요'); } catch (_) {}
+    return true;
+  } catch (e) { console.warn('[share] 공유 일정 복원 실패:', e); return false; }
 }
 
 // When the user lands on Schedule via the My page's "내 후기" tile,

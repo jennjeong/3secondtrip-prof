@@ -5,7 +5,7 @@ import { initNavigation, navigate, onNavChange } from './redesign-navigation.js'
 import { initAuth, refreshCurrentUser } from './redesign-auth.js';
 import { initRoadmaps, renderHomeRoadmaps, renderExplore } from './redesign-roadmaps.js';
 import { initTripFlow } from './redesign-trip-flow.js';
-import { initSchedule, renderSchedule } from './redesign-schedule.js';
+import { initSchedule, renderSchedule, importSharedTripFromURL } from './redesign-schedule.js';
 import { initBooking } from './redesign-booking.js';
 import { initBlog } from './redesign-blog.js';
 import { initFeedback } from './redesign-feedback.js';
@@ -126,6 +126,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 2) Init UI helpers (language, toasts) — independent of state
   initLanguage();
+
+  // 1.8) 공유 링크(#page=schedule&trip=…)로 들어왔으면 URL에서 일정을 복원.
+  //      최초 렌더 전에 appState.generated를 채워야 그 일정이 바로 그려진다.
+  importSharedTripFromURL(appState);
 
   // 3) Init navigation (registers click delegation + popstate)
   initNavigation();
