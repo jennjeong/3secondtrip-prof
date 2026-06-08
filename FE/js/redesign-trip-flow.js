@@ -1628,7 +1628,8 @@ async function _generateSchedule() {
   }
 
   if (Number.isFinite(_serpNightly) && _serpNightly > 0) {
-    _perRoomNight = Math.round(_serpNightly / 1000) * 1000;
+    // 실시간가는 천원 단위 반올림 없이 실제 값 그대로 → 구글 표시가와 정확히 일치.
+    _perRoomNight = Math.round(_serpNightly);
     _hotelPriceSource = 'serpapi';
   } else {
     // ── 2) 폴백 — SerpApi 실패 시 순수 추정 공식 결과값을 보정 없이 그대로 사용 ──
