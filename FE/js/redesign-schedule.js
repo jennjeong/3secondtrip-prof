@@ -219,6 +219,17 @@ function _renderTimeline(g) {
         }, _isReal ? '· 실시간' : '· 추정'));
         subEls.push(costEl);
       }
+    } else if (n.category === '이동' && costNumeric != null && costNumeric > 0) {
+      // 항공권 — 출처(flightPriceSource)에 따라 실시간/예상 구분
+      const _isReal = g.flightPriceSource === 'serpapi';
+      const costEl = el('p', { class: 'schedule-place-subinfo schedule-cost' },
+        (_isReal ? '실시간 ' : '예상 ') + formatCurrency(costNumeric, g.currency));
+      costEl.appendChild(el('span', {
+        class: 'schedule-price-tag',
+        style: 'margin-left:6px;font-size:11px;font-weight:600;'
+             + (_isReal ? 'color:#2dbdb6;' : 'color:#929aa5;'),
+      }, _isReal ? '· 실시간' : '· 추정'));
+      subEls.push(costEl);
     } else if (costNumeric != null && costNumeric > 0) {
       subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' },
         '예상 ' + formatCurrency(costNumeric, g.currency)));

@@ -203,6 +203,10 @@ export const api = {
   // Tolerant: 404 (no results) / 501 → null so the trip flow falls back to estimate.
   searchHotels: (payload) => tolerant(apiRequest('/api/hotels/search', { method: 'POST', body: JSON.stringify(payload) })),
 
+  // ===== SerpApi Google Flights proxy — real round-trip fares, server-side key =====
+  // Tolerant: 404/501 → null so the trip flow falls back to the estimate formula.
+  searchFlights: (payload) => tolerant(apiRequest('/api/flights/search', { method: 'POST', body: JSON.stringify(payload) })),
+
   // ===== Google Maps proxy — server-side keys, never exposed =====
   searchPlaces: (payload) => apiRequest('/api/places/search', { method: 'POST', body: JSON.stringify(payload) }),
   computeRoute: (payload) => apiRequest('/api/routes',        { method: 'POST', body: JSON.stringify(payload) }),

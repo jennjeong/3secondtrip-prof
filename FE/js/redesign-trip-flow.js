@@ -1001,6 +1001,34 @@ function _flightMinFloor(durationMin) {
  * 왕복 항공권 총 가격 (인원수 반영, 원화).
  * 도착·출발에 절반씩 배분되어 일정에 들어감.
  */
+// 도시 key → 대표 공항 IATA (SerpApi Google Flights 연동용).
+// 없는 도시는 실시간 미조회 → 추정 폴백.
+const _CITY_IATA = {
+  // 한국
+  seoul:'ICN', busan:'PUS', jeju:'CJU', yeosu:'RSU',
+  // 일본
+  tokyo:'HND', osaka:'KIX', kyoto:'KIX', nara:'KIX', kobe:'KIX', fukuoka:'FUK',
+  sapporo:'CTS', nagoya:'NGO', yokohama:'HND', okinawa:'OKA', hiroshima:'HIJ',
+  takamatsu:'TAK', kagoshima:'KOJ', kumamoto:'KMJ', sendai:'SDJ', hakodate:'HKD',
+  // 중화권 · 동남아
+  beijing:'PEK', shanghai:'PVG', chengdu:'CTU', hongkong:'HKG', taipei:'TPE',
+  kaohsiung:'KHH', macau:'MFM', bangkok:'BKK', phuket:'HKT', chiangmai:'CNX',
+  hanoi:'HAN', danang:'DAD', hochiminh:'SGN', singapore:'SIN', kualalumpur:'KUL',
+  bali:'DPS', jakarta:'CGK', manila:'MNL', cebu:'CEB', siemreap:'REP', phnompenh:'PNH',
+  vientiane:'VTE', yangon:'RGN', delhi:'DEL', mumbai:'BOM',
+  // 유럽
+  paris:'CDG', london:'LHR', rome:'FCO', milan:'MXP', venice:'VCE', barcelona:'BCN',
+  madrid:'MAD', lisbon:'LIS', amsterdam:'AMS', brussels:'BRU', zurich:'ZRH',
+  berlin:'BER', munich:'MUC', frankfurt:'FRA', vienna:'VIE', prague:'PRG',
+  budapest:'BUD', warsaw:'WAW', stockholm:'ARN', copenhagen:'CPH', oslo:'OSL',
+  helsinki:'HEL', reykjavik:'KEF', dublin:'DUB', athens:'ATH', istanbul:'IST',
+  // 미주 · 오세아니아 · 중동
+  newyork:'JFK', losangeles:'LAX', sanfrancisco:'SFO', lasvegas:'LAS', chicago:'ORD',
+  toronto:'YYZ', vancouver:'YVR', mexicocity:'MEX', cancun:'CUN', saopaulo:'GRU',
+  sydney:'SYD', melbourne:'MEL', auckland:'AKL', guam:'GUM', saipan:'SPN',
+  dubai:'DXB', doha:'DOH', cairo:'CAI', honolulu:'HNL', bangkok2:'DMK',
+};
+
 function _calcFlightPrice(t) {
   const f = t.flight || {};
   // 비행 시간 — 데이터 없으면 도시 등급에서 추정
@@ -1644,15 +1672,52 @@ async function _generateSchedule() {
   console.log('[trip-flow] 숙박 — 1박 ' + hotelPerNightCost.toLocaleString('ko-KR') + '원 (' + _rooms + '실) × ' + nights + '박 = 총 ' + (hotelPerNightCost * nights).toLocaleString('ko-KR') + '원');
 
   // Helpers to build a "transition" activity (airport/hotel) with proper fields.
-  // 왕복 1인 항공권 가격 — 도착·출발에 절반씩 분배
-  const flightTotalKRW = _calcFlightPrice(t);
+  // 항공권 — 실시간(SerpApi Google Flights) 우선, 실패/미지원 시 추정 공식 폴백.
+  let _flightPerPax = null;          // 1인 왕복가
+  let _flightSource = 'estimate';
+  let _flightMeta   = null;          // { airline, flightCode, stops }
+  try {
+    const depIata = _CITY_IATA[t.origin];
+    const arrIata = _CITY_IATA[t.city];
+    if (depIata && arrIata && depIata !== arrIata && t.startDate && t.endDate && t.endDate > t.startDate) {
+      const fres = await api.searchFlights({
+        departure_id: depIata, arrival_id: arrIata,
+        outbound_date: t.startDate, return_date: t.endDate,
+        adults: 1, currency: 'KRW', country: 'kr', language: 'ko',
+      });
+      if (fres && Number.isFinite(fres.lowest_price) && fres.lowest_price > 0) {
+        _flightPerPax = fres.lowest_price;
+        _flightSource = 'serpapi';
+        if (fres.cheapest) _flightMeta = {
+          airline: fres.cheapest.airline, flightCode: fres.cheapest.flight_number, stops: fres.cheapest.stops,
+        };
+        console.log('[trip-flow] SerpApi 항공 — 1인 왕복', _flightPerPax.toLocaleString('ko-KR'), '원',
+                    _flightMeta?.airline || '', _flightMeta?.flightCode || '');
+      } else {
+        console.log('[trip-flow] 항공 실시간 결과 없음 — 추정값 사용');
+      }
+    }
+  } catch (e) {
+    console.warn('[trip-flow] 항공 실시간 조회 실패 — 추정 폴백:', e?.message);
+  }
+  // 왕복 1인가를 인원수만큼 곱해 그룹 총액 → 도착·출발에 절반씩 분배 (추정 폴백은 기존 공식)
+  const _pax = _peopleCount(t);
+  const flightTotalKRW = (Number.isFinite(_flightPerPax) && _flightPerPax > 0)
+    ? Math.round(_flightPerPax * _pax * (t.companion === 'group' ? 0.95 : 1) / 100) * 100
+    : _calcFlightPrice(t);
   const flightHalfKRW  = Math.round(flightTotalKRW / 2 / 100) * 100;
-  console.log('[trip-flow] 항공권 시뮬레이션 — 왕복 1인 ' + flightTotalKRW.toLocaleString('ko-KR') + '원 (편도 ' + flightHalfKRW.toLocaleString('ko-KR') + '원)');
+  console.log('[trip-flow] 항공권(' + _flightSource + ') — 총 ' + flightTotalKRW.toLocaleString('ko-KR') + '원 (편도 ' + flightHalfKRW.toLocaleString('ko-KR') + '원)');
 
   function _airportItem(time, label) {
     const f = t.flight || {};
     const isArrival = (label || '').includes('도착');
-    const flightInfo = _generateFlightInfo(t, isArrival, time);
+    let flightInfo = _generateFlightInfo(t, isArrival, time);
+    // 실시간 항공편이 있으면 실제 항공사·편명·직항/경유로 라벨 교체(시간 부분은 유지).
+    if (_flightMeta && _flightMeta.airline) {
+      const tail = flightInfo.split(' · ').slice(2).join(' · ');
+      const stopTxt = _flightMeta.stops ? `경유 ${_flightMeta.stops}회` : '직항';
+      flightInfo = `${_flightMeta.flightCode || ''} · ${_flightMeta.airline} · ${stopTxt}` + (tail ? ` · ${tail}` : '');
+    }
     return {
       time,
       name: label ? `${airportName} (${label})` : airportName,
@@ -1667,10 +1732,11 @@ async function _generateSchedule() {
       flightMeta: {
         roundTripKRW: flightTotalKRW,
         oneWayKRW:    flightHalfKRW,
-        airline:      (f.airlines && f.airlines[0]) || (f.classType === 'lcc' ? '제주항공' : f.classType === 'fsc' ? '대한항공' : '대한항공'),
-        flightCode:   flightInfo.split(' · ')[0],
+        airline:      _flightMeta?.airline || (f.airlines && f.airlines[0]) || (f.classType === 'lcc' ? '제주항공' : '대한항공'),
+        flightCode:   _flightMeta?.flightCode || flightInfo.split(' · ')[0],
         route:        f.route || 'any',
         startDate:    t.startDate,
+        source:       _flightSource,
       },
     };
   }
@@ -1797,6 +1863,7 @@ async function _generateSchedule() {
       amenities: [...(t.hotelP.amenities || [])],
     } : null,
     hotelPriceSource: _hotelPriceSource,   // 'serpapi' | 'estimate'
+    flightPriceSource: _flightSource,      // 'serpapi' | 'estimate'
   };
   appState.generated = generated;
   appState.expenses = {};
