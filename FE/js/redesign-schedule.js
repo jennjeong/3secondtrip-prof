@@ -305,6 +305,10 @@ function _renderTimeline(g) {
           const pct = Math.round(ins.localRatio * 100);
           fill.style.width = pct + '%';
           val.textContent = pct + '%';
+          // 현지인 비율 단계별 색: 높음(로컬) 그린 · 보통 앰버 · 낮음(관광지) 테라코타
+          const c = pct >= 70 ? '#16A34A' : pct >= 45 ? '#E0A72C' : '#E5654A';
+          fill.style.background = c;
+          val.style.color = c;
         }
         const pill = insightsBox.querySelector('.insight-pill');
         const src  = insightsBox.querySelector('.insight-src');

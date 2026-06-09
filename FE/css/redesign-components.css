@@ -142,7 +142,7 @@
 }
 .chip:hover { border-color: var(--c-primary); }
 .chip.is-active {
-  background: linear-gradient(135deg, var(--c-accent), var(--c-primary));
+  background: var(--c-primary);
   border-color: transparent;
   color: #fff;
   box-shadow: 0 4px 12px rgba(20,30,45,.16);
@@ -302,7 +302,7 @@
   color: #fff;
 }
 .btn-primary.btn-gradient {
-  background: linear-gradient(135deg, var(--c-accent) 0%, var(--c-primary) 50%, var(--c-primary-strong) 100%);
+  background: var(--c-primary);
   color: #fff;
   box-shadow: 0 8px 20px rgba(20,30,45,.18);
 }
@@ -536,7 +536,7 @@
   width: 100%;
   -webkit-appearance: none; appearance: none;
   height: 6px;
-  background: linear-gradient(to right, var(--c-accent), var(--c-primary-strong));
+  background: var(--c-primary);
   border-radius: 999px;
   margin: 10px 0;
 }
@@ -648,7 +648,7 @@
   position: absolute;
   left: 8px; top: 12px; bottom: 12px;
   width: 2px;
-  background: linear-gradient(to bottom, var(--c-primary) 0%, var(--c-mint) 100%);
+  background: var(--c-primary);
   border-radius: 4px;
 }
 .timeline-item {
@@ -730,7 +730,7 @@
 .cs-bar { height: 6px; background: var(--c-divider); border-radius: 999px; overflow: hidden; margin-top: 6px; }
 .cs-bar-fill {
   height: 100%;
-  background: linear-gradient(to right, var(--c-accent), var(--c-primary-strong));
+  background: var(--c-primary);
   border-radius: 999px;
   width: 0%;
   transition: width .3s;
@@ -804,7 +804,7 @@
 .profile-avatar {
   width: 56px; height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--c-accent), var(--c-primary-strong));
+  background: var(--c-primary);
   color: #fff;
   font-size: 22px;
   font-weight: 900;
@@ -872,7 +872,7 @@
   width: 72px; height: 72px;
   border-radius: 22px;
   margin: 0 auto 14px;
-  background: linear-gradient(135deg, var(--c-accent), var(--c-primary-strong));
+  background: var(--c-primary);
   display: flex; align-items: center; justify-content: center;
   color: #fff; font-size: 36px; font-weight: 900;
   box-shadow: 0 10px 24px rgba(20,30,45,.18);
@@ -1578,9 +1578,9 @@
 }
 .schedule-insight-row .insight-fill {
   height: 100%;
-  background: linear-gradient(to right, #6EE7B7, #10B981);
+  background: #10B981;   /* 기본(로드 전) — 실제 색은 비율에 따라 JS에서 지정 */
   border-radius: 999px;
-  transition: width .35s ease;
+  transition: width .35s ease, background .25s ease;
 }
 .schedule-insight-row .insight-val {
   font-weight: 800;
@@ -1797,7 +1797,7 @@
   color: var(--c-text);
 }
 .cal-cell.range-start, .cal-cell.range-end {
-  background: linear-gradient(135deg, var(--c-accent), var(--c-primary-strong));
+  background: var(--c-primary);
   color: #fff;
   border-radius: 10px;
   box-shadow: 0 3px 8px rgba(20,30,45,.16);
