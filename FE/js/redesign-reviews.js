@@ -27,6 +27,15 @@ export function initReviews(state) {
     star = Number(b.dataset.star);
     $$('#starRow .star').forEach(s => s.classList.toggle('is-on', Number(s.dataset.star) <= star));
   });
+  // 호버 시에도 1~n 별이 누적으로 칠해지도록(CSS :hover는 단일 별만 칠해짐)
+  $('#starRow')?.addEventListener('mouseover', (e) => {
+    const b = e.target.closest?.('[data-star]'); if (!b) return;
+    const n = Number(b.dataset.star);
+    $$('#starRow .star').forEach(s => s.classList.toggle('hov', Number(s.dataset.star) <= n));
+  });
+  $('#starRow')?.addEventListener('mouseleave', () => {
+    $$('#starRow .star').forEach(s => s.classList.remove('hov'));
+  });
   $('#reviewTags')?.addEventListener('click', (e) => {
     const b = e.target.closest?.('[data-rtag]');
     if (!b) return;

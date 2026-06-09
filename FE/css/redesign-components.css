@@ -736,7 +736,7 @@
   color: var(--c-border);
   transition: color .12s;
 }
-.star.is-on, .star:hover { color: #FFC72C; }
+.star.is-on, .star.hov { color: #FFC72C; }
 
 .review-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
 .review-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }

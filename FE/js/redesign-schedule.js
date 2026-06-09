@@ -789,28 +789,33 @@ function _aiPrompt(g) {
     + `마지막 줄에 짧은 팁 하나를 "💡 "로 시작해 덧붙여 주세요.\n\n${days}`;
 }
 
+// AI 요약 상태(생성건별) — g에 저장하지 않아 영속화/리로드 시 자동 재시도되게 한다.
+let _aiKey = null, _aiLoading = false, _aiFailed = false;
+
 async function _genAiSummary() {
   const g = appState.generated;
   if (!g) return;
-  const card = document.getElementById('aiSummaryCard');
-  const btn = card?.querySelector('.ai-sum-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '요약하는 중…'; }
+  _aiKey = g.createdAt; _aiLoading = true; _aiFailed = false;
+  renderSchedule();                       // 로딩 상태 표시
   try {
     const res = await api.openaiChat(_aiPrompt(g));
     const text = (res && (res.output_text || res.text) || '').trim();
-    if (text) { g.aiSummary = text; _emitScheduleChanged(); renderSchedule(); }
-    else { showToast('요약을 가져오지 못했어요'); if (btn) { btn.disabled = false; btn.textContent = '✨ AI 코스 요약 보기'; } }
+    _aiLoading = false;
+    if (text) { g.aiSummary = text; _emitScheduleChanged(); }
+    else { _aiFailed = true; }
   } catch (e) {
     console.warn('[ai] 요약 실패:', e?.message);
-    showToast('AI 요약을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
-    if (btn) { btn.disabled = false; btn.textContent = '✨ AI 코스 요약 보기'; }
+    _aiLoading = false; _aiFailed = true;
   }
+  renderSchedule();
 }
 
 function _renderAiSummary(g) {
   const tl = $('#scheduleTimeline');
   if (!tl || !tl.parentNode) return;
   document.getElementById('aiSummaryCard')?.remove();
+  // 새 일정이면 AI 상태 초기화
+  if (_aiKey !== g.createdAt) { _aiKey = g.createdAt; _aiLoading = false; _aiFailed = false; }
   const card = el('div', {
     id: 'aiSummaryCard',
     style: 'margin:0 0 12px;padding:16px;background:#fafafa;border:1px solid #eaecef;border-radius:12px;',
@@ -822,19 +827,28 @@ function _renderAiSummary(g) {
     card.appendChild(el('p', {
       style: 'font-size:14px;line-height:1.6;color:#181a20;white-space:pre-wrap;margin:0;',
     }, g.aiSummary));
-    const re = el('button', {
+    card.appendChild(el('button', {
       type: 'button', class: 'ai-sum-redo',
       style: 'margin-top:10px;font-size:12px;color:#707a8a;background:none;border:none;cursor:pointer;padding:0;',
-      onclick: () => { delete g.aiSummary; renderSchedule(); _genAiSummary(); },
-    }, '↻ 다시 요약');
-    card.appendChild(re);
-  } else {
+      onclick: () => { delete g.aiSummary; _genAiSummary(); },
+    }, '↻ 다시 요약'));
+  } else if (_aiLoading) {
+    card.appendChild(el('p', {
+      style: 'font-size:14px;color:#707a8a;margin:0;',
+    }, '✨ AI가 코스를 요약하는 중…'));
+  } else if (_aiFailed) {
     card.appendChild(el('button', {
       type: 'button', class: 'ai-sum-btn',
-      style: 'font-size:14px;font-weight:600;color:#0b0e11;background:#fcd535;border:none;'
-           + 'border-radius:8px;padding:10px 16px;cursor:pointer;',
+      style: 'font-size:14px;font-weight:600;color:#0b0e11;background:#fcd535;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;',
       onclick: _genAiSummary,
-    }, '✨ AI 코스 요약 보기'));
+    }, '✨ AI 요약 다시 시도'));
+  } else {
+    // 버튼 없이 자동 1회 생성 (가드: 즉시 로딩 표시로 중복 트리거 방지)
+    _aiLoading = true;
+    card.appendChild(el('p', {
+      style: 'font-size:14px;color:#707a8a;margin:0;',
+    }, '✨ AI가 코스를 요약하는 중…'));
+    setTimeout(_genAiSummary, 0);
   }
   tl.parentNode.insertBefore(card, tl);
 }
