@@ -14,7 +14,7 @@
   min-height: 200px;
   isolation: isolate;
 }
-.hero-text { position: relative; z-index: 2; }
+.hero-text { position: relative; z-index: 2; max-width: 64%; }
 .hero-greet { font-size: 13px; opacity: .92; font-weight: 500; }
 .hero-title {
   margin: 6px 0 10px;
@@ -25,19 +25,25 @@
 }
 .hero-sub { font-size: 13px; opacity: .92; }
 .hero-cta {
-  margin-top: 14px;
+  /* 히어로 카드 오른쪽 중앙에 배치 */
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  transform: translateY(-50%);
+  z-index: 3;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255,255,255,.92);
+  background: rgba(255,255,255,.95);
   color: var(--c-primary-strong);
   font-weight: 700;
   font-size: 13.5px;
-  padding: 10px 16px;
+  padding: 11px 16px;
   border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
   transition: transform .15s;
 }
-.hero-cta:active { transform: scale(.96); }
+.hero-cta:active { transform: translateY(-50%) scale(.96); }
 
 .hero-illust {
   position: absolute;
