@@ -24,46 +24,47 @@
   letter-spacing: -.5px;
 }
 .hero-sub { font-size: 13px; opacity: .92; }
-.hero-cta {
-  /* 히어로 카드 오른쪽 중앙 — 웜 그라데이션 알약 + 원형 화살표 */
+/* 히어로 카드 오른쪽 중앙 — 동그란 + 버튼 + 작은 라벨 */
+.hero-cta-wrap {
   position: absolute;
   top: 50%;
-  right: 16px;
+  right: 20px;
   transform: translateY(-50%);
   z-index: 3;
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 9px;
-  padding: 9px 9px 9px 18px;
-  background: linear-gradient(135deg, #FFD66B 0%, #FFB84D 55%, #FF8E5C 100%);
-  color: #2a1c08;
-  font-weight: 800;
-  font-size: 14px;
-  letter-spacing: -.2px;
-  border: none;
-  border-radius: 999px;
-  box-shadow: 0 10px 24px rgba(255,140,60,.42), 0 2px 6px rgba(0,0,0,.18);
-  transition: transform .18s ease, box-shadow .18s ease;
+  gap: 8px;
 }
-.hero-cta .cta-arrow {
+.hero-cta {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #2a1c08;
-  color: #FFD66B;
-  font-size: 15px;
+  background: linear-gradient(135deg, #FFD66B 0%, #FFB84D 55%, #FF8E5C 100%);
+  color: #2a1c08;
+  font-size: 34px;
   font-weight: 700;
-  transition: transform .18s ease;
+  line-height: 1;
+  border: none;
+  box-shadow: 0 10px 24px rgba(255,140,60,.45), 0 2px 6px rgba(0,0,0,.2);
+  transition: transform .18s ease, box-shadow .18s ease;
 }
+.hero-cta > span { margin-top: -3px; }   /* '+' 수직 중앙 보정 */
 .hero-cta:hover {
-  transform: translateY(-50%) translateX(-2px);
-  box-shadow: 0 14px 30px rgba(255,140,60,.55), 0 3px 8px rgba(0,0,0,.2);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(255,140,60,.55), 0 3px 8px rgba(0,0,0,.22);
 }
-.hero-cta:hover .cta-arrow { transform: translateX(3px); }
-.hero-cta:active { transform: translateY(-50%) scale(.96); }
+.hero-cta:active { transform: scale(.94); }
+.hero-cta-cap {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -.2px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.55);
+}
 
 .hero-illust {
   position: absolute;
