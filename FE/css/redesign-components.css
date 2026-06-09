@@ -37,25 +37,29 @@
   gap: 8px;
 }
 .hero-cta {
-  width: 62px;
-  height: 62px;
+  /* 배경 사진과 어우러지는 프로스티드 글래스 — 사진 색이 비쳐 붕 뜨지 않는다 */
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #FFD66B 0%, #FFB84D 55%, #FF8E5C 100%);
-  color: #2a1c08;
-  font-size: 34px;
-  font-weight: 700;
+  background: rgba(255, 255, 255, .15);
+  backdrop-filter: blur(10px) saturate(130%);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
+  border: 1.5px solid rgba(255, 255, 255, .5);
+  color: #fff;
+  font-size: 30px;
+  font-weight: 300;
   line-height: 1;
-  border: none;
-  box-shadow: 0 10px 24px rgba(255,140,60,.45), 0 2px 6px rgba(0,0,0,.2);
-  transition: transform .18s ease, box-shadow .18s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+  transition: background .18s ease, transform .18s ease, border-color .18s ease;
 }
-.hero-cta > span { margin-top: -3px; }   /* '+' 수직 중앙 보정 */
+.hero-cta > span { margin-top: -2px; }   /* '+' 수직 중앙 보정 */
 .hero-cta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 32px rgba(255,140,60,.55), 0 3px 8px rgba(0,0,0,.22);
+  background: rgba(255, 255, 255, .28);
+  border-color: rgba(255, 255, 255, .7);
+  transform: translateY(-1px);
 }
 .hero-cta:active { transform: scale(.94); }
 .hero-cta-cap {
