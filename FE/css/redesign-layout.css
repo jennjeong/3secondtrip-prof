@@ -4,10 +4,10 @@
  */
 
 :root {
-  /* Brand */
-  --c-primary:        #FFB84D;
-  --c-primary-strong: #FF8E5C;
-  --c-accent:         #FFD66B;
+  /* Brand — 슬레이트(무채색) 미니멀: 사진이 주인공, 버튼·강조는 짙은 차콜 */
+  --c-primary:        #2B3440;
+  --c-primary-strong: #1B2330;
+  --c-accent:         #3E4A5A;
   --c-mint:           #6EE7B7;
   --c-sky:            #93C5FD;
 
@@ -24,7 +24,7 @@
   --c-text-mute:      #A2A0A0;
 
   /* States */
-  --c-focus:          #FF8E5C;
+  --c-focus:          #2B3440;
   --c-danger:         #EF4444;
   --c-success:        #10B981;
 
@@ -53,8 +53,8 @@
   --radius-lg: 22px;
   --radius-xl: 28px;
   --shadow-sm: 0 2px 6px rgba(0,0,0,.05);
-  --shadow-md: 0 8px 24px rgba(255, 140, 60, .14);
-  --shadow-lg: 0 12px 36px rgba(255, 140, 60, .22);
+  --shadow-md: 0 8px 24px rgba(20, 30, 45, .10);
+  --shadow-lg: 0 12px 36px rgba(20, 30, 45, .16);
 
   /* Safe area */
   --safe-top:    env(safe-area-inset-top, 0px);
