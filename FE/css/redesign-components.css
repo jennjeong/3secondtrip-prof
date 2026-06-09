@@ -27,9 +27,8 @@
 /* 히어로 카드 오른쪽 중앙 — 동그란 + 버튼 + 작은 라벨 */
 .hero-cta-wrap {
   position: absolute;
-  top: 62%;            /* 중앙보다 살짝 아래 */
+  bottom: 18px;        /* 카드 하단 기준 — 더 아래로 */
   right: 20px;
-  transform: translateY(-50%);
   z-index: 3;
   display: flex;
   flex-direction: column;
