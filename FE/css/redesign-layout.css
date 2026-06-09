@@ -11,12 +11,12 @@
   --c-mint:           #6EE7B7;
   --c-sky:            #93C5FD;
 
-  /* Surface */
-  --c-bg:             #FAF6EE;
+  /* Surface — 쿨 뉴트럴(사진의 청록과 어우러지게, 따뜻한 크림 캐스트 제거) */
+  --c-bg:             #F2F4F7;
   --c-surface:        #FFFFFF;
-  --c-surface-2:      #FFF8EA;
-  --c-border:         #EFE7D6;
-  --c-divider:        #F2EBDC;
+  --c-surface-2:      #EEF1F5;
+  --c-border:         #E5E9EF;
+  --c-divider:        #EDF0F4;
 
   /* Text */
   --c-text:           #1D1D1F;
@@ -269,7 +269,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 24px rgba(255,140,60,.34), 0 0 0 4px #fff;
+  box-shadow: 0 8px 20px rgba(20,30,45,.20), 0 0 0 4px var(--c-bg);
   transition: transform .18s ease;
 }
 .tab-fab-button:active { transform: scale(.94); }

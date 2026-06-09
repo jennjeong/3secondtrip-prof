@@ -145,7 +145,7 @@
   background: linear-gradient(135deg, var(--c-accent), var(--c-primary));
   border-color: transparent;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(255,140,60,.28);
+  box-shadow: 0 4px 12px rgba(20,30,45,.16);
 }
 
 .chip-mini {
