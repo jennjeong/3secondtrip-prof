@@ -30,23 +30,26 @@ LANDMARK_DIR.mkdir(parents=True, exist_ok=True)
 # Curated prompts for the 8 seeded popular cities — produces consistently
 # good results.  For any city not listed, falls back to a generic prompt.
 LANDMARK_HINTS = {
-    "도쿄":   "Tokyo Tower at golden hour with cherry blossoms, cinematic skyline view",
-    "파리":   "Eiffel Tower at sunset, romantic Paris cityscape with golden light",
-    "제주":   "Seongsan Ilchulbong sunrise peak on Jeju Island, dramatic ocean cliffs",
-    "오사카": "Osaka Castle at twilight with cherry blossoms and traditional Japanese architecture",
-    "방콕":   "Wat Arun temple at sunset along the Chao Phraya river in Bangkok",
-    "서울":   "N Seoul Tower from Namsan mountain at night, glittering city lights",
-    "뉴욕":   "Manhattan skyline from Brooklyn Bridge at sunset, iconic New York view",
-    "시드니": "Sydney Opera House at golden hour with harbour bridge in background",
+    "도쿄":   "Tokyo skyline with Tokyo Tower under a clear blue daytime sky",
+    "파리":   "the Eiffel Tower with the green Champ de Mars and bright blue sky, daytime Paris",
+    "제주":   "Seongsan Ilchulbong tuff cone above turquoise ocean, Jeju Island, clear daytime",
+    "오사카": "Osaka Castle with its green moat and blue sky, bright daytime",
+    "방콕":   "Wat Arun temple beside the Chao Phraya river, bright daytime Bangkok",
+    "서울":   "N Seoul Tower on Namsan with the city skyline and clear sky, daytime",
+    "뉴욕":   "the Manhattan skyline with One World Trade Center under a clear blue sky, daytime",
+    "시드니": "the Sydney Opera House and Harbour Bridge over deep blue water, bright daytime",
     # Common extras
-    "후쿠오카": "Fukuoka Tower and Hakata bay at twilight",
-    "교토":   "Fushimi Inari shrine red torii gates at sunrise, Kyoto",
-    "런던":   "Big Ben and Tower Bridge at golden hour, iconic London",
-    "로마":   "Roman Colosseum at sunset with warm golden light",
-    "바르셀로나": "Sagrada Familia cathedral at golden hour, Barcelona",
-    "베네치아": "Grand Canal of Venice with gondolas at sunset",
-    "푸켓":   "Phi Phi islands turquoise water and limestone cliffs",
-    "치앙마이": "Doi Suthep temple golden stupa at sunrise, Chiang Mai",
+    "후쿠오카": "Fukuoka Tower and Hakata Bay under a clear daytime sky",
+    "교토":   "Kiyomizu-dera temple surrounded by lush green hills, Kyoto, daytime",
+    "런던":   "Tower Bridge over the River Thames under a bright daytime sky, London",
+    "로마":   "the Roman Colosseum under a clear blue sky, daytime Rome",
+    "바르셀로나": "the Sagrada Familia against a bright blue sky, daytime Barcelona",
+    "베네치아": "the Grand Canal of Venice with colorful buildings, bright daytime",
+    "푸켓":   "Phi Phi islands with turquoise water and limestone cliffs, bright daytime",
+    "치앙마이": "Doi Suthep temple complex among green mountains, daytime Chiang Mai",
+    # 홈 히어로용 — 특정 도시가 아닌 '여행 그 자체' 무드
+    "대표여행": "a breathtaking coastal travel destination from above — turquoise sea, "
+                "dramatic cliffs and a picturesque whitewashed town, bright clear daytime, wanderlust mood",
 }
 
 
@@ -57,11 +60,13 @@ def _slug(city: str) -> str:
 
 
 def _build_prompt(city: str) -> str:
-    subject = LANDMARK_HINTS.get(city.strip(), f"the most famous landmark of {city}")
+    subject = LANDMARK_HINTS.get(city.strip(), f"the most iconic landmark and scenery of {city}")
     return (
-        f"A vibrant travel poster illustration of {subject}. "
-        f"Cinematic lighting, postcard style, painterly, vivid saturated colors, "
-        f"wide composition, atmospheric. No text, no logos, no people, no watermarks."
+        f"A sophisticated editorial travel photograph of {subject}. "
+        f"Professional magazine-quality travel photography, shot on a full-frame camera, "
+        f"natural bright daylight, clear sky, crisp realistic detail, elegant cinematic composition, "
+        f"balanced natural colors — avoid heavy orange or red sunset tones. "
+        f"No text, no logos, no people, no watermarks."
     )
 
 

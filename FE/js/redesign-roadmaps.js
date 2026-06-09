@@ -14,6 +14,10 @@ import { API_URL } from './redesign-api-adapter.js';
 // In-memory cache for landmark image URLs we've already verified loadable.
 const LANDMARK_OK = new Set();
 const LANDMARK_FAIL = new Set();
+// 랜드마크 이미지 버전 — 이미지를 새로 생성하면 올린다.
+// (BE가 immutable·30일 캐시로 내려보내 브라우저가 옛 이미지를 붙들기 때문에
+//  내용이 바뀌면 URL 쿼리를 바꿔 강제로 새로 받게 한다.)
+const IMG_VER = '20260609b';
 
 /** Lazily attach an AI-generated landmark image to a roadmap card / cover.
  *  Falls back silently to the gradient if:
@@ -24,7 +28,7 @@ const LANDMARK_FAIL = new Set();
 function _attachLandmarkImage(el, city, gradient) {
   if (!el || !city) return;
   if (LANDMARK_FAIL.has(city)) return;            // give up, gradient stays
-  const url = `${API_URL}/api/images/landmark/${encodeURIComponent(city)}`;
+  const url = `${API_URL}/api/images/landmark/${encodeURIComponent(city)}?v=${IMG_VER}`;
   const img = new Image();
   img.onload = () => {
     LANDMARK_OK.add(city);
@@ -59,8 +63,27 @@ const explore = {
   query: '',
 };
 
+/** 홈 히어로 카드에 세련된 여행 사진을 배경으로 입힌다(어두운 오버레이로 흰 글씨 가독성 유지). */
+function _attachHeroImage() {
+  const hero = document.querySelector('.hero-card');
+  if (!hero) return;
+  const url = `${API_URL}/api/images/landmark/${encodeURIComponent('대표여행')}?v=${IMG_VER}`;
+  const img = new Image();
+  img.onload = () => {
+    hero.style.backgroundImage =
+      'linear-gradient(115deg, rgba(12,26,36,.80) 0%, rgba(12,26,36,.50) 52%, rgba(12,26,36,.28) 100%), '
+      + `url("${url}")`;
+    hero.style.backgroundSize = 'cover';
+    hero.style.backgroundPosition = 'center';
+    const ill = hero.querySelector('.hero-illust');
+    if (ill) ill.style.display = 'none';   // 사진이 있으면 장식 버블 숨김
+  };
+  img.src = url;   // 실패하면 기존 그라데이션 유지
+}
+
 export function initRoadmaps(state) {
   appState = state;
+  _attachHeroImage();
 
   // Quick-concept chips → jump to Explore with filter applied
   document.addEventListener('click', (e) => {

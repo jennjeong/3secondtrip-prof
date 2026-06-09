@@ -29,15 +29,16 @@
   --c-success:        #10B981;
 
   /* Gradients */
-  --g-hero:    linear-gradient(135deg, #FFE9B3 0%, #FFC773 60%, #FF9A6E 100%);
-  --g-tokyo:   linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
-  --g-paris:   linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
-  --g-jeju:    linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-  --g-osaka:   linear-gradient(135deg, #fcb69f 0%, #ffecd2 100%);
-  --g-bangkok: linear-gradient(135deg, #2af598 0%, #009efd 100%);
-  --g-seoul:   linear-gradient(135deg, #c471f5 0%, #fa71cd 100%);
-  --g-newyork: linear-gradient(135deg, #5ee7df 0%, #b490ca 100%);
-  --g-sydney:  linear-gradient(135deg, #fddb92 0%, #d1fdff 100%);
+  /* 사진 로딩 전 플레이스홀더 — 세련된 딥 쿨톤(여행 무드, 붉은톤 배제) */
+  --g-hero:    linear-gradient(135deg, #1b3a4b 0%, #2c6e7f 100%);
+  --g-tokyo:   linear-gradient(135deg, #3a6073 0%, #16222a 100%);
+  --g-paris:   linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+  --g-jeju:    linear-gradient(135deg, #43c6ac 0%, #1a7f6b 100%);
+  --g-osaka:   linear-gradient(135deg, #2c7a7b 0%, #1a4a4a 100%);
+  --g-bangkok: linear-gradient(135deg, #1c92d2 0%, #1f5f8b 100%);
+  --g-seoul:   linear-gradient(135deg, #5b6a9a 0%, #2b2f57 100%);
+  --g-newyork: linear-gradient(135deg, #3e5151 0%, #1b2a3a 100%);
+  --g-sydney:  linear-gradient(135deg, #2193b0 0%, #135b73 100%);
 
   /* Sizes */
   --topbar-h: 44px;
