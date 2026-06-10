@@ -303,6 +303,8 @@ const LIST_CFG = {
   },
   roadmaps: {
     endpoint: '/admin/roadmaps',
+    toolbar: `<button class="btn add-btn" id="rmAddBtn">＋ 추천 로드맵 추가</button>`,
+    setup: () => { $('#rmAddBtn')?.addEventListener('click', openRoadmapForm); },
     cols: ['ID', '제목', '도시', '컨셉', '좋아요', '공개', '작성자', ''],
     row: (r) => `
       <tr>
@@ -443,6 +445,9 @@ async function renderList(kind, page = 1) {
     <div class="pager" id="listPager"></div>
   `;
 
+  // Section-specific setup (e.g. "추가" 버튼 바인딩)
+  if (cfg.setup) cfg.setup();
+
   // Toolbar bindings (search etc.)
   if (cfg.qsBuilder) {
     const ti = setTimeout(() => {}, 0); clearTimeout(ti);
@@ -494,6 +499,92 @@ async function renderList(kind, page = 1) {
   }
 
   fetchPage(page);
+}
+
+/* ──── 추천 로드맵 추가 폼 ──── */
+const _CONCEPTS = ['힐링', '가성비', '액티비티', '프리미엄', '균형', '효율'];
+const _GRADIENTS = [
+  ['자동 (색 없음)', ''],
+  ['코랄', 'linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)'],
+  ['퍼플', 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)'],
+  ['민트', 'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)'],
+  ['오렌지', 'linear-gradient(135deg, #fcb69f 0%, #ffecd2 100%)'],
+  ['블루', 'linear-gradient(135deg, #2af598 0%, #009efd 100%)'],
+  ['핑크', 'linear-gradient(135deg, #c471f5 0%, #fa71cd 100%)'],
+];
+
+function openRoadmapForm() {
+  const ov = document.createElement('div');
+  ov.className = 'ov';
+  ov.innerHTML = `
+    <div class="modal" role="dialog" aria-label="추천 로드맵 추가">
+      <div class="modal-head"><h3>추천 로드맵 추가</h3><button class="modal-x" data-x aria-label="닫기">✕</button></div>
+      <div class="modal-body">
+        <label class="fld"><span>제목 <b>*</b></span><input id="rm_title" type="text" placeholder="예: 도쿄 3일 감성 로드맵" /></label>
+        <div class="fld-row">
+          <label class="fld"><span>도시</span><input id="rm_city" type="text" placeholder="도쿄" /></label>
+          <label class="fld"><span>국가</span><input id="rm_country" type="text" placeholder="일본" /></label>
+        </div>
+        <div class="fld-row">
+          <label class="fld"><span>컨셉</span><select id="rm_concept">
+            <option value="">선택 안 함</option>
+            ${_CONCEPTS.map(c => `<option value="${c}">${c}</option>`).join('')}
+          </select></label>
+          <label class="fld"><span>일수</span><input id="rm_days" type="number" min="1" max="30" placeholder="3" /></label>
+          <label class="fld"><span>좋아요</span><input id="rm_likes" type="number" min="0" value="0" /></label>
+        </div>
+        <label class="fld"><span>카드 색상 (그라데이션)</span>
+          <div class="grad-pick">
+            <select id="rm_grad">${_GRADIENTS.map(([n, v]) => `<option value="${v}">${n}</option>`).join('')}</select>
+            <span class="grad-prev" id="rm_gradPrev"></span>
+          </div>
+        </label>
+        <label class="fld-check"><input id="rm_public" type="checkbox" checked /> <span>공개 — 추천·인기 목록에 노출</span></label>
+        <div class="err" id="rm_err" hidden></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" data-x>취소</button>
+        <button class="btn add-btn" id="rm_save">추가</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+
+  const close = () => { ov.remove(); document.removeEventListener('keydown', onEsc); };
+  function onEsc(e) { if (e.key === 'Escape') close(); }
+  ov.addEventListener('click', e => { if (e.target === ov || e.target.hasAttribute('data-x')) close(); });
+  document.addEventListener('keydown', onEsc);
+
+  const gradSel = $('#rm_grad', ov), prev = $('#rm_gradPrev', ov);
+  const paint = () => { prev.style.background = gradSel.value || 'var(--bg-3)'; };
+  gradSel.addEventListener('change', paint); paint();
+  $('#rm_title', ov)?.focus();
+
+  $('#rm_save', ov).addEventListener('click', async () => {
+    const err = $('#rm_err', ov);
+    const title = $('#rm_title', ov).value.trim();
+    err.hidden = true;
+    if (!title) { err.hidden = false; err.textContent = '제목은 필수입니다.'; return; }
+    const body = {
+      title,
+      city: $('#rm_city', ov).value.trim(),
+      country: $('#rm_country', ov).value.trim(),
+      concept: $('#rm_concept', ov).value,
+      days: $('#rm_days', ov).value ? Number($('#rm_days', ov).value) : null,
+      likes: Number($('#rm_likes', ov).value || 0),
+      gradient: gradSel.value,
+      is_public: $('#rm_public', ov).checked,
+    };
+    const btn = $('#rm_save', ov); btn.disabled = true; btn.textContent = '추가 중…';
+    try {
+      await api('/admin/roadmaps', { method: 'POST', body: JSON.stringify(body) });
+      toast('추천 로드맵이 추가됐어요', 'ok');
+      close();
+      handleRoute();   // 목록 새로고침
+    } catch (e) {
+      err.hidden = false; err.textContent = e.message;
+      btn.disabled = false; btn.textContent = '추가';
+    }
+  });
 }
 
 /* ──── 유틸 ──── */

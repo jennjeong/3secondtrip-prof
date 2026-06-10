@@ -243,6 +243,42 @@ def list_roadmaps(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=200
     return {"total": total, "page": page, "size": size, "items": items}
 
 
+@router.post("/roadmaps", status_code=201)
+def create_roadmap(payload: dict,
+                   db: Session = Depends(get_db),
+                   admin: User = Depends(get_current_admin)):
+    """관리자가 추천(공개) 로드맵을 직접 추가."""
+    title = str(payload.get("title") or "").strip()
+    if not title:
+        raise HTTPException(400, "제목은 필수입니다.")
+
+    def _s(k):
+        v = payload.get(k)
+        v = str(v).strip() if v is not None else ""
+        return v[:120] or None
+
+    try:
+        days = int(payload["days"]) if payload.get("days") not in (None, "") else None
+    except (TypeError, ValueError):
+        days = None
+    try:
+        likes = max(0, int(payload.get("likes") or 0))
+    except (TypeError, ValueError):
+        likes = 0
+
+    grad = str(payload.get("gradient") or "").strip()
+    obj = Roadmap(
+        user_id=admin.id,                       # 추천 로드맵의 작성자 = 관리자
+        title=title[:255],
+        city=_s("city"), country=_s("country"), concept=_s("concept"),
+        days=days, likes=likes,
+        gradient=(grad[:255] or None),
+        is_public=bool(payload.get("is_public", True)),
+    )
+    db.add(obj); db.commit(); db.refresh(obj)
+    return {"ok": True, "id": obj.id}
+
+
 @router.delete("/roadmaps/{rid}")
 def delete_roadmap(rid: int, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
     obj = db.query(Roadmap).filter(Roadmap.id == rid).first()

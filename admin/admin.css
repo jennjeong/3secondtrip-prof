@@ -148,6 +148,31 @@ body[data-screen="app"] .screen[data-screen-for="app"] { display: grid; grid-tem
 .toast.err { border-color: var(--red); color: var(--red); background: var(--red-bg); }
 .toast.ok  { border-color: var(--green); color: var(--green); background: var(--green-bg); }
 
+/* ──── 추가 버튼 + 모달 폼 ──── */
+.btn.add-btn { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+.btn.add-btn:hover { background: var(--accent-2); }
+
+.ov { position: fixed; inset: 0; background: rgba(20, 30, 45, .38); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; animation: fade .15s ease; }
+.modal { width: 100%; max-width: 520px; background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 16px 48px rgba(20, 30, 45, .22); max-height: 90vh; overflow: auto; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--border); }
+.modal-head h3 { margin: 0; font-size: 17px; color: var(--text); }
+.modal-x { background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 6px; }
+.modal-x:hover { background: var(--bg-3); color: var(--text); }
+.modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--border); }
+.modal-foot .btn { width: auto; margin: 0; }
+.fld { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.fld > span { font-size: 12px; color: var(--muted); font-weight: 600; }
+.fld > span b { color: var(--red); }
+.fld input, .fld select { padding: 9px 12px; background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: 8px; outline: none; font-size: 13px; color: var(--text); }
+.fld input:focus, .fld select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+.fld-row { display: flex; gap: 10px; }
+.fld-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); cursor: pointer; }
+.fld-check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.grad-pick { display: flex; align-items: center; gap: 10px; }
+.grad-pick select { flex: 1; }
+.grad-prev { width: 56px; height: 34px; border-radius: 8px; border: 1px solid var(--border); flex: 0 0 auto; }
+
 @media (max-width: 768px) {
   body[data-screen="app"] .screen[data-screen-for="app"] { grid-template-columns: 1fr; }
   .side { flex-direction: row; overflow-x: auto; padding: 10px; min-height: auto; }
