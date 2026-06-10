@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>3초 여행 · 관리자</title>
+  <title>3SecondTrip · 관리자</title>
+  <link rel="icon" type="image/png" href="./assets/favicon.png" />
   <link rel="stylesheet" href="./admin.css" />
   <script>
     // 백엔드 주소 (필요 시 수정)
@@ -24,7 +25,10 @@
 <!-- 로그인 화면 -->
 <div class="screen" data-screen-for="login">
   <div class="card">
-    <h1>3초 여행 <span class="muted">관리자</span></h1>
+    <div class="login-brand">
+      <img class="login-logo" src="./assets/logo_wordmark.png" alt="3SecondTrip" />
+      <span class="login-tag">관리자 콘솔</span>
+    </div>
     <p class="muted">관리자 권한이 부여된 계정의 토큰으로 로그인하세요.</p>
 
     <div class="tabs">
@@ -55,7 +59,10 @@
 <!-- 관리자 화면 -->
 <div class="screen" data-screen-for="app">
   <aside class="side">
-    <div class="brand">3초 여행 · 관리자</div>
+    <div class="brand">
+      <img class="brand-mark" src="./assets/logo_symbol.png" alt="" />
+      <span class="brand-text">3SecondTrip<small>관리자</small></span>
+    </div>
     <nav class="nav">
       <button class="nav-btn is-on" data-route="dashboard">📊 대시보드</button>
       <button class="nav-btn"        data-route="users">👥 사용자</button>

@@ -1,26 +1,27 @@
 :root {
-  --bg:        #f5f0e8;
+  /* 3SecondTrip 브랜드 — 쿨 뉴트럴 + 액션블루 (앱/덱과 통일) */
+  --bg:        #F2F4F7;
   --bg-2:      #ffffff;
-  --bg-3:      #faf6ef;
-  --bg-row:    #fbf8f2;
-  --border:    #e3dccd;
-  --border-strong: #c9c0ad;
-  --text:      #2a2820;
-  --muted:     #6b6555;
-  --dim:       #9b9583;
-  --accent:    #5b76d9;
-  --accent-2:  #4661c9;
-  --accent-bg: #e6ecff;
+  --bg-3:      #EEF1F5;
+  --bg-row:    #F7F9FB;
+  --border:    #E2E2E5;
+  --border-strong: #D2D4D9;
+  --text:      #1D1D1F;
+  --muted:     #6E6E73;
+  --dim:       #9A9AA0;
+  --accent:    #0066CC;
+  --accent-2:  #0052A6;
+  --accent-bg: #EAF2FB;
   --green:     #16a34a;
   --green-bg:  #dcfce7;
   --red:       #dc2626;
   --red-bg:    #fee2e2;
   --amber:     #b45309;
   --amber-bg:  #fef3c7;
-  --blue-bg:   #dbeafe;
-  --gray-bg:   #ebe6db;
-  --radius:    10px;
-  --shadow:    0 1px 3px rgba(60, 50, 30, .06), 0 4px 16px rgba(60, 50, 30, .04);
+  --blue-bg:   #DCEBFB;
+  --gray-bg:   #EAECEF;
+  --radius:    12px;
+  --shadow:    0 1px 3px rgba(20, 30, 45, .06), 0 4px 16px rgba(20, 30, 45, .05);
 }
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; min-height: 100vh; background: var(--bg); color: var(--text);
@@ -45,6 +46,9 @@ body[data-screen="app"]     .screen[data-screen-for="app"] { display: flex; }
 .card { width: 100%; max-width: 400px; background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); }
 .card h1 { margin: 0 0 4px; font-size: 22px; color: var(--text); }
 .card h1 .muted { color: var(--muted); font-weight: 400; font-size: 18px; }
+.login-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
+.login-logo { height: 40px; width: auto; display: block; }
+.login-tag { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: .3px; }
 .card .muted { color: var(--muted); }
 .card p { margin: 4px 0 14px; font-size: 13px; line-height: 1.55; }
 .tabs { display: flex; gap: 4px; padding: 4px; background: var(--bg-3); border-radius: 8px; margin: 14px 0; border: 1px solid var(--border); }
@@ -73,7 +77,10 @@ body[data-screen="app"]     .screen[data-screen-for="app"] { display: flex; }
 /* ──── 앱 레이아웃 ──── */
 body[data-screen="app"] .screen[data-screen-for="app"] { display: grid; grid-template-columns: 220px 1fr; }
 .side { background: var(--bg-2); border-right: 1px solid var(--border); padding: 18px 12px; display: flex; flex-direction: column; min-height: 100vh; }
-.brand { font-weight: 700; padding: 4px 8px 14px; color: var(--text); font-size: 15px; }
+.brand { display: flex; align-items: center; gap: 8px; padding: 2px 8px 16px; color: var(--text); }
+.brand-mark { height: 22px; width: auto; display: block; flex: 0 0 auto; }
+.brand-text { font-weight: 800; font-size: 15px; letter-spacing: -.2px; line-height: 1; }
+.brand-text small { display: block; font-weight: 600; font-size: 10px; letter-spacing: .4px; color: var(--muted); margin-top: 3px; text-transform: uppercase; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-btn { display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; transition: all .1s; }
 .nav-btn:hover { background: var(--bg-3); color: var(--text); }
