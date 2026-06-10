@@ -41,7 +41,7 @@
   --g-sydney:  linear-gradient(135deg, #2193b0 0%, #135b73 100%);
 
   /* Sizes */
-  --topbar-h: 44px;
+  --topbar-h: 50px;   /* base (mobile); grows per breakpoint in redesign-responsive.css */
   --nav-h:    68px;
   /* Unified content axis — every centered element (topbar, main, page-scroll,
    * bottom-tab-nav) shares this max-width.  Overridden per breakpoint in
@@ -100,22 +100,32 @@
   padding-right: 8px;
   position: relative;
   z-index: 30;
+  border-bottom: 1px solid var(--c-divider);
 }
-/* Modern browsers: auto-collapse when back button is hidden (no back = no chrome) */
-.app-topbar:has(.topbar-back[hidden]) {
-  height: var(--safe-top);
-  min-height: 0;
-  padding: 0;
+/* Brand lockup pinned to the top-center of every page (logo mark + name).
+ * The topbar no longer collapses on tab pages — the brand stays visible
+ * everywhere.  Centered because the 44px back/spacer columns are symmetric. */
+.topbar-brand {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 0;
+  bottom: 0;
   padding-top: var(--safe-top);
-  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-decoration: none;
+  z-index: 1;            /* sits above the (empty) grid cells, below nothing else */
 }
-/* Fallback class set by redesign-navigation.js for browsers without :has() */
-.app-topbar.topbar--collapsed {
-  height: var(--safe-top);
-  min-height: 0;
-  padding: 0;
-  padding-top: var(--safe-top);
-  overflow: hidden;
+/* Single wordmark logo — height scales with --topbar-h (set per breakpoint
+ * in redesign-responsive.css) so it grows on larger browsers. */
+.topbar-brand-logo {
+  display: block;
+  width: auto;
+  height: calc(var(--topbar-h) - 18px);
+  max-height: 56px;
 }
 
 .topbar-back {

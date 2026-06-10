@@ -18,6 +18,7 @@ img, svg, video { max-width: 100%; height: auto; }
   :root {
     --app-content-max: 100%;
     --app-side-padding: 12px;
+    --topbar-h: 48px;
   }
   .roadmap-grid { grid-template-columns: 1fr; gap: 10px; }
   .my-grid { grid-template-columns: repeat(2, 1fr); }
@@ -42,6 +43,7 @@ img, svg, video { max-width: 100%; height: auto; }
   :root {
     --app-content-max: 720px;
     --app-side-padding: 24px;
+    --topbar-h: 60px;
   }
   .roadmap-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
   .my-grid { grid-template-columns: repeat(4, 1fr); }
@@ -55,6 +57,7 @@ img, svg, video { max-width: 100%; height: auto; }
   :root {
     --app-content-max: 960px;
     --app-side-padding: 28px;
+    --topbar-h: 68px;
   }
   body { background: linear-gradient(135deg, #FFF6E5 0%, #FFEFD4 100%); }
   .roadmap-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -66,6 +69,7 @@ img, svg, video { max-width: 100%; height: auto; }
   :root {
     --app-content-max: 1120px;
     --app-side-padding: 32px;
+    --topbar-h: 74px;
   }
   body { background: linear-gradient(135deg, #FFF6E5 0%, #FFEFD4 100%); }
   .roadmap-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }

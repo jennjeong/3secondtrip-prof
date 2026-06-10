@@ -37,3 +37,9 @@ FE/_writetest.txt
 
 # ── 생성된 랜드마크 이미지 캐시 (런타임 산출물) ──
 BE/data/landmark_images/
+
+# ── Playwright MCP 세션 산출물 ──
+.playwright-mcp/
+
+# ── Office 임시 잠금 파일 ──
+~$*
