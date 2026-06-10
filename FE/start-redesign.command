@@ -36,7 +36,7 @@ APPLE
     done
     if ! backend_alive; then
       echo "⚠️  백엔드가 30초 안에 응답하지 않아요. 새로 열린 터미널 창의 메시지를 확인해 주세요."
-      echo "    (예: 의존성 설치가 처음이라 오래 걸릴 수 있어요)"
+      echo "    (예: 백엔드가 매 실행마다 의존성을 설치하므로 시간이 걸릴 수 있어요)"
     fi
   else
     echo "⚠️  backend 폴더를 찾을 수 없어요. 수동으로 실행해 주세요:"
@@ -51,7 +51,7 @@ URL="http://127.0.0.1:${FRONT_PORT}/index-redesign.html?v=${TS}#page=home"
 # 기존 프론트 서버 정리
 if lsof -ti ":${FRONT_PORT}" >/dev/null 2>&1; then
   echo "포트 ${FRONT_PORT} 사용 중 — 기존 프로세스 종료"
-  lsof -ti ":${FRONT_PORT}" | xargs kill -9 2>/dev/null || true
+  lsof -ti ":${FRONT_PORT}" | xargs kill -TERM 2>/dev/null || true
   sleep 0.4
 fi
 

@@ -7,7 +7,7 @@ URL="http://127.0.0.1:${PORT}/?v=$(date +%s)"
 
 # 기존 admin 서버 정리
 if lsof -ti ":${PORT}" >/dev/null 2>&1; then
-  lsof -ti ":${PORT}" | xargs kill -9 2>/dev/null || true
+  lsof -ti ":${PORT}" | xargs kill -TERM 2>/dev/null || true
   sleep 0.3
 fi
 

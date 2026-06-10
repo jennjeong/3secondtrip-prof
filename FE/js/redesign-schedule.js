@@ -167,6 +167,16 @@ function _renderTimeline(g) {
   const day = g.days[activeDay];
   if (!day) return;
 
+  // 편집 모드: '장소 추가' 버튼을 타임라인 맨 위에 노출
+  if (editMode) {
+    tl.appendChild(el('button', {
+      type: 'button',
+      class: 'btn btn-soft btn-block add-place-top',
+      style: { marginBottom: '12px' },
+      onclick: _addPlace,
+    }, '+ 장소 추가'));
+  }
+
   // 표시용 1박 단가 — 모든 호텔 카드에 같은 값을 보여준다(계산엔 미사용).
   const hotelNightly = _nightlyHotelRate(g);
 
@@ -252,7 +262,7 @@ function _renderTimeline(g) {
     const movable = n.category !== '이동' && n.category !== '숙박';
     const card = el('article', {
       class: 'schedule-card' + (hasName ? '' : ' schedule-card--no-name'),
-      // ⚠ draggable 은 카드 본체가 아닌 .drag-handle 에만 부여 (텍스트 선택 가능)
+      // 네이티브 HTML5 드래그는 쓰지 않음 — 마우스/터치 포인터로 직접 처리(_bindDnd)
       draggable: 'false',
       dataset: {
         di: String(activeDay),
@@ -321,19 +331,10 @@ function _renderTimeline(g) {
       } catch (_) {}
     });
 
-    if (editMode && movable) _bindDnd(card);
+    if (editMode) _bindDnd(card);
     tl.appendChild(card);
   });
 
-  // Edit-mode footer for adding place
-  if (editMode) {
-    tl.appendChild(el('button', {
-      type: 'button',
-      class: 'btn btn-soft btn-block',
-      style: { marginTop: '8px' },
-      onclick: _addPlace,
-    }, '+ 장소 추가'));
-  }
 }
 
 function _actKey(di, ai) { return `${di}_${ai}`; }
@@ -695,70 +696,156 @@ function _recomputeDayTimes(day) {
 
 /* ============ Drag & Drop ============ */
 let dragSrc = null;
-function _bindDnd(card) {
-  // dragstart는 .drag-handle 에서만 시작 → 카드 본문은 텍스트 선택 가능
-  const handle = card.querySelector('.drag-handle');
-  if (handle) {
-    handle.addEventListener('dragstart', (e) => {
-      dragSrc = card;
-      card.classList.add('is-dragging');
-      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', ''); } catch (_) {}
-    });
-    handle.addEventListener('dragend', () => {
-      card.classList.remove('is-dragging');
-      $$('.schedule-card.drop-over').forEach(c => c.classList.remove('drop-over'));
-      dragSrc = null;
-    });
-  }
-  // 카드는 drop 타깃
-  card.addEventListener('dragover', (e) => { e.preventDefault(); card.classList.add('drop-over'); });
-  card.addEventListener('dragleave', () => card.classList.remove('drop-over'));
-  card.addEventListener('drop', (e) => {
-    e.preventDefault();
-    if (!dragSrc || dragSrc === card) return;
-    const srcAi = Number(dragSrc.dataset.ai);
-    const dstAi = Number(card.dataset.ai);
-    const day = appState.generated.days[activeDay];
-    const moved = day.activities.splice(srcAi, 1)[0];
-    day.activities.splice(dstAi, 0, moved);
-    _recomputeDayTimes(day);
-    renderSchedule();
-    showToast('순서 변경 + 시간 자동 재계산');
-  });
 
-  // Touch fallback — 길게 눌러 끌어서 순서 변경 (모바일).
-  let touchY = 0, dragging = false, pressTimer = null;
-  const touchTarget = card.querySelector('.drag-handle') || card;
-  touchTarget.addEventListener('touchstart', (e) => {
-    if (!editMode) return;
-    touchY = e.touches[0].clientY;
-    pressTimer = setTimeout(() => { dragging = true; card.classList.add('is-dragging'); }, 220);
-  }, { passive: true });
-  // 드래그가 시작되면 페이지 스크롤을 막아야 카드가 손가락을 따라온다 → passive:false + preventDefault
-  touchTarget.addEventListener('touchmove', (e) => {
-    if (!dragging) { clearTimeout(pressTimer); return; }   // 길게누르기 전 움직이면 스크롤로 간주
-    e.preventDefault();
-    card.style.transform = `translateY(${e.touches[0].clientY - touchY}px)`;
-  }, { passive: false });
-  const _endTouch = (e) => {
-    clearTimeout(pressTimer);
-    if (!dragging) return;
+function _clearDropMarks() {
+  $$('.schedule-card.drop-before, .schedule-card.drop-after')
+    .forEach(c => c.classList.remove('drop-before', 'drop-after'));
+}
+
+// 끌어온 카드를 대상 카드의 위/아래(after) 위치로 이동.
+// splice 로 src 를 빼면 뒤 인덱스가 한 칸 당겨지므로 보정한다.
+function _moveActivity(srcAi, dstAi, after) {
+  if (!Number.isInteger(srcAi) || !Number.isInteger(dstAi)) return;
+  const day = appState.generated.days[activeDay];
+  const acts = day.activities;
+  let insertIdx = after ? dstAi + 1 : dstAi;
+  if (srcAi < insertIdx) insertIdx -= 1;                     // 제거로 인한 인덱스 보정
+  insertIdx = Math.max(0, Math.min(insertIdx, acts.length - 1));
+  if (insertIdx === srcAi) return;                           // 제자리 → 변화 없음
+  const movedAct = acts[srcAi];
+  const movedKey = movedAct ? (movedAct.placeId || movedAct.id || (movedAct.name || '').trim()) : '';
+  const oldTops = _captureCardRects();                       // 재정렬 전 위치 기록 (FLIP)
+  const [moved] = acts.splice(srcAi, 1);
+  acts.splice(insertIdx, 0, moved);
+  _recomputeDayTimes(day);
+  renderSchedule();
+  _flipReorder(oldTops, String(movedKey));                   // 새 위치로 부드럽게 미끄러짐
+  showToast('순서 변경');
+}
+
+// ── FLIP 애니메이션: 재정렬 후 카드들이 옛 위치→새 위치로 부드럽게 이동 ──
+function _cardKey(card) {
+  return card.dataset.placeId || (card.querySelector('.schedule-place-name')?.textContent || '').trim();
+}
+function _captureCardRects() {
+  const m = new Map();
+  $$('#scheduleTimeline .schedule-card').forEach(c => m.set(_cardKey(c), c.getBoundingClientRect().top));
+  return m;
+}
+function _flipReorder(oldTops, movedKey) {
+  const cards = $$('#scheduleTimeline .schedule-card');
+  // 1) 새 레이아웃에서 각 카드를 '옛 위치'로 즉시 되돌려 놓기 (transition 없이)
+  cards.forEach(c => {
+    const oldTop = oldTops.get(_cardKey(c));
+    if (oldTop == null) return;
+    const dy = oldTop - c.getBoundingClientRect().top;
+    if (Math.abs(dy) > 1) { c.style.transition = 'none'; c.style.transform = `translateY(${dy}px)`; }
+  });
+  // 2) 다음 프레임에 0 으로 애니메이션 → 새 위치로 미끄러짐
+  requestAnimationFrame(() => {
+    cards.forEach(c => {
+      c.style.transition = 'transform .2s ease';
+      c.style.transform = '';
+    });
+    const moved = cards.find(c => _cardKey(c) === movedKey);
+    if (moved) {
+      moved.classList.add('just-moved');               // 옮긴 카드 살짝 강조
+      setTimeout(() => moved.classList.remove('just-moved'), 520);
+    }
+    setTimeout(() => cards.forEach(c => { c.style.transition = ''; c.style.transform = ''; }), 240);
+  });
+}
+
+// 대상 카드 위에서 커서/손가락 Y 위치로 "위(before)냐 아래(after)냐" 판정 + 라인 표시
+function _markDrop(target, clientY) {
+  _clearDropMarks();
+  const r = target.getBoundingClientRect();
+  const after = (clientY - r.top) > r.height / 2;
+  target.classList.toggle('drop-after', after);
+  target.classList.toggle('drop-before', !after);
+  return after;
+}
+
+// 드래그 중 카드 아래의 "대상 카드"를 elementFromPoint 로 찾는다.
+// (끌고 있는 카드는 잠깐 pointer-events 를 꺼서 그 밑 카드가 잡히게)
+function _cardUnder(card, x, y) {
+  const prev = card.style.pointerEvents;
+  card.style.pointerEvents = 'none';
+  const over = document.elementFromPoint(x, y)?.closest('.schedule-card');
+  card.style.pointerEvents = prev;
+  return (over && over !== card) ? over : null;
+}
+
+function _bindDnd(card) {
+  if (card.dataset.movable !== '1') return;   // 이동 가능한 카드만 드래그 소스
+
+  let startY = 0, dragging = false, pressTimer = null;
+
+  const begin = () => { dragging = true; card.classList.add('is-dragging'); };  // → CSS scale(.96)
+  const moveTo = (x, y) => {
+    card.style.transition = 'none';
+    card.style.transform = `translateY(${y - startY}px) scale(.94)`;
+    const over = _cardUnder(card, x, y);
+    if (over) _markDrop(over, y); else _clearDropMarks();
+  };
+  const finish = (x, y) => {
     dragging = false;
+    card.style.transition = '';                 // 원래 크기로 부드럽게 복귀
     card.style.transform = '';
     card.classList.remove('is-dragging');
-    const pt = e.changedTouches && e.changedTouches[0];
-    const drop = pt && document.elementFromPoint(pt.clientX, pt.clientY)?.closest('.schedule-card');
-    if (drop && drop !== card && drop.dataset.movable === '1') {
-      const day = appState.generated.days[activeDay];
-      const moved = day.activities.splice(Number(card.dataset.ai), 1)[0];
-      day.activities.splice(Number(drop.dataset.ai), 0, moved);
-      _recomputeDayTimes(day);
-      renderSchedule();
-      showToast('순서 변경 + 시간 자동 재계산');
+    const over = _cardUnder(card, x, y);
+    _clearDropMarks();
+    if (over) {
+      const r = over.getBoundingClientRect();
+      const after = (y - r.top) > r.height / 2;
+      _moveActivity(Number(card.dataset.ai), Number(over.dataset.ai), after);
     }
   };
-  touchTarget.addEventListener('touchend', _endTouch);
-  touchTarget.addEventListener('touchcancel', _endTouch);
+
+  // ── 마우스(데스크탑): 카드 아무 곳이나 눌러 4px 이상 움직이면 시작 ──
+  card.addEventListener('mousedown', (e) => {
+    if (!editMode || e.button !== 0) return;
+    if (e.target.closest('.map-button, .edit-button')) return;   // 버튼은 클릭 유지
+    startY = e.clientY;
+    const onMove = (ev) => {
+      if (!dragging) {
+        if (Math.abs(ev.clientY - startY) < 4) return;
+        begin();
+      }
+      ev.preventDefault();
+      moveTo(ev.clientX, ev.clientY);
+    };
+    const onUp = (ev) => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (dragging) finish(ev.clientX, ev.clientY);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  // ── 터치(모바일): 길게 눌러 시작, 빠르게 움직이면 스크롤 ──
+  card.addEventListener('touchstart', (e) => {
+    if (!editMode) return;
+    startY = e.touches[0].clientY;
+    pressTimer = setTimeout(begin, 200);
+  }, { passive: true });
+  card.addEventListener('touchmove', (e) => {
+    if (!dragging) {
+      if (Math.abs(e.touches[0].clientY - startY) > 8) clearTimeout(pressTimer);  // 스크롤로 간주
+      return;
+    }
+    e.preventDefault();
+    moveTo(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+  const endTouch = (e) => {
+    clearTimeout(pressTimer);
+    if (!dragging) return;
+    const pt = e.changedTouches && e.changedTouches[0];
+    finish(pt ? pt.clientX : 0, pt ? pt.clientY : startY);
+  };
+  card.addEventListener('touchend', endTouch);
+  card.addEventListener('touchcancel', endTouch);
 }
 
 /* ============ Google Maps deep link ============ */

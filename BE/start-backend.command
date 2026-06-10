@@ -14,7 +14,7 @@ PORT=8000
 # 기존 8000 포트 사용 중이면 정리
 if lsof -ti ":${PORT}" >/dev/null 2>&1; then
   echo "포트 ${PORT} 사용 중 — 기존 프로세스 종료"
-  lsof -ti ":${PORT}" | xargs kill -9 2>/dev/null || true
+  lsof -ti ":${PORT}" | xargs kill -TERM 2>/dev/null || true
   sleep 0.4
 fi
 
@@ -39,14 +39,11 @@ fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
 
-# 의존성 확인 + 설치 (한 번만, 이때 --reload 절대 켜지 말 것)
-if ! python -c "import fastapi, uvicorn, sqlalchemy, httpx, passlib, jose, multipart" >/dev/null 2>&1; then
-  echo "의존성 설치 중... (한 번만, 1~2분 소요)"
-  pip install -q --upgrade pip
-  pip install -q -r requirements.txt
-  # 설치 직후 filesystem 안정화 잠깐 대기 — watcher 가 시작하자마자 reload 못하게
-  sleep 1
-fi
+# 의존성 설치 — 매 실행마다 (검사 없이, 이때 --reload 절대 켜지 말 것)
+echo "의존성 설치 중... (requirements.txt)"
+pip install -q -r requirements.txt
+# 설치 직후 filesystem 안정화 잠깐 대기 — watcher 가 시작하자마자 reload 못하게
+sleep 1
 
 # .env 존재 확인
 if [ ! -f ".env" ]; then

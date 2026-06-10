@@ -1423,11 +1423,33 @@
   padding: 14px 14px 12px;
   margin-bottom: 10px;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow .15s;     /* transform 제거 — 드래그 선택 시 흔들림 방지 */
+  transition: box-shadow .15s, transform .14s ease;
   -webkit-user-drag: none;
+  position: relative;              /* 드롭 라인(::before/::after) 기준 */
 }
-.schedule-card.is-dragging { opacity: .5; transform: scale(.98); }
-.schedule-card.drop-over { box-shadow: 0 0 0 2px var(--c-primary), var(--shadow-sm); }
+/* 꾹 눌러 끌기 시작하면 또렷하게 작아지고 들리는 느낌 → 놓으면 원래 크기로 복귀 */
+.schedule-card.is-dragging { opacity: .95; transform: scale(.94); box-shadow: var(--shadow-md); z-index: 10; }
+/* 일정 사이에 끌어왔을 때 표시되는 드롭 위치 라인 */
+.schedule-card.drop-before::before,
+.schedule-card.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 4px; right: 4px;
+  height: 3px;
+  background: var(--c-primary);
+  border-radius: 3px;
+  box-shadow: 0 0 0 3px rgba(43, 52, 64, .14);
+  z-index: 6;
+  pointer-events: none;
+}
+.schedule-card.drop-before::before { top: -7px; }
+.schedule-card.drop-after::after   { bottom: -7px; }
+/* 옮긴 직후 아주 옅은 링이 한 번 사라짐 — 과하지 않게 살짝만 티남 */
+@keyframes scMoved {
+  0%   { box-shadow: 0 0 0 2px rgba(43, 52, 64, .30), var(--shadow-sm); }
+  100% { box-shadow: 0 0 0 0 rgba(43, 52, 64, 0), var(--shadow-sm); }
+}
+.schedule-card.just-moved { animation: scMoved .5s ease-out; }
 .schedule-card-main { min-width: 0; }
 
 .schedule-card-meta-line {
@@ -2153,6 +2175,24 @@
 }
 .schedule-card,
 .schedule-card *:not(.drag-handle):not(.edit-button):not(.map-button) {
+  -webkit-user-drag: none !important;
+}
+
+/* ── 편집 모드: 카드 아무 곳이나 잡아 끌어 순서 변경 ──
+   (텍스트 선택 대신 드래그를 우선; 버튼은 그대로 클릭) */
+.timeline.is-edit .schedule-card { cursor: grab; -webkit-user-drag: element !important; }
+.timeline.is-edit .schedule-card.is-dragging { cursor: grabbing; }
+.timeline.is-edit .schedule-card,
+.timeline.is-edit .schedule-card * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-drag: auto !important;   /* 본문 어디를 잡아도 카드(draggable) 드래그가 시작되게 */
+  cursor: grab;
+}
+/* 버튼은 드래그 시작 막고 클릭 유지 */
+.timeline.is-edit .schedule-card-actions button {
+  cursor: pointer;
   -webkit-user-drag: none !important;
 }
 /* 텍스트 위에서는 텍스트 커서 — 카드는 클릭/포인터 안 일어남 */
