@@ -182,6 +182,7 @@ function _bindOriginSearch() {
   clear?.addEventListener('click', () => {
     input.value = ''; clear.hidden = true; sugg.hidden = true;
     appState.trip.origin = ''; appState.trip.originName = '';
+    appState.trip.departureAirport = ''; appState.trip.departureAirportName = '';
     _hideOriginMessage();
   });
 }
@@ -215,14 +216,39 @@ function _renderOriginSuggestions(query) {
       el('span', { class: 'csi-region' }, c.region),
     ]);
     sugg.appendChild(btn);
+
+    // 공항이 여러 개인 출발 도시는 공항 선택지 노출 (예: 서울 → 인천 · 김포)
+    const airports = _CITY_AIRPORTS[c.key];
+    if (airports) {
+      airports.forEach(([iata, ko]) => {
+        sugg.appendChild(el('button', {
+          type: 'button',
+          class: 'city-sug-airport',
+          role: 'option',
+          onclick: () => _applyOrigin(c, { iata, ko }),
+        }, [
+          el('span', { class: 'csa-icon' }, '✈'),
+          el('span', { class: 'csa-name' }, `${ko} 공항`),
+          el('span', { class: 'csa-code' }, iata),
+        ]));
+      });
+    }
   });
 }
 
-function _applyOrigin(c) {
+function _applyOrigin(c, airport) {
   appState.trip.origin = c.key;
   appState.trip.originName = c.name;
   appState.trip.originCountry = c.country;
-  $('#tripOrigin').value = c.name;
+  if (airport) {
+    appState.trip.departureAirport = airport.iata;
+    appState.trip.departureAirportName = airport.ko;
+    $('#tripOrigin').value = `${c.name} · ${airport.ko}(${airport.iata})`;
+  } else {
+    appState.trip.departureAirport = '';
+    appState.trip.departureAirportName = '';
+    $('#tripOrigin').value = c.name;
+  }
   $('#originClear').hidden = false;
   $('#originSuggestions').hidden = true;
   _hideOriginMessage();
@@ -277,6 +303,7 @@ function _bindCitySearch() {
   clear?.addEventListener('click', () => {
     input.value = ''; clear.hidden = true; sugg.hidden = true;
     appState.trip.cityName = ''; appState.trip.city = ''; appState.trip.country = '';
+    appState.trip.arrivalAirport = ''; appState.trip.arrivalAirportName = '';
     _updateSelectedHint(null);
   });
 
@@ -319,6 +346,23 @@ function _renderSuggestions(query) {
       el('span', { class: 'csi-region' }, c.region),
     ]);
     sugg.appendChild(btn);
+
+    // 공항이 여러 개인 도시는 바로 아래에 공항 선택지 노출 (예: 서울 → 인천 · 김포)
+    const airports = _CITY_AIRPORTS[c.key];
+    if (airports) {
+      airports.forEach(([iata, ko]) => {
+        sugg.appendChild(el('button', {
+          type: 'button',
+          class: 'city-sug-airport',
+          role: 'option',
+          onclick: () => _applyCity(c, { iata, ko }),
+        }, [
+          el('span', { class: 'csa-icon' }, '✈'),
+          el('span', { class: 'csa-name' }, `${ko} 공항`),
+          el('span', { class: 'csa-code' }, iata),
+        ]));
+      });
+    }
   });
 }
 function _highlightSuggestion(items, idx) {
@@ -326,14 +370,22 @@ function _highlightSuggestion(items, idx) {
   items.forEach((it, i) => it.classList.toggle('is-focus', i === focusIdx));
 }
 
-function _applyCity(c) {
+function _applyCity(c, airport) {
   if (!c) return;
   appState.trip.cityName = c.name;
   appState.trip.city = c.key;
   appState.trip.country = c.country;
   appState.trip.cityTier = c.tier;
   appState.trip.cityFlag = c.flag;
-  $('#tripCitySearch').value = c.name;
+  if (airport) {
+    appState.trip.arrivalAirport = airport.iata;
+    appState.trip.arrivalAirportName = airport.ko;
+    $('#tripCitySearch').value = `${c.name} · ${airport.ko}(${airport.iata})`;
+  } else {
+    appState.trip.arrivalAirport = '';
+    appState.trip.arrivalAirportName = '';
+    $('#tripCitySearch').value = c.name;
+  }
   $('#cityClear').hidden = false;
   $('#citySuggestions').hidden = true;
   // Sync advanced selects too
@@ -763,7 +815,9 @@ function _resetTripState() {
   const t = appState.trip;
   t.country = ''; t.city = ''; t.cityName = '';
   t.cityTier = undefined; t.cityFlag = undefined;
+  t.arrivalAirport = ''; t.arrivalAirportName = '';
   t.origin = ''; t.originName = ''; t.originCountry = undefined;
+  t.departureAirport = ''; t.departureAirportName = '';
   t.startDate = null; t.endDate = null; t.days = 0;
   t.companion = 'couple';
   t.concept = '';
@@ -1027,6 +1081,22 @@ const _CITY_IATA = {
   toronto:'YYZ', vancouver:'YVR', mexicocity:'MEX', cancun:'CUN', saopaulo:'GRU',
   sydney:'SYD', melbourne:'MEL', auckland:'AKL', guam:'GUM', saipan:'SPN',
   dubai:'DXB', doha:'DOH', cairo:'CAI', honolulu:'HNL', bangkok2:'DMK',
+};
+
+// 공항이 여러 개인 도시 → [IATA, 한글명] 목록 (도착 도시 검색 시 선택지로 노출).
+// 첫 번째가 대표 공항. 여기 없는 도시는 _CITY_IATA 의 단일 공항을 사용.
+const _CITY_AIRPORTS = {
+  seoul:    [['ICN', '인천'], ['GMP', '김포']],
+  tokyo:    [['NRT', '나리타'], ['HND', '하네다']],
+  osaka:    [['KIX', '간사이'], ['ITM', '이타미']],
+  bangkok:  [['BKK', '수완나품'], ['DMK', '돈므앙']],
+  shanghai: [['PVG', '푸둥'], ['SHA', '훙차오']],
+  beijing:  [['PEK', '서우두'], ['PKX', '다싱']],
+  taipei:   [['TPE', '타오위안'], ['TSA', '쑹산']],
+  paris:    [['CDG', '샤를드골'], ['ORY', '오를리']],
+  london:   [['LHR', '히드로'], ['LGW', '개트윅']],
+  milan:    [['MXP', '말펜사'], ['LIN', '리나테']],
+  newyork:  [['JFK', '존 F. 케네디'], ['EWR', '뉴어크'], ['LGA', '라과디아']],
 };
 
 function _calcFlightPrice(t) {
@@ -1677,8 +1747,8 @@ async function _generateSchedule() {
   let _flightSource = 'estimate';
   let _flightMeta   = null;          // { airline, flightCode, stops }
   try {
-    const depIata = _CITY_IATA[t.origin];
-    const arrIata = _CITY_IATA[t.city];
+    const depIata = t.departureAirport || _CITY_IATA[t.origin];   // 사용자가 고른 출발 공항 우선
+    const arrIata = t.arrivalAirport || _CITY_IATA[t.city];       // 사용자가 고른 도착 공항 우선
     if (depIata && arrIata && depIata !== arrIata && t.startDate && t.endDate && t.endDate > t.startDate) {
       const fres = await api.searchFlights({
         departure_id: depIata, arrival_id: arrIata,
