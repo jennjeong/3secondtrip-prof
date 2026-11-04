@@ -29,6 +29,7 @@
 <link rel="stylesheet" href="./css/redesign-layout.css">
 <link rel="stylesheet" href="./css/redesign-components.css">
 <link rel="stylesheet" href="./css/redesign-responsive.css">
+<link rel="stylesheet" href="./css/redesign-effects.css">
 </head>
 <body>
 
@@ -54,23 +55,25 @@
       <div class="page-scroll">
 
         <div class="hero-card">
+          <div class="hero-illust" aria-hidden="true">
+            <span class="hero-aurora a1"></span>
+            <span class="hero-aurora a2"></span>
+            <svg class="hero-route" viewBox="0 0 150 210" fill="none">
+              <path class="hero-route-line" d="M10 188 C80 188 136 130 124 16"/>
+              <circle class="hero-route-pin" cx="10" cy="188" r="3.5"/>
+              <circle class="hero-route-pin" cx="124" cy="16" r="3.5"/>
+              <circle class="hero-route-dot" r="4.5"/>
+            </svg>
+          </div>
           <div class="hero-text">
             <p class="hero-greet" id="homeGreet">오늘은 어디로 떠나볼까요?</p>
-            <h1 class="hero-title">3초만에<br/>나만의 여행 일정</h1>
+            <h1 class="hero-title"><span>3초만에</span><br/><span>나만의 여행 일정</span></h1>
             <p class="hero-sub">현지 데이터와 AI가 만드는 맞춤형 로드맵</p>
           </div>
-          <div class="hero-cta-wrap">
-            <button type="button" class="hero-cta" data-nav-to="create-trip" aria-label="새 여행 만들기">
-              <span aria-hidden="true">+</span>
-            </button>
-            <span class="hero-cta-cap">새 여행</span>
-          </div>
-          <div class="hero-illust" aria-hidden="true">
-            <div class="hero-bubble b1"></div>
-            <div class="hero-bubble b2"></div>
-            <div class="hero-bubble b3"></div>
-            <div class="hero-plane">✈️</div>
-          </div>
+          <button type="button" class="hero-cta" data-nav-to="create-trip">
+            새 여행 만들기
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+          </button>
         </div>
 
         <div class="search-card">
@@ -96,6 +99,8 @@
           </header>
           <div class="roadmap-grid" id="popularRoadmaps"></div>
         </section>
+
+        <nav class="city-marquee" id="cityMarquee" aria-label="도시별 로드맵 바로가기" hidden></nav>
 
         <section class="section-block" aria-labelledby="recoH">
           <header class="section-head">

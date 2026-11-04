@@ -100,6 +100,13 @@ export function initRoadmaps(state) {
       renderExplore();
       return;
     }
+    const city = e.target.closest?.('[data-marquee-city]');
+    if (city) {
+      explore.query = city.dataset.marqueeCity.toLowerCase();
+      navigate('explore');
+      _syncExploreUI();
+      renderExplore();
+    }
   });
 
   // Explore sort
@@ -271,6 +278,23 @@ export function renderHomeRoadmaps() {
     list.innerHTML = '';
     _shuffle(roadmaps).slice(0, 6).forEach(m => list.appendChild(_cardEl(m)));
   }
+  _renderCityMarquee();
+}
+
+// 도시 이름 띠 — 끊김 없이 돌도록 같은 묶음을 두 번 놓고, 두 번째는 화면에서만 보이게 한다.
+function _renderCityMarquee() {
+  const wrap = document.getElementById('cityMarquee');
+  if (!wrap) return;
+  const cities = [...new Set(roadmaps.map(m => m.city))];
+  wrap.hidden = cities.length < 4;
+  const group = (copy) => el('div', { class: 'city-marquee-group', 'aria-hidden': copy ? 'true' : null },
+    cities.map(city => el('button', {
+      type: 'button',
+      class: 'city-marquee-item',
+      tabIndex: copy ? -1 : 0,
+      dataset: { marqueeCity: city },
+    }, city)));
+  wrap.replaceChildren(el('div', { class: 'city-marquee-track' }, [group(false), group(true)]));
 }
 
 export function renderExplore() {

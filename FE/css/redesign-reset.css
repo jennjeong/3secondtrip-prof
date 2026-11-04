@@ -31,7 +31,11 @@ body {
   background: var(--c-bg, #FAF6EE);
   overflow: hidden;       /* main scrolls inside .app-main, not body */
   overscroll-behavior: none;
+  word-break: keep-all;   /* 한글이 낱자 단위로 끊기지 않게 */
+  overflow-wrap: break-word;
 }
+
+h1, h2, h3 { text-wrap: balance; }
 
 h1, h2, h3, h4, h5, h6, p, ul, ol, dl, dd, figure, blockquote {
   margin: 0;

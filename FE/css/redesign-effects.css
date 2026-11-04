@@ -1,0 +1,182 @@
+/* 3초 여행 — 움직임 효과.
+ * Aurora, Shimmer Button, Border Beam, Marquee, Blur Fade, Focus Cards 를
+ * 참고해 CSS 로 직접 만들었다.  움직임을 줄이는 기기 설정에서는 멈춘다.
+ */
+
+/* ===== 히어로: 오로라 배경 ===== */
+.hero-aurora {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(48px);
+  will-change: transform;
+}
+.hero-aurora.a1 {
+  width: 320px; height: 320px;
+  right: -90px; top: -120px;
+  background: #2f7fd6;
+  opacity: .72;
+  animation: aurora-a 14s ease-in-out infinite alternate;
+}
+.hero-aurora.a2 {
+  width: 280px; height: 280px;
+  right: 60px; bottom: -170px;
+  background: #1fa59a;
+  opacity: .55;
+  animation: aurora-b 18s ease-in-out infinite alternate;
+}
+@keyframes aurora-a { to { transform: translate3d(-70px, 46px, 0) scale(1.14); } }
+@keyframes aurora-b { to { transform: translate3d(70px, -40px, 0) scale(.9); } }
+
+/* ===== 히어로: 비행 경로 ===== */
+.hero-route { position: absolute; right: 0; bottom: 0; width: 150px; height: 210px; }
+.hero-route-line {
+  stroke: rgba(255,255,255,.34);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 7;
+  stroke-linecap: round;
+}
+.hero-route-pin { fill: rgba(255,255,255,.7); }
+.hero-route-dot {
+  fill: #fff;
+  offset-path: path("M10 188 C80 188 136 130 124 16");
+  animation: route-fly 7s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+@keyframes route-fly {
+  0%   { offset-distance: 0%;   opacity: 0; }
+  8%   { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+
+@media (min-width: 768px) {
+  .hero-route { right: 4%; width: 240px; height: 336px; bottom: -24px; }
+  .hero-aurora.a1 { width: 460px; height: 460px; }
+  .hero-aurora.a2 { width: 400px; height: 400px; right: 220px; }
+}
+
+/* ===== 히어로: 제목이 또렷해지며 등장 ===== */
+.hero-title span {
+  display: inline-block;
+  animation: blur-rise .7s cubic-bezier(.2, .7, .2, 1) both;
+}
+.hero-title span:nth-of-type(2) { animation-delay: .12s; }
+.hero-sub { animation: blur-rise .7s .24s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes blur-rise {
+  from { opacity: 0; transform: translateY(10px); filter: blur(8px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+
+/* ===== 히어로 버튼: 빛이 지나가는 효과 ===== */
+.hero-cta::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(59,130,246,.28), transparent);
+  transform: skewX(-16deg);
+  animation: cta-shine 4.5s ease-in-out infinite;
+}
+@keyframes cta-shine {
+  0%, 62% { left: -60%; }
+  100%    { left: 130%; }
+}
+
+/* ===== 검색창: 입력 중 테두리를 도는 빛 ===== */
+@property --beam-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+.search-card { position: relative; }
+.search-card::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--beam-angle), transparent 60%, var(--c-blue) 88%, var(--c-mint) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+.search-card:focus-within { border-color: var(--c-blue); }
+.search-card:focus-within::after {
+  opacity: 1;
+  animation: beam-turn 3s linear infinite;
+}
+@keyframes beam-turn { to { --beam-angle: 360deg; } }
+
+/* ===== 도시 이름 띠 ===== */
+.city-marquee {
+  margin: 28px calc(var(--app-side-padding) * -1);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.city-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 32s linear infinite;
+}
+.city-marquee:hover .city-marquee-track,
+.city-marquee:focus-within .city-marquee-track { animation-play-state: paused; }
+.city-marquee-group { display: flex; flex: 0 0 auto; }
+.city-marquee-item {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 14px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  color: var(--c-text-mute);
+  transition: color .15s ease;
+}
+.city-marquee-item:hover,
+.city-marquee-item:focus-visible { color: var(--c-text); }
+.city-marquee-item::after {
+  content: '';
+  width: 5px; height: 5px;
+  margin-left: 28px;
+  border-radius: 50%;
+  background: var(--c-blue);
+}
+@keyframes marquee { to { transform: translateX(-50%); } }
+
+/* ===== 카드: 스크롤하면 또렷해지며 등장 ===== */
+@supports (animation-timeline: view()) {
+  .roadmap-grid .roadmap-card {
+    animation: card-rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 42%;
+  }
+}
+@keyframes card-rise {
+  from { opacity: .2; transform: translateY(18px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ===== 카드: 마우스를 올린 카드만 강조 (터치 기기 제외) ===== */
+@media (hover: hover) and (pointer: fine) {
+  .hero-cta:hover { transform: translateY(-1px); }
+  .roadmap-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+  .roadmap-grid:hover .roadmap-card:not(:hover) { opacity: .62; filter: saturate(.75); }
+  .dest-quick button:hover { transform: translateY(-2px); }
+}
+
+/* ===== 움직임 줄이기 ===== */
+@media (prefers-reduced-motion: reduce) {
+  .hero-aurora, .hero-route-dot, .hero-cta::after,
+  .hero-title span, .hero-sub, .roadmap-grid .roadmap-card { animation: none !important; }
+  .hero-route-dot { display: none; }
+  .city-marquee { overflow-x: auto; }
+  .city-marquee-track { animation: none !important; }
+  .city-marquee-group[aria-hidden="true"] { display: none; }
+}
+
+@media print {
+  .hero-illust, .city-marquee { display: none !important; }
+}

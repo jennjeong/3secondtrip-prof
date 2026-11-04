@@ -5,92 +5,48 @@
 /* ===================== HERO ===================== */
 .hero-card {
   position: relative;
-  background: var(--g-hero);
-  border-radius: var(--radius-xl);
-  padding: 22px 22px 26px;
-  color: #fff;
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-  min-height: 200px;
-  isolation: isolate;
-}
-.hero-text { position: relative; z-index: 2; max-width: 64%; }
-.hero-greet { font-size: 13px; opacity: .92; font-weight: 500; }
-.hero-title {
-  margin: 6px 0 10px;
-  font-size: 26px;
-  line-height: 1.2;
-  font-weight: 800;
-  letter-spacing: -.5px;
-}
-.hero-sub { font-size: 13px; opacity: .92; }
-/* 히어로 카드 오른쪽 중앙 — 동그란 + 버튼 + 작은 라벨 */
-.hero-cta-wrap {
-  position: absolute;
-  bottom: 18px;        /* 카드 하단 기준 — 더 아래로 */
-  right: 20px;
-  z-index: 3;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 7px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 248px;
+  padding: 24px;
+  background: #101a24;
+  border-radius: var(--radius-xl);
+  color: #fff;
+  overflow: hidden;
+  isolation: isolate;
 }
+.hero-text { position: relative; z-index: 2; max-width: 100%; }
+.hero-greet { font-size: 13px; font-weight: 500; color: rgba(255,255,255,.72); }
+.hero-title {
+  margin: 8px 0 10px;
+  font-size: 32px;
+  line-height: 1.18;
+  font-weight: 800;
+  letter-spacing: -.03em;
+}
+.hero-sub { font-size: 14px; color: rgba(255,255,255,.72); }
 .hero-cta {
-  /* 배경 사진과 어우러지는 프로스티드 글래스 — 사진 색이 비쳐 붕 뜨지 않는다 */
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
+  position: relative;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, .15);
-  backdrop-filter: blur(10px) saturate(130%);
-  -webkit-backdrop-filter: blur(10px) saturate(130%);
-  border: 1.5px solid rgba(255, 255, 255, .5);
-  color: #fff;
-  font-size: 26px;
-  font-weight: 300;
-  line-height: 1;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
-  transition: background .18s ease, transform .18s ease, border-color .18s ease;
-}
-.hero-cta > span { margin-top: -2px; }   /* '+' 수직 중앙 보정 */
-.hero-cta:hover {
-  background: rgba(255, 255, 255, .28);
-  border-color: rgba(255, 255, 255, .7);
-  transform: translateY(-1px);
-}
-.hero-cta:active { transform: scale(.94); }
-.hero-cta-cap {
-  font-size: 12px;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 20px;
+  background: #fff;
+  border-radius: 999px;
+  color: var(--c-primary-strong);
+  font-size: 15px;
   font-weight: 700;
-  color: #fff;
-  letter-spacing: -.2px;
-  text-shadow: 0 1px 4px rgba(0,0,0,.55);
+  overflow: hidden;
+  transition: transform .15s ease;
 }
-
-.hero-illust {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-.hero-bubble {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255,255,255,.22);
-}
-.hero-bubble.b1 { width: 120px; height: 120px; right: -30px; top: -30px; }
-.hero-bubble.b2 { width: 70px;  height: 70px;  right: 60px;  bottom: -25px; }
-.hero-bubble.b3 { width: 36px;  height: 36px;  right: 130px; top: 40px; }
-.hero-plane {
-  position: absolute;
-  right: 18px;
-  top: 36px;
-  font-size: 38px;
-  transform: rotate(20deg);
-  filter: drop-shadow(0 6px 12px rgba(0,0,0,.18));
-}
+.hero-cta:active { transform: scale(.97); }
+.hero-cta:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.hero-illust { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 
 /* ===================== SEARCH ===================== */
 .search-card {
@@ -98,17 +54,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 14px;
+  min-height: 52px;
+  padding: 0 16px;
   background: var(--c-surface);
   border: 1px solid var(--c-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
 }
 .search-card .search-ico { color: var(--c-text-mute); display: inline-flex; }
 .search-card input {
   flex: 1; min-width: 0;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--c-text);
+  outline: none;
 }
 
 /* ===================== CHIPS ===================== */
@@ -130,6 +87,7 @@
 
 .chip {
   flex: 0 0 auto;
+  min-height: 38px;
   padding: 8px 14px;
   background: var(--c-surface);
   border: 1px solid var(--c-border);
@@ -144,7 +102,6 @@
   background: var(--c-primary);
   border-color: transparent;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(20,30,45,.16);
 }
 
 .chip-mini {
@@ -204,17 +161,16 @@
   flex-direction: column;
   justify-content: space-between;
   box-shadow: var(--shadow-sm);
-  transition: transform .15s, box-shadow .15s;
+  transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease, filter .18s ease;
   text-align: left;
   width: 100%;
 }
 .roadmap-card::before {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,.32) 0%, rgba(0,0,0,0) 60%);
+  background: linear-gradient(to top, rgba(0,0,0,.56) 0%, rgba(0,0,0,0) 62%);
   z-index: 1;
 }
-.roadmap-card { transition: background-image .35s ease; }
 .roadmap-card.has-landmark-img::before { background: none; }   /* image already has its own darkening */
 .roadmap-card > * { position: relative; z-index: 2; }
 .roadmap-card:active { transform: scale(.98); box-shadow: var(--shadow-md); }
@@ -286,9 +242,10 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
+  min-height: 48px;
   padding: 12px 18px;
-  border-radius: 14px;
-  font-size: 14.5px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
   font-weight: 700;
   transition: transform .14s, box-shadow .14s, background .14s;
   white-space: nowrap;
@@ -303,7 +260,6 @@
 .btn-primary.btn-gradient {
   background: var(--c-primary);
   color: #fff;
-  box-shadow: 0 8px 20px rgba(20,30,45,.18);
 }
 .btn-soft {
   background: var(--c-surface-2);
@@ -503,21 +459,26 @@
 }
 .dest-quick button {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 12px 6px;
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
+  align-items: flex-end;
+  min-height: 72px;
+  padding: 10px 12px;
   border-radius: var(--radius-md);
-  font-size: 12px;
+  background: var(--g-hero);
+  color: #fff;
+  font-size: 14px;
   font-weight: 700;
+  transition: transform .15s ease, box-shadow .15s ease;
 }
-.dest-quick button span:first-child { font-size: 22px; }
+.dest-quick button span:first-child { display: none; }
+.dest-quick button[data-dest-quick="도쿄"]   { background: var(--g-tokyo); }
+.dest-quick button[data-dest-quick="파리"]   { background: var(--g-paris); }
+.dest-quick button[data-dest-quick="제주"]   { background: var(--g-jeju); }
+.dest-quick button[data-dest-quick="오사카"] { background: var(--g-osaka); }
+.dest-quick button[data-dest-quick="방콕"]   { background: var(--g-bangkok); }
+.dest-quick button[data-dest-quick="서울"]   { background: var(--g-seoul); }
+.dest-quick button:active { transform: scale(.97); }
 .dest-quick button.is-active {
-  border-color: var(--c-primary);
-  background: var(--c-surface-2);
-  color: var(--c-primary-strong);
+  box-shadow: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-primary-strong);
 }
 
 /* ===================== BUDGET ===================== */
@@ -613,6 +574,7 @@
 .day-chips::-webkit-scrollbar { display: none; }
 .day-chip {
   flex: 0 0 auto;
+  min-height: 38px;
   padding: 8px 14px;
   background: var(--c-surface);
   border: 1px solid var(--c-border);

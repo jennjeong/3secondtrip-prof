@@ -10,18 +10,19 @@
   --c-accent:         #3E4A5A;
   --c-mint:           #6EE7B7;
   --c-sky:            #93C5FD;
+  --c-blue:           #3B82F6;   /* 로고의 숫자 3 색 — 강조에만 쓴다 */
 
   /* Surface — 쿨 뉴트럴(사진의 청록과 어우러지게, 따뜻한 크림 캐스트 제거) */
-  --c-bg:             #F2F4F7;
+  --c-bg:             #F7F8FB;
   --c-surface:        #FFFFFF;
-  --c-surface-2:      #EEF1F5;
-  --c-border:         #E5E9EF;
-  --c-divider:        #EDF0F4;
+  --c-surface-2:      #F2F3F7;
+  --c-border:         #E4E6EC;
+  --c-divider:        #ECEEF2;
 
   /* Text */
   --c-text:           #1D1D1F;
   --c-text-soft:      #6B6B70;
-  --c-text-mute:      #A2A0A0;
+  --c-text-mute:      #8A8F98;
 
   /* States */
   --c-focus:          #2B3440;
@@ -199,9 +200,10 @@
   display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
 }
 .page-title {
-  font-size: 22px;
+  font-size: 26px;
+  line-height: 1.25;
   font-weight: 800;
-  letter-spacing: -.4px;
+  letter-spacing: -.03em;
   color: var(--c-text);
 }
 .page-sub {
@@ -210,16 +212,16 @@
   color: var(--c-text-soft);
 }
 
-.section-block { margin: 22px 0; }
+.section-block { margin: 28px 0; }
 .section-head {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 12px;
 }
 .section-title {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 800;
   color: var(--c-text);
-  letter-spacing: -.3px;
+  letter-spacing: -.02em;
 }
 .section-more {
   font-size: 13px;
