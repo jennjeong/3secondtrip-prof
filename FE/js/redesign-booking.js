@@ -7,8 +7,8 @@
  *   - "Extra options" excludes hotel/flight, includes restaurant/transport
  *   - Price right-aligned, category label vertically centered.
  *
- * Currently uses mock items; replace _buildItems() with a real API call
- * (e.g. apiRequest('/bookings/options?city=...')) when the backend ships.
+ * 예약 제휴사가 없어 앱 안에서 바로 결제하지 않는다.  항목마다 실제 검색
+ * 페이지 링크를 달고, 일정의 실제 값이 아닌 금액은 '예상가'로 표시한다.
  */
 
 import { api } from './redesign-api-adapter.js';
@@ -81,6 +81,21 @@ function _close() {
   setTimeout(() => { $('#bookingBackdrop').hidden = true; $('#bookingSheet').hidden = true; }, 250);
 }
 
+/* ============ 외부 검색 링크 ============ */
+function _googleFlightsUrl(g) {
+  const from = g.originName || g.departureCity || '';
+  const dates = g.days[0]?.date && g.days.at(-1)?.date
+    ? ` on ${g.days[0].date} through ${g.days.at(-1).date}` : '';
+  return 'https://www.google.com/travel/flights?q='
+    + encodeURIComponent(`Flights from ${from} to ${g.city}${dates}`);
+}
+function _googleHotelsUrl(g, query) {
+  return 'https://www.google.com/travel/search?q=' + encodeURIComponent(query || `${g.city} 호텔`);
+}
+function _googleMapsUrl(query) {
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query);
+}
+
 /* ============ Build items ============
  * Applies all preservation rules from the legacy app:
  *   - Flights collapsed into single round-trip
@@ -115,6 +130,7 @@ function _buildItems(g) {
   });
   // 옵션 후보군 — 사용자 선택 1개 + 가격대별 대안
   const flightOptions = [];
+  const flightUrl = _googleFlightsUrl(g);
   const originLabel = g.originName || g.departureCity || '인천';
   // 1) 사용자 선택 (실제 가격)
   if (actualFlightPrice > 0) {
@@ -131,6 +147,7 @@ function _buildItems(g) {
       name: `${originLabel} ⇄ ${city} 왕복 (선택 옵션)`,
       desc: userDesc.join(' · ') || '추천 항공편',
       price: actualFlightPrice, required: true, sub: '★ 일정 선택 기준',
+      estimated: g.flightPriceSource !== 'serpapi', url: flightUrl,
     });
   }
   // 2) 가격대 별 대안 3개 (저가/중간/대형)
@@ -146,7 +163,7 @@ function _buildItems(g) {
     flightOptions.push({
       id: opt.id, cat: 'flight',
       name: `${originLabel} ⇄ ${city} 왕복 (${opt.name})`,
-      desc: opt.desc, price: p, required: false,
+      desc: opt.desc, price: p, required: false, estimated: true, url: flightUrl,
     });
   });
   // 예산 필터 — flightBudgetCap 초과 항목은 숨김 (단, 사용자 선택은 유지)
@@ -210,6 +227,7 @@ function _buildItems(g) {
     price: userPerNight * nights,
     perNight: userPerNight, nights, hotelPref,
     required: true, sub: '★ 일정 선택 기준',
+    estimated: g.hotelPriceSource !== 'serpapi', url: _googleHotelsUrl(g, userHotelName),
   });
   // 2) 가격대별 대안 (저렴·중간·고급)
   const altHotels = [
@@ -223,7 +241,7 @@ function _buildItems(g) {
       desc: `${nights}박 · 1박 ${h.perNight.toLocaleString('ko-KR')}원 · ${h.desc}`,
       price: h.perNight * nights,
       perNight: h.perNight, nights,
-      required: false,
+      required: false, estimated: true, url: _googleHotelsUrl(g, h.name),
     });
   });
 
@@ -235,21 +253,21 @@ function _buildItems(g) {
   });
 
   // AIRPORT — arrival + departure
-  out.push({ id:'ap-in',  cat:'airport', name: `${city} 공항 → 호텔 이동`, desc:'프라이빗 픽업', price: 38000 });
-  out.push({ id:'ap-out', cat:'airport', name: `호텔 → ${city} 공항 이동`, desc:'프라이빗 샌딩', price: 38000 });
+  out.push({ id:'ap-in',  cat:'airport', name: `${city} 공항 → 호텔 이동`, desc:'프라이빗 픽업', price: 38000, estimated: true, url: _googleMapsUrl(`${city} 공항 픽업`) });
+  out.push({ id:'ap-out', cat:'airport', name: `호텔 → ${city} 공항 이동`, desc:'프라이빗 샌딩', price: 38000, estimated: true, url: _googleMapsUrl(`${city} 공항 샌딩`) });
 
   // RESTAURANT / ACTIVITY — only required-reservation items
   g.days.forEach((d, di) => {
     d.activities.forEach((a, ai) => {
       const cat = a.category;
       if (cat === '식사' && _needsRes(a)) {
-        out.push({ id:`r-${di}-${ai}`, cat:'restaurant', name: a.name, desc:`Day ${di+1} · ${a.time||''}`, price: a.cost || 35000, required:true });
+        out.push({ id:`r-${di}-${ai}`, cat:'restaurant', name: a.name, desc:`Day ${di+1} · ${a.time||''}`, price: a.cost || 35000, required:true, estimated: !a.cost, url: _googleMapsUrl(`${a.name} ${city}`) });
       } else if (cat === '액티비티' && _needsRes(a)) {
-        out.push({ id:`a-${di}-${ai}`, cat:'activity', name: a.name, desc:`Day ${di+1} · ${a.time||''}`, price: a.cost || 50000, required:true });
+        out.push({ id:`a-${di}-${ai}`, cat:'activity', name: a.name, desc:`Day ${di+1} · ${a.time||''}`, price: a.cost || 50000, required:true, estimated: !a.cost, url: _googleMapsUrl(`${a.name} ${city}`) });
       } else if (cat === '관광' || cat === '카페' || cat === '쇼핑') {
         // Extra options — exclude hotel/flight, include transport when relevant
         if (di === 0 && ai === 1) {
-          out.push({ id:`t-${di}-${ai}`, cat:'transport', name:`교통패스 (${city} 1일권)`, desc:'대중교통', price: 8000 });
+          out.push({ id:`t-${di}-${ai}`, cat:'transport', name:`교통패스 (${city} 1일권)`, desc:'대중교통', price: 8000, estimated: true, url: _googleMapsUrl(`${city} 교통패스`) });
         }
       }
     });
@@ -311,9 +329,15 @@ function _rowEl(it) {
       el('span', { class: 'book-cat-label' }, CATS[it.cat]?.label || it.cat),
       el('div', { class: 'book-name' }, it.name),
       el('div', { class: 'book-desc' }, it.desc || ''),
+      it.url ? el('a', {
+        class: 'book-link', href: it.url, target: '_blank', rel: 'noopener noreferrer',
+      }, '예약처 찾아보기 ↗') : null,
     ]),
     el('div', { style: { display:'flex', alignItems:'center', gap:'10px' } }, [
-      el('div', { class: 'book-price' }, formatCurrency(it.price, 'KRW')),
+      el('div', { class: 'book-price' }, [
+        formatCurrency(it.price, 'KRW'),
+        it.estimated ? el('div', { class: 'book-estimate' }, '예상가') : null,
+      ]),
       cb,
     ]),
   ]);

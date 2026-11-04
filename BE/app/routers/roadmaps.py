@@ -75,7 +75,7 @@ def get_roadmap(roadmap_id: int, db: Session = Depends(get_db)):
 def create_roadmap(payload: RoadmapCreate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     r = Roadmap(
         user_id=current.id, title=payload.title, city=payload.city, country=payload.country,
-        concept=payload.concept, days=payload.days, likes=payload.likes or 0,
+        concept=payload.concept, days=payload.days,
         gradient=payload.gradient, is_public=payload.is_public,
         roadmap_data_json=(json.dumps(payload.roadmap_data, ensure_ascii=False) if payload.roadmap_data else None),
     )
@@ -89,6 +89,7 @@ def update_roadmap(roadmap_id: int, payload: RoadmapUpdate, db: Session = Depend
     if not r:
         raise HTTPException(404, "Roadmap not found")
     data = payload.model_dump(exclude_unset=True)
+    data.pop("likes", None)  # 인기순 정렬에 쓰이므로 작성자가 직접 바꿀 수 없다
     if "roadmap_data" in data:
         rd = data.pop("roadmap_data")
         r.roadmap_data_json = json.dumps(rd, ensure_ascii=False) if rd is not None else None

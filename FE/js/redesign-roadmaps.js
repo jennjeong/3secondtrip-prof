@@ -2,14 +2,13 @@
  * Popular roadmap cards (home), full Explore list with sort/filter,
  * and Roadmap Detail navigation.
  *
- * NOTE: mock data only.  Replace `loadRoadmaps()` body with a real
- * backend call (e.g. GET /roadmaps) when the API ships.  The Explore
- * view always uses the same shape so swapping is trivial.
+ * NOTE: loadRoadmaps() replaces the built-in list with GET /roadmaps.
+ * The built-in list stays as the fallback while the server is waking up.
  */
 
 import { navigate } from './redesign-navigation.js';
 import { el, $, $$, setActiveByData } from './redesign-ui.js';
-import { API_URL } from './redesign-api-adapter.js';
+import { API_URL, api } from './redesign-api-adapter.js';
 
 // In-memory cache for landmark image URLs we've already verified loadable.
 const LANDMARK_OK = new Set();
@@ -45,6 +44,7 @@ function _attachLandmarkImage(el, city, gradient) {
   img.src = url;
 }
 
+// 서버가 깨어나는 동안이나 연결 실패 시 보여줄 기본 목록.
 export const POPULAR_ROADMAPS = [
   { id: 'tokyo-3d',   city: '도쿄',     country: '일본',     title: '도쿄 3일 감성 로드맵',   concept: '균형',     days: 3, likes: 1240, gradient: 'var(--g-tokyo)',   tagline: '시부야부터 아사쿠사까지' },
   { id: 'paris-4d',   city: '파리',     country: '프랑스',   title: '파리 첫 여행 로드맵',     concept: '프리미엄', days: 4, likes:  980, gradient: 'var(--g-paris)',   tagline: '에펠탑·루브르·몽마르트' },
@@ -57,6 +57,7 @@ export const POPULAR_ROADMAPS = [
 ];
 
 let appState = null;
+let roadmaps = POPULAR_ROADMAPS;   // loadRoadmaps() 가 서버 데이터로 교체
 const explore = {
   sort: 'popular',
   concept: 'all',
@@ -84,6 +85,10 @@ function _attachHeroImage() {
 export function initRoadmaps(state) {
   appState = state;
   _attachHeroImage();
+  loadRoadmaps().then(() => {
+    renderHomeRoadmaps();
+    renderExplore();
+  });
 
   // Quick-concept chips → jump to Explore with filter applied
   document.addEventListener('click', (e) => {
@@ -159,7 +164,7 @@ export function initRoadmaps(state) {
     const card = e.target.closest?.('[data-roadmap-id]');
     if (card) {
       const id = card.dataset.roadmapId;
-      const m = POPULAR_ROADMAPS.find(r => r.id === id);
+      const m = roadmaps.find(r => r.id === id);
       if (!m) return;
       window.__redesign = window.__redesign || {};
       window.__redesign.__currentRoadmap = m;
@@ -169,10 +174,37 @@ export function initRoadmaps(state) {
   });
 }
 
-/** Fetch all roadmaps.  Currently mock-only — wire to backend later. */
+const DEFAULT_GRADIENT = 'linear-gradient(135deg, #4f6d8a 0%, #2b3440 100%)';
+// 사용자가 만든 공개 로드맵의 값이 그대로 CSS 로 들어가므로 단색 그라데이션만 허용.
+const SAFE_GRADIENT = /^linear-gradient\([\w\s#%.,-]+\)$/;
+
+/** Map an API roadmap to the card shape.  기본 목록에만 있는 tagline 은 도시로 찾아 채운다. */
+function _fromApi(r) {
+  const known = POPULAR_ROADMAPS.find(p => p.city === r.city);
+  return {
+    id: String(r.id),
+    city: r.city,
+    country: r.country || '',
+    title: r.title,
+    concept: r.concept || '균형',
+    days: r.days || 1,
+    likes: r.likes || 0,
+    tagline: known?.tagline || r.title,
+    gradient: SAFE_GRADIENT.test(r.gradient || '') ? r.gradient : DEFAULT_GRADIENT,
+    createdAt: r.created_at || '',
+  };
+}
+
+/** Fetch public roadmaps.  실패하거나 비어 있으면 기본 목록을 유지한다. */
 export async function loadRoadmaps() {
-  // TODO: replace with apiRequest('/roadmaps') when backend ready
-  return POPULAR_ROADMAPS;
+  try {
+    const rows = await api.getRoadmaps({ limit: 100 });
+    const list = (rows || []).filter(r => r.city).map(_fromApi);
+    if (list.length) roadmaps = list;
+  } catch (e) {
+    console.warn('[roadmaps] 서버 목록을 불러오지 못해 기본 목록을 표시합니다:', e?.message);
+  }
+  return roadmaps;
 }
 
 /** Fisher–Yates shuffle (returns a new array, leaves the source intact). */
@@ -199,7 +231,7 @@ function _filterAndSort(list) {
   }
   switch (explore.sort) {
     case 'likes':  arr.sort((a, b) => b.likes - a.likes); break;
-    case 'recent': arr.sort((a, b) => a.id.localeCompare(b.id)); break;
+    case 'recent': arr.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')); break;
     default:       arr.sort((a, b) => b.likes - a.likes);
   }
   return arr;
@@ -231,13 +263,13 @@ export function renderHomeRoadmaps() {
   const grid = document.getElementById('popularRoadmaps');
   if (grid) {
     grid.innerHTML = '';
-    POPULAR_ROADMAPS.slice(0, 4).forEach(m => grid.appendChild(_cardEl(m)));
+    roadmaps.slice(0, 4).forEach(m => grid.appendChild(_cardEl(m)));
   }
   // 추천 로드맵 — 홈에 진입할 때마다 랜덤 도시로 섞어서 보여준다.
   const list = document.getElementById('recoRoadmaps');
   if (list) {
     list.innerHTML = '';
-    _shuffle(POPULAR_ROADMAPS).slice(0, 6).forEach(m => list.appendChild(_cardEl(m)));
+    _shuffle(roadmaps).slice(0, 6).forEach(m => list.appendChild(_cardEl(m)));
   }
 }
 
@@ -245,7 +277,7 @@ export function renderExplore() {
   const grid = document.getElementById('exploreGrid');
   const empty = document.getElementById('exploreEmpty');
   if (!grid) return;
-  const items = _filterAndSort(POPULAR_ROADMAPS);
+  const items = _filterAndSort(roadmaps);
   grid.innerHTML = '';
   if (items.length === 0) { if (empty) empty.hidden = false; return; }
   if (empty) empty.hidden = true;

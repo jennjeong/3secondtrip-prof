@@ -3,29 +3,33 @@
 * GET /api/images/landmark/{city}
     Returns a PNG of the city's famous landmark.  Generated once via the
     OpenAI image model (OPENAI_IMAGE_MODEL, default gpt-image-1), then
-    cached on disk forever at data/landmark_images/ so subsequent
-    requests are instant.
+    cached in the DB (landmark_images) so subsequent requests are instant
+    and survive Render free-tier restarts.
+
+Only cities in LANDMARK_HINTS are generated.  The endpoint is public, so an
+open list would let anyone spend the OpenAI budget and fill the DB.
 
 OpenAI key stays in backend/.env (OPENAI_API_KEY).  If the key is
 missing, the endpoint returns 503 cleanly so the frontend can fall back
 to its gradient background.
 """
-import hashlib
+import asyncio
+import base64
 import logging
-import re
-from pathlib import Path
 
 import httpx
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.db.database import get_db
+from app.models.landmark_image import LandmarkImage
 
 logger = logging.getLogger("landmark_images")
 router = APIRouter(prefix="/api/images", tags=["images"])
 
-LANDMARK_DIR = Path("data/landmark_images")
-LANDMARK_DIR.mkdir(parents=True, exist_ok=True)
+_generate_lock = asyncio.Lock()
 
 # Curated prompts for the 8 seeded popular cities — produces consistently
 # good results.  For any city not listed, falls back to a generic prompt.
@@ -53,12 +57,6 @@ LANDMARK_HINTS = {
 }
 
 
-def _slug(city: str) -> str:
-    safe = re.sub(r"[^A-Za-z0-9가-힣]+", "_", city.strip())[:32] or "x"
-    h = hashlib.md5(city.encode("utf-8")).hexdigest()[:8]
-    return f"{safe}_{h}"
-
-
 def _build_prompt(city: str) -> str:
     subject = LANDMARK_HINTS.get(city.strip(), f"the most iconic landmark and scenery of {city}")
     return (
@@ -70,19 +68,55 @@ def _build_prompt(city: str) -> str:
     )
 
 
-@router.get("/landmark/{city}")
-async def get_landmark_image(city: str):
-    """Return a PNG of the city's famous landmark.  Cached forever per city."""
-    if not city or len(city) > 80:
-        raise HTTPException(400, "Invalid city")
+def _png_response(content: bytes) -> Response:
+    return Response(
+        content=content,
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=2592000, immutable"},
+    )
 
-    cached = LANDMARK_DIR / f"{_slug(city)}.png"
-    if cached.exists():
-        return FileResponse(
-            cached,
-            media_type="image/png",
-            headers={"Cache-Control": "public, max-age=2592000, immutable"},
-        )
+
+def _load_cached(db: Session, city: str) -> bytes | None:
+    row = db.get(LandmarkImage, city)
+    return row.content if row else None
+
+
+async def _generate(city: str) -> bytes:
+    from openai import AsyncOpenAI
+
+    model = settings.openai_image_model
+    logger.info("[landmark] generating image for %s via %s", city, model)
+    client = AsyncOpenAI(api_key=settings.openai_api_key)
+    gen_kwargs = dict(model=model, prompt=_build_prompt(city), size="1024x1024", n=1)
+    # dall-e-* takes quality="standard"; gpt-image-* rejects it (uses low/medium/high/auto)
+    if model.startswith("dall-e"):
+        gen_kwargs["quality"] = "standard"
+    res = await client.images.generate(**gen_kwargs)
+    item = res.data[0]
+
+    # gpt-image-* returns base64 (b64_json); dall-e-* returns a short-lived URL.
+    b64 = getattr(item, "b64_json", None)
+    if b64:
+        return base64.b64decode(b64)
+    url = getattr(item, "url", None)
+    if not url:
+        raise ValueError("image response had neither b64_json nor url")
+    async with httpx.AsyncClient(timeout=30) as dl:
+        r = await dl.get(url)
+        r.raise_for_status()
+    return r.content
+
+
+@router.get("/landmark/{city}")
+async def get_landmark_image(city: str, db: Session = Depends(get_db)):
+    """Return a PNG of the city's famous landmark.  Cached forever per city."""
+    city = city.strip()
+    if city not in LANDMARK_HINTS:
+        raise HTTPException(404, "No landmark image for this city")
+
+    cached = _load_cached(db, city)
+    if cached:
+        return _png_response(cached)
 
     if not settings.openai_api_key:
         raise HTTPException(
@@ -90,43 +124,18 @@ async def get_landmark_image(city: str):
             detail="OPENAI_API_KEY not configured — AI image generation unavailable.",
         )
 
-    model = settings.openai_image_model
-    prompt = _build_prompt(city)
-    logger.info("[landmark] generating image for %s via %s — prompt=%r", city, model, prompt[:80])
+    # 카드 8장이 동시에 요청해도 도시별로 한 번만 생성되도록 직렬화한다.
+    async with _generate_lock:
+        cached = _load_cached(db, city)
+        if cached:
+            return _png_response(cached)
+        try:
+            content = await _generate(city)
+            db.add(LandmarkImage(city=city, content=content))
+            db.commit()
+        except Exception:
+            db.rollback()
+            logger.exception("[landmark] generation failed for %s", city)
+            raise HTTPException(503, "Image generation failed")
 
-    try:
-        from openai import AsyncOpenAI
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
-        gen_kwargs = dict(model=model, prompt=prompt, size="1024x1024", n=1)
-        # dall-e-* takes quality="standard"; gpt-image-* rejects it (uses low/medium/high/auto)
-        if model.startswith("dall-e"):
-            gen_kwargs["quality"] = "standard"
-        res = await client.images.generate(**gen_kwargs)
-        item = res.data[0]
-    except Exception as e:
-        logger.exception("[landmark] OpenAI generation failed for %s", city)
-        raise HTTPException(503, f"Image generation failed: {e}")
-
-    # gpt-image-* returns base64 (b64_json); dall-e-* returns a short-lived URL.
-    try:
-        b64 = getattr(item, "b64_json", None)
-        if b64:
-            import base64
-            cached.write_bytes(base64.b64decode(b64))
-        else:
-            url = getattr(item, "url", None)
-            if not url:
-                raise ValueError("image response had neither b64_json nor url")
-            async with httpx.AsyncClient(timeout=30) as dl:
-                r = await dl.get(url)
-                r.raise_for_status()
-            cached.write_bytes(r.content)
-    except Exception as e:
-        logger.exception("[landmark] failed to cache image for %s", city)
-        raise HTTPException(503, f"Failed to cache image: {e}")
-
-    return FileResponse(
-        cached,
-        media_type="image/png",
-        headers={"Cache-Control": "public, max-age=2592000, immutable"},
-    )
+    return _png_response(content)
