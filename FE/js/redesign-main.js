@@ -18,6 +18,9 @@ import { initSettings } from './redesign-settings.js';
 import { initMap, renderMap } from './redesign-map.js';
 import { initMyPages } from './redesign-my-pages.js';
 import { initSubscription } from './redesign-subscription.js';
+import { initTripTools } from './redesign-trip-tools.js';
+import { initCollab } from './redesign-collab.js';
+import { initAppShell } from './redesign-app-shell.js';
 
 /** Shared app state (mutable, observable via custom events) */
 export const appState = {
@@ -149,6 +152,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   initMap(appState);
   initMyPages(appState);
   initSubscription();
+  initTripTools(appState);
+  initCollab(appState, renderSchedule);
+  initAppShell();
 
   // 5) Initial paint
   renderHomeRoadmaps();

@@ -10,7 +10,7 @@
  */
 
 import { navigate } from './redesign-navigation.js';
-import { api } from './redesign-api-adapter.js';
+import { api, trackEvent } from './redesign-api-adapter.js';
 import {
   el, $, $$, formatCurrency, showToast,
   getSchedulePlaceName, getScheduleCategory, getScheduleAddress, normalizeScheduleItem,
@@ -67,6 +67,7 @@ export function initSchedule(state) {
   $('#editBackdrop')?.addEventListener('click', _closeEdit);
   $('#editSave')?.addEventListener('click', _commitEdit);
   $('#editDelete')?.addEventListener('click', _deleteEdit);
+  $('#editSwap')?.addEventListener('click', _suggestAlternatives);
 
   document.addEventListener('redesign:nav', (e) => {
     if (e.detail.page === 'schedule') renderSchedule();
@@ -337,6 +338,8 @@ function _renderTimeline(g) {
 
 }
 
+const _SWAP_QUERY = { 식사: '맛집', 카페: '인기 카페', 쇼핑: '쇼핑 명소', 관광: '인기 명소', 액티비티: '인기 체험' };
+
 function _actKey(di, ai) { return `${di}_${ai}`; }
 function _actCost(di, ai, fallback) {
   const k = _actKey(di, ai);
@@ -481,6 +484,28 @@ async function _searchPlacesForEdit(q, seq) {
   }
 }
 
+/** 같은 도시의 같은 종류 장소를 추천한다.  이미 일정에 있는 곳은 뺀다. */
+async function _suggestAlternatives() {
+  const g = appState.generated;
+  if (!editing || !g) return;
+  const current = g.days[editing.di]?.activities[editing.ai];
+  const query = _SWAP_QUERY[current?.category] || '인기 명소';
+  const used = new Set(g.days.flatMap(d => d.activities.map(a => a.name)));
+  const seq = ++_editSearchSeq;
+  const sugg = $('#editSuggestions');
+  if (sugg) { sugg.hidden = false; sugg.innerHTML = '<div class="ps-loading">추천 장소를 찾는 중…</div>'; }
+  try {
+    const res = await api.searchPlaces({ query: `${g.city} ${query}`, language: 'ko', max_results: 12 });
+    if (seq !== _editSearchSeq) return;
+    _renderEditSuggestions((res?.places || []).filter(p =>
+      Number.isFinite(p.latitude) && Number.isFinite(p.longitude) && !used.has(p.name)));
+  } catch (err) {
+    if (seq !== _editSearchSeq) return;
+    console.warn('[edit] alternatives failed:', err?.message);
+    _renderEditSuggestions([]);
+  }
+}
+
 function _renderEditSuggestions(places) {
   const sugg = $('#editSuggestions');
   if (!sugg) return;
@@ -531,6 +556,7 @@ function _openEdit(di, ai) {
   $('#editPlaceHint')   && ($('#editPlaceHint').hidden = true);
   $('#editSheetTitle')  && ($('#editSheetTitle').textContent = '장소 편집');
   $('#editDelete')      && ($('#editDelete').textContent = '삭제');
+  $('#editSwap')        && ($('#editSwap').hidden = a.category === '이동' || a.category === '숙박');
   $('#editBackdrop').hidden = false;
   $('#editSheet').hidden = false;
   _bindEditSearch();
@@ -983,6 +1009,7 @@ function _shareText(g) {
 async function _share() {
   const g = appState.generated;
   if (!g) { showToast('공유할 일정이 없어요'); return; }
+  trackEvent('trip_shared');
   const text = _shareText(g);
   const link = _shareLink(g);
   if (navigator.share) {

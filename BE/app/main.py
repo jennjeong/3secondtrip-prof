@@ -2,10 +2,11 @@ import os
 
 """FastAPI 진입점 — 모든 라우터 등록 + CORS + DB 초기화."""
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.error_alert import send_error_alert
 from app.db.init_db import init_db
 
 # 라우터
@@ -26,6 +27,8 @@ from app.routers import flights as flights_router
 from app.routers import images as images_router
 from app.routers import openai_proxy as openai_router
 from app.routers import admin as admin_router
+from app.routers import shared_trips as shared_trips_router
+from app.routers import events as events_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
@@ -49,6 +52,16 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+
+@app.middleware("http")
+async def alert_on_server_error(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as e:
+        route = getattr(request.scope.get("route"), "path", "unknown")
+        await send_error_alert(route, type(e).__name__)
+        raise
 
 
 @app.on_event("startup")
@@ -79,6 +92,8 @@ app.include_router(flights_router.router)
 app.include_router(images_router.router)
 app.include_router(openai_router.router)
 app.include_router(admin_router.router)
+app.include_router(shared_trips_router.router)
+app.include_router(events_router.router)
 
 
 @app.get("/api/config/maps")

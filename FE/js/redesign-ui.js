@@ -41,6 +41,12 @@ export function el(tag, attrs = {}, children = []) {
   return node;
 }
 
+/** innerHTML 에 넣는 값은 반드시 이 함수를 거친다(공유 링크로 들어온 값일 수 있음). */
+export function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 export function formatCurrency(value, currency = 'KRW') {
   const n = Number(value) || 0;
   try { return new Intl.NumberFormat('ko-KR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n); }

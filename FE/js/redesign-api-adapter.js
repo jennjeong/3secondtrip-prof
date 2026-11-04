@@ -207,6 +207,11 @@ export const api = {
   // Tolerant: 404/501 → null so the trip flow falls back to the estimate formula.
   searchFlights: (payload) => tolerant(apiRequest('/api/flights/search', { method: 'POST', body: JSON.stringify(payload) })),
 
+  // ===== 함께 편집 — 토큰을 아는 사람만 접근 =====
+  createSharedTrip: (payload) => apiRequest('/api/shared-trips', { method: 'POST', body: JSON.stringify(payload) }),
+  getSharedTrip:    (token) => apiRequest(`/api/shared-trips/${encodeURIComponent(token)}`),
+  updateSharedTrip: (token, payload) => apiRequest(`/api/shared-trips/${encodeURIComponent(token)}`, { method: 'PUT', body: JSON.stringify(payload) }),
+
   // ===== Google Maps proxy — server-side keys, never exposed =====
   searchPlaces: (payload) => apiRequest('/api/places/search', { method: 'POST', body: JSON.stringify(payload) }),
   computeRoute: (payload) => apiRequest('/api/routes',        { method: 'POST', body: JSON.stringify(payload) }),
@@ -216,6 +221,11 @@ export const api = {
 };
 
 export const API_URL = API_BASE_URL;
+
+/** 이용 통계 — 실패해도 사용자 동작에 영향을 주지 않는다. */
+export function trackEvent(name) {
+  apiRequest('/api/events', { method: 'POST', body: JSON.stringify({ name }), keepalive: true }).catch(() => {});
+}
 
 /* ============ Bridge to legacy frontend (if mounted side-by-side) ============
  * Some installs include the original ../../js/api.js loaded by the old shell.

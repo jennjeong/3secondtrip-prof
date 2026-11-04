@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     # ── SerpApi — Google Hotels (실시간 1박 요금, server-side only) ───
     serpapi_api_key: str = ""
 
+    # ── 서버 오류 알림 (Discord 웹훅 주소, 없으면 보내지 않음) ─────────
+    error_webhook_url: str = ""
+
     # ── PII 컬럼 암호화 (Fernet 키 / .env DB_ENCRYPTION_KEY) ─────────
     db_encryption_key: str = ""
 

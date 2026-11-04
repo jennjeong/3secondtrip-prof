@@ -7,8 +7,19 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <meta name="format-detection" content="telephone=no"/>
-<meta name="description" content="3초 여행 — 모바일 여행 로드맵 플래너"/>
+<meta name="description" content="도시·날짜·예산만 고르면 실제 장소로 하루하루 여행 일정을 만들어 주는 모바일 여행 플래너, 3초 여행."/>
 <title>3초 여행 · 3 Second Trip</title>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="canonical" href="https://3secondtrip-prof.vercel.app/"/>
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="3초 여행"/>
+<meta property="og:title" content="3초 여행 · 3초 만에 나만의 여행 일정"/>
+<meta property="og:description" content="도시·날짜·예산만 고르면 실제 장소로 하루하루 일정을 만들어 드려요."/>
+<meta property="og:url" content="https://3secondtrip-prof.vercel.app/"/>
+<meta property="og:image" content="https://3secondtrip-prof.vercel.app/assets/og-image.png"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta name="twitter:card" content="summary_large_image"/>
 <link rel="icon" type="image/png" href="assets/favicon.png?v=3s"/>
 <link rel="apple-touch-icon" href="assets/favicon.png?v=3s"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -529,6 +540,9 @@
           <p class="cs-disclaimer" style="font-size:10.5px;color:var(--c-text-soft,#9a948a);margin:6px 0 0;text-align:center">※ 항공·숙소 등은 예상가이며 실제 요금과 다를 수 있어요</p>
         </div>
 
+        <div class="trip-tools" id="tripTools" hidden></div>
+        <div class="tool-card" id="collabPanel" hidden></div>
+
         <div class="booking-cta" id="bookingCta" hidden>
           <div>
             <p class="bcta-title">예약 준비하기</p>
@@ -1032,6 +1046,7 @@
       </div>
     </div>
     <footer class="sheet-foot sheet-foot--split">
+      <button type="button" class="btn btn-ghost" id="editSwap" hidden>다른 곳 추천</button>
       <button type="button" class="btn btn-ghost" id="editDelete">삭제</button>
       <button type="button" class="btn btn-primary btn-gradient" id="editSave">저장</button>
     </footer>
@@ -1109,11 +1124,13 @@
 </div>
 
   <!-- Backend URL configuration — empty for local dev (auto-detects localhost:8000).
-       For deployment (Netlify + Render), set the absolute https URL of your Render service:
-         window.__API_BASE_URL = "https://3sec-trip-backend.onrender.com";
+       배포 사이트는 아래 Render 서버 주소를 쓴다.
   -->
   <script>
-    window.__API_BASE_URL = "";
+    window.__API_BASE_URL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+      ? "" : "https://threesecondtrip-prof.onrender.com";
+    // 제휴사 파트너 ID. 값을 넣으면 숙소 링크가 해당 제휴 링크로 바뀐다.
+    window.__AFFILIATE = { bookingAid: "" };
   </script>
 <!-- Scripts: ES modules -->
 <script type="module" src="./js/redesign-main.js"></script>

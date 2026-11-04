@@ -11,7 +11,7 @@
  * 페이지 링크를 달고, 일정의 실제 값이 아닌 금액은 '예상가'로 표시한다.
  */
 
-import { api } from './redesign-api-adapter.js';
+import { api, trackEvent } from './redesign-api-adapter.js';
 import { el, $, formatCurrency, showToast } from './redesign-ui.js';
 
 const CATS = {
@@ -61,6 +61,7 @@ export function initBooking(state) {
 
 function _open() {
   if (!appState?.generated) { showToast('일정이 없어요'); return; }
+  trackEvent('booking_opened');
   items = _buildItems(appState.generated);
   selected = new Set();
   activeFilter = 'all';
@@ -89,7 +90,11 @@ function _googleFlightsUrl(g) {
   return 'https://www.google.com/travel/flights?q='
     + encodeURIComponent(`Flights from ${from} to ${g.city}${dates}`);
 }
-function _googleHotelsUrl(g, query) {
+function _hotelUrl(g, query) {
+  const aid = window.__AFFILIATE?.bookingAid;
+  if (aid) {
+    return `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(g.city)}&aid=${encodeURIComponent(aid)}`;
+  }
   return 'https://www.google.com/travel/search?q=' + encodeURIComponent(query || `${g.city} 호텔`);
 }
 function _googleMapsUrl(query) {
@@ -227,7 +232,7 @@ function _buildItems(g) {
     price: userPerNight * nights,
     perNight: userPerNight, nights, hotelPref,
     required: true, sub: '★ 일정 선택 기준',
-    estimated: g.hotelPriceSource !== 'serpapi', url: _googleHotelsUrl(g, userHotelName),
+    estimated: g.hotelPriceSource !== 'serpapi', url: _hotelUrl(g, userHotelName),
   });
   // 2) 가격대별 대안 (저렴·중간·고급)
   const altHotels = [
@@ -241,7 +246,7 @@ function _buildItems(g) {
       desc: `${nights}박 · 1박 ${h.perNight.toLocaleString('ko-KR')}원 · ${h.desc}`,
       price: h.perNight * nights,
       perNight: h.perNight, nights,
-      required: false, estimated: true, url: _googleHotelsUrl(g, h.name),
+      required: false, estimated: true, url: _hotelUrl(g, h.name),
     });
   });
 
@@ -330,8 +335,9 @@ function _rowEl(it) {
       el('div', { class: 'book-name' }, it.name),
       el('div', { class: 'book-desc' }, it.desc || ''),
       it.url ? el('a', {
-        class: 'book-link', href: it.url, target: '_blank', rel: 'noopener noreferrer',
-      }, '예약처 찾아보기 ↗') : null,
+        class: 'book-link', href: it.url, target: '_blank', rel: it.url.includes('aid=') ? 'noopener noreferrer sponsored' : 'noopener noreferrer',
+        onclick: () => trackEvent('booking_link_clicked'),
+      }, it.url.includes('aid=') ? '제휴 링크로 찾아보기 ↗' : '예약처 찾아보기 ↗') : null,
     ]),
     el('div', { style: { display:'flex', alignItems:'center', gap:'10px' } }, [
       el('div', { class: 'book-price' }, [

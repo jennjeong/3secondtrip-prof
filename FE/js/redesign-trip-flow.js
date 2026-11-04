@@ -6,10 +6,10 @@
  */
 
 import { navigate } from './redesign-navigation.js';
-import { el, $, $$, setActiveByData, setMultiActive, diffDays, showToast, formatCurrency } from './redesign-ui.js';
+import { el, $, $$, setActiveByData, setMultiActive, diffDays, showToast, formatCurrency, escapeHtml } from './redesign-ui.js';
 import { CITIES, listCountries, citiesIn, searchCities, findCity } from './redesign-cities.js';
 import { openCalendar } from './redesign-calendar.js';
-import { api } from './redesign-api-adapter.js';
+import { api, trackEvent } from './redesign-api-adapter.js';
 
 const CONCEPTS = [
   { key: '가성비',   emoji: '💰', desc: '합리적인 가격으로 알차게' },
@@ -546,16 +546,21 @@ function _refreshAirlineChipFilter() {
   });
 }
 
+const _STEP_EVENTS = { 1: 'trip_step_city', 2: 'trip_step_dates', 3: 'trip_step_concept' };
+
 function _bindStepHandlers() {
   $('#stepPrev')?.addEventListener('click', () => { if (step > 1) { step--; _showStep(); } else { navigate('home'); } });
   $('#stepNext')?.addEventListener('click', () => {
     if (!_validateStep()) return;
+    trackEvent(_STEP_EVENTS[step]);
     if (step < 4) { step++; _showStep(); }
   });
   $('#stepGenerate')?.addEventListener('click', async () => {
     if (!_validateStep()) return;
+    trackEvent('trip_step_budget');
     try {
       await _generateSchedule();
+      trackEvent('trip_created');
     } catch (e) {
       console.error('[trip-flow] 일정 생성 실패:', e);
       showToast('일정 생성 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.');
@@ -644,7 +649,7 @@ function _refreshBudget() {
     factors.push(_companionLabelShort(t.companion));
     const sm = _seasonMult(t.startDate);
     factors.push(sm > 1.2 ? '성수기' : (sm < 1 ? '비수기' : '준성수기'));
-    if (t.concept) factors.push(`${t.concept} 컨셉`);
+    if (t.concept) factors.push(`${escapeHtml(t.concept)} 컨셉`);
     // breakdown — 왕복항공 + 숙소(1박×n박) + 타 장소 (계획 페이지와 동일 공식)
     // 1박 단가는 hotelMW/박수로 환산 — 방 수가 반영된 실효 단가라 합계와 일치.
     const bd = t._budgetBreakdown || {};
@@ -751,14 +756,14 @@ function _refreshSummary() {
   const amens = (h.amenities || []).map(x => hotelAmenLbl[x] || x).join(', ') || '편의시설 -';
 
   s.innerHTML = `
-    <strong>${t.cityName || '도시 미선택'}</strong> · ${t.days || '-'}일 ·
-    <strong>${t.concept || '컨셉 미선택'}</strong><br/>
-    예산 <strong>${t.budget||0}만원</strong> (${t.budgetLevel || '-'}) · ${t.currency}<br/>
-    동행 ${_companionLabel(t.companion)} · 스타일 ${t.styles.length ? t.styles.join(', ') : '-'}<br/>
-    ✈ ${routeLbl} · ${clsLbl}<br/>
-    ✈ ${airlines}<br/>
-    🏨 ${types} · ${locs}<br/>
-    🏨 ${amens}
+    <strong>${escapeHtml(t.cityName || '도시 미선택')}</strong> · ${escapeHtml(t.days || '-')}일 ·
+    <strong>${escapeHtml(t.concept || '컨셉 미선택')}</strong><br/>
+    예산 <strong>${escapeHtml(t.budget||0)}만원</strong> (${escapeHtml(t.budgetLevel || '-')}) · ${escapeHtml(t.currency)}<br/>
+    동행 ${escapeHtml(_companionLabel(t.companion))} · 스타일 ${escapeHtml(t.styles.length ? t.styles.join(', ') : '-')}<br/>
+    ✈ ${escapeHtml(routeLbl)} · ${escapeHtml(clsLbl)}<br/>
+    ✈ ${escapeHtml(airlines)}<br/>
+    🏨 ${escapeHtml(types)} · ${escapeHtml(locs)}<br/>
+    🏨 ${escapeHtml(amens)}
   `;
 }
 

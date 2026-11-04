@@ -2515,3 +2515,31 @@
   margin-top: 1px;
 }
 .day-chip.is-active .day-chip-cost { color: rgba(255,255,255,.9); }
+
+/* ============ Trip tools ============ */
+.tool-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 12px 0;
+}
+.tool-title { font-size: 15px; font-weight: 700; color: var(--c-text); margin: 0 0 10px; }
+.tool-note { font-size: 12px; color: var(--c-text-soft); margin: 6px 0 0; line-height: 1.5; }
+.tool-weather { display: grid; gap: 8px; font-size: 13px; color: var(--c-text-soft); }
+.tool-day { display: grid; grid-template-columns: 52px 1fr auto auto; gap: 10px; align-items: center; color: var(--c-text); }
+.tool-day .tool-note { margin: 0; }
+.tool-form { display: grid; grid-template-columns: 1fr 96px auto; gap: 8px; }
+.tool-form .form-input { min-width: 0; }
+.tool-list { display: grid; gap: 8px; margin-top: 8px; }
+.tool-row { display: grid; grid-template-columns: 1fr auto 28px; gap: 8px; align-items: center; font-size: 13px; color: var(--c-text); overflow-wrap: anywhere; }
+.tool-remove { width: 28px; height: 28px; border: 0; background: none; color: var(--c-text-soft); font-size: 18px; cursor: pointer; }
+.tool-check { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--c-text); }
+.tool-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+@media print {
+  .app-topbar, .bottom-tab-nav, .schedule-actions, .btn-edit, .schedule-map-card,
+  .trip-tools, #collabPanel, .booking-cta, #reviewSection, .bottom-sheet { display: none !important; }
+  body, .app-shell, .page-scroll { background: #fff; overflow: visible !important; height: auto !important; }
+  .timeline-item { break-inside: avoid; }
+}
