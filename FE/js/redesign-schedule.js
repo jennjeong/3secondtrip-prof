@@ -82,6 +82,25 @@ export function initSchedule(state) {
 }
 
 /* ============ Render ============ */
+// 합계가 바뀔 때만 숫자가 새 값까지 올라간다. 움직임을 줄인 기기에서는 바로 표시한다.
+function _countTo(node, value, format) {
+  const from = node._countValue ?? 0;
+  node._countValue = value;
+  cancelAnimationFrame(node._countFrame);
+  if (from === value || matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden) {
+    node.textContent = format(value);
+    return;
+  }
+  const start = performance.now();
+  const step = (now) => {
+    const t = Math.min((now - start) / 600, 1);
+    const eased = 1 - (1 - t) ** 3;
+    node.textContent = format(Math.round(from + (value - from) * eased));
+    if (t < 1) node._countFrame = requestAnimationFrame(step);
+  };
+  node._countFrame = requestAnimationFrame(step);
+}
+
 export function renderSchedule() {
   const g = appState?.generated;
   const empty = $('#scheduleEmpty');
@@ -289,7 +308,7 @@ function _renderTimeline(g) {
           type: 'button',
           class: 'map-button',
           onclick: (e) => { e.stopPropagation(); _openMap(a); },
-        }, '🗺 지도'),
+        }, '지도'),
         el('button', {
           type: 'button',
           class: 'edit-button',
@@ -326,7 +345,7 @@ function _renderTimeline(g) {
         if (pill) {
           const lab = CONGESTION_LABEL[ins.congestion] || CONGESTION_LABEL.normal;
           pill.classList.add('lvl-' + ins.congestion);
-          pill.textContent = `${lab.icon} ${lab.ko}`;
+          pill.textContent = lab.ko;
         }
         if (src) src.textContent = ins.source;
       } catch (_) {}
@@ -393,7 +412,7 @@ function _renderCostSummary(g) {
   if ($('#csDayLabel')) $('#csDayLabel').textContent = `Day ${activeDay + 1}`;
   if ($('#csDayCost'))  $('#csDayCost').textContent  = formatCurrency(todayCost, g.currency);
   $('#csBudget').textContent = formatCurrency(budgetKRW, g.currency);
-  $('#csTotal').textContent  = formatCurrency(bd.total, g.currency);
+  _countTo($('#csTotal'), bd.total, v => formatCurrency(v, g.currency));
 
   // 항목별 분해 표시: 왕복항공 + 숙소(1박×n박) + 타 장소
   const bdEl = $('#csBreakdown');
@@ -967,7 +986,7 @@ function _renderAiSummary(g) {
   } else if (_aiFailed) {
     card.appendChild(el('button', {
       type: 'button', class: 'ai-sum-btn',
-      style: 'font-size:14px;font-weight:600;color:#0b0e11;background:#fcd535;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;',
+      style: 'font-size:14px;font-weight:600;color:#fff;background:#2B3440;border:none;border-radius:12px;padding:10px 16px;cursor:pointer;',
       onclick: _genAiSummary,
     }, '✨ AI 요약 다시 시도'));
   } else {

@@ -36,6 +36,9 @@ img, svg, video { max-width: 100%; height: auto; }
     --app-side-padding: 16px;
   }
   .roadmap-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* 마이 메뉴 — 자주 쓰는 칸은 크게 */
+  .my-grid .my-tile[data-my-nav="saved"] { grid-column: span 2; }
+  .my-grid .my-tile[data-my-nav="feedback"] { grid-column: span 3; flex-direction: row; justify-content: center; padding: 12px; }
 }
 
 /* ===== TABLET (768–1023px) ===== */
@@ -74,6 +77,13 @@ img, svg, video { max-width: 100%; height: auto; }
   .my-grid { grid-template-columns: repeat(6, 1fr); }
   .hero-card { min-height: 320px; padding: 40px; }
   .hero-title { font-size: 44px; }
+}
+
+/* ===== 일정 도구: 넓은 화면에서는 두 칸 ===== */
+@media (min-width: 768px) {
+  .trip-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .trip-tools .tool-card { margin: 0; }
+  .trip-tools { margin: 12px 0; }
 }
 
 /* ===== REDUCED MOTION ===== */

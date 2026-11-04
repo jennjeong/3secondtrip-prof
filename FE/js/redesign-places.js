@@ -89,7 +89,7 @@ function _synthetic(place, city, contextTime) {
   } else {
     cong = ((seed >> 5) % 3) === 0 ? 'busy' : (((seed >> 5) % 3) === 1 ? 'normal' : 'quiet');
   }
-  return { localRatio: Math.round(local * 100) / 100, congestion: cong, source: 'estimated · Foursquare/Google 추정' };
+  return { localRatio: Math.round(local * 100) / 100, congestion: cong, source: '추정값' };
 }
 
 function _hash(s) {

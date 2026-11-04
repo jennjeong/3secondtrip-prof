@@ -1452,23 +1452,11 @@ export async function regenerateSchedule() {
 
 /* ============ 생성 로딩 오버레이 (전체화면 스피너) ============ */
 function _showGenLoading(msg) {
-  if (!document.getElementById('genLoadingStyle')) {
-    const st = document.createElement('style'); st.id = 'genLoadingStyle';
-    st.textContent =
-      '#genLoadingOverlay{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;'
-      + 'align-items:center;justify-content:center;gap:16px;background:rgba(255,255,255,.94);'
-      + "backdrop-filter:blur(2px);font-family:'Pretendard',sans-serif;}"
-      + '#genLoadingOverlay .gl-spin{width:52px;height:52px;border-radius:50%;'
-      + 'border:5px solid #f1f3f5;border-top-color:#fcd535;animation:glspin .8s linear infinite;}'
-      + '#genLoadingOverlay .gl-msg{font-size:16px;font-weight:700;color:#0b0e11;}'
-      + '#genLoadingOverlay .gl-sub{font-size:13px;color:#707a8a;}'
-      + '@keyframes glspin{to{transform:rotate(360deg)}}';
-    document.head.appendChild(st);
-  }
   let ov = document.getElementById('genLoadingOverlay');
   if (!ov) {
     ov = document.createElement('div'); ov.id = 'genLoadingOverlay';
-    ov.innerHTML = '<div class="gl-spin"></div>'
+    ov.innerHTML = '<svg class="gl-route" viewBox="0 0 120 80" fill="none" aria-hidden="true">'
+      + '<path pathLength="1" d="M10 68 C50 68 86 50 110 12"/></svg>'
       + '<div class="gl-msg" id="glMsg">일정을 만드는 중…</div>'
       + '<div class="gl-sub">현지 데이터로 동선을 짜고 있어요</div>';
     document.body.appendChild(ov);

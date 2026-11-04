@@ -264,7 +264,7 @@
 }
 .tab-button .tab-ico { transition: transform .15s; }
 .tab-button.is-active { color: var(--c-primary-strong); }
-.tab-button.is-active .tab-ico { transform: translateY(-1px) scale(1.06); }
+.tab-button.is-active .tab-ico { transform: translateY(-1px); }
 .tab-button:active .tab-ico { transform: scale(.94); }
 
 .tab-fab-button {
