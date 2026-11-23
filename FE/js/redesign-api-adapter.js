@@ -119,6 +119,7 @@ export function handleOAuthCallbackToken() {
  * "stub-tolerant" calls below swallow 404/501 from optional backends so
  * the UI degrades to local-cache mode.
  */
+let _featuresPromise = null;
 const tolerant = (p) => p.catch((e) => {
   if (e && (e.status === 404 || e.status === 501)) return null;
   throw e;
@@ -198,6 +199,11 @@ export const api = {
 
   // ===== OpenAI proxy — API key stays on backend =====
   openaiChat: (prompt) => apiRequest('/openai/chat', { method: 'POST', body: JSON.stringify({ prompt }) }),
+  // 서버에 연결된 외부 기능(실시간 항공·숙소 요금, AI 요약). 결과는 한 번만 받아 둔다.
+  // 예전 서버처럼 이 주소가 없으면 모두 켜진 것으로 보고, 실패하면 각 호출의 대체 처리가 맡는다.
+  features: () => (_featuresPromise ||= apiRequest('/api/features')
+    .then(f => ({ liveFlights: !!f.live_flights, liveHotels: !!f.live_hotels, ai: !!f.ai_summary, checkedAt: new Date().toISOString() }))
+    .catch(() => ({ liveFlights: true, liveHotels: true, ai: true, checkedAt: null }))),
 
   // ===== SerpApi Google Hotels proxy — real nightly prices, server-side key =====
   // Tolerant: 404 (no results) / 501 → null so the trip flow falls back to estimate.

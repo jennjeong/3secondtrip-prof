@@ -2516,3 +2516,93 @@
   body, .app-shell, .page-scroll { background: #fff; overflow: visible !important; height: auto !important; }
   .timeline-item { break-inside: avoid; }
 }
+
+/* ============ 예산 — 항목·숫자 행 ============ */
+.money-rows { margin: 0; display: grid; gap: 2px; }
+.money-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 7px 0; border-bottom: 1px solid var(--c-divider);
+}
+.money-row:last-child { border-bottom: 0; }
+.money-row dt { margin: 0; font-size: 14px; color: var(--c-text-soft); }
+.money-row dt small { display: block; font-size: 12px; color: var(--c-text-mute); margin-top: 1px; }
+.money-row dd { margin: 0; font-size: 15px; font-weight: 700; color: var(--c-text); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.money-row--total dt { color: var(--c-text); font-weight: 700; }
+.money-row--total dd { font-size: 18px; font-weight: 800; }
+.money-row--over dt, .money-row--over dd { color: #B42318; }
+.money-row--under dd { color: #1F7A4D; }
+
+/* 결과 상단 예산 영역 */
+.budget-panel {
+  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-md);
+  padding: 14px 16px; margin: 0 0 14px;
+}
+.budget-panel.is-over { border-color: #F3C4BE; }
+.budget-panel-plan { margin: 10px 0 0; font-size: 14px; line-height: 1.55; color: var(--c-text); }
+.budget-notices { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.budget-notices li {
+  position: relative; padding-left: 14px; font-size: 13px; line-height: 1.55; color: var(--c-text-soft);
+}
+.budget-notices li::before { content: ''; position: absolute; left: 0; top: .6em; width: 5px; height: 5px; border-radius: 50%; background: var(--c-blue); }
+.budget-alts { margin-top: 12px; display: grid; gap: 8px; }
+.budget-alts-title { margin: 0 0 2px; font-size: 14px; font-weight: 700; }
+.budget-alt {
+  display: grid; gap: 2px; text-align: left; width: 100%; min-height: 44px;
+  padding: 10px 12px; border: 1px solid var(--c-border); border-radius: 12px; background: var(--c-surface-2);
+}
+.budget-alt:hover { border-color: var(--c-blue); }
+.budget-alt:focus-visible { outline: 2px solid var(--c-blue); outline-offset: 2px; }
+.budget-alt-label { font-size: 15px; font-weight: 700; color: var(--c-text); }
+.budget-alt-detail { font-size: 13px; color: var(--c-text-soft); }
+.budget-alt-total { font-size: 13px; font-weight: 600; color: #B42318; }
+.budget-alt.is-fit .budget-alt-total { color: #1F7A4D; }
+
+.cost-summary-title { margin: 0 0 6px; font-size: 16px; font-weight: 800; }
+.cs-disclaimer { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--c-text-mute); }
+
+/* 날짜 탭: '1일차 · 11/24' 와 금액이 겹치지 않게 두 줄 */
+.day-chip-label { display: block; white-space: nowrap; }
+.day-chip .day-chip-cost { display: block; white-space: nowrap; font-size: 11px; }
+
+.sample-badge {
+  margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700;
+  background: #FFF4DA; color: #7A4B00;
+}
+
+/* ============ 예산 단계 ============ */
+.budget-trip-summary {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px;
+  padding: 12px 14px; margin: 0 0 18px; border-radius: 12px; background: var(--c-surface-2); font-size: 14px;
+}
+.budget-trip-summary span { color: var(--c-text-soft); }
+.budget-field { margin-bottom: 20px; }
+.form-hint { margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: var(--c-text-soft); }
+.form-error { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: #B42318; }
+.budget-input[aria-invalid="true"] { border-color: #B42318; }
+.budget-level-badge { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--c-text); }
+.budget-level-badge:empty { display: none; }
+.budget-includes { border: 0; padding: 0; margin: 0 0 20px; }
+.budget-includes legend { padding: 0; margin-bottom: 6px; }
+.check-row { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; }
+.check-row input { width: 20px; height: 20px; accent-color: var(--c-primary); }
+.check-row small { color: var(--c-text-mute); font-size: 13px; margin-left: 4px; }
+.budget-suggest {
+  border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 14px 16px; margin: 0 0 16px; background: var(--c-surface);
+}
+.budget-suggest-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }
+.budget-suggest-head .form-section-title { margin: 0; }
+.budget-marks button { display: grid; gap: 2px; text-align: left; }
+.bm-desc { font-size: 12px; line-height: 1.4; color: var(--c-text-mute); font-weight: 500; }
+.form-details { border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 0 16px; margin: 0 0 12px; background: var(--c-surface); }
+.form-details > summary { cursor: pointer; list-style: none; min-height: 48px; display: flex; align-items: center; justify-content: space-between; margin: 0; }
+.form-details > summary::-webkit-details-marker { display: none; }
+.form-details > summary::after { content: '열기'; font-size: 13px; font-weight: 600; color: var(--c-text-soft); }
+.form-details[open] > summary::after { content: '닫기'; }
+.form-details[open] { padding-bottom: 14px; }
+.draft-banner {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 10px 14px; margin: 0 0 14px; border-radius: 12px; background: var(--c-surface-2); font-size: 14px;
+}
+.btn-text { min-height: 44px; padding: 0 4px; font-size: 14px; font-weight: 700; color: var(--c-blue); text-decoration: underline; text-underline-offset: 3px; }
+.check-row input { -webkit-appearance: auto; appearance: auto; flex: 0 0 auto; }
+.budget-field .budget-level-badge { text-align: left; font-weight: 500; }

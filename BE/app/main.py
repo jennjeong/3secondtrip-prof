@@ -29,6 +29,7 @@ from app.routers import openai_proxy as openai_router
 from app.routers import admin as admin_router
 from app.routers import shared_trips as shared_trips_router
 from app.routers import events as events_router
+from app.routers import features as features_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
@@ -75,6 +76,7 @@ def health():
 
 
 # ── Routers ─────────────────────────────────────────────────────────
+app.include_router(features_router.router)
 app.include_router(auth_router.router)
 app.include_router(users_router.router)
 app.include_router(trips_router.router)

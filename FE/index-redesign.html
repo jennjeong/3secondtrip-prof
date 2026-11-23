@@ -13,7 +13,7 @@
 <link rel="canonical" href="https://3secondtrip-prof.vercel.app/"/>
 <meta property="og:type" content="website"/>
 <meta property="og:site_name" content="3초 여행"/>
-<meta property="og:title" content="3초 여행 · 3초 만에 나만의 여행 일정"/>
+<meta property="og:title" content="3초 여행 · 나만의 여행 일정을 빠르게"/>
 <meta property="og:description" content="도시·날짜·예산만 고르면 실제 장소로 하루하루 일정을 만들어 드려요."/>
 <meta property="og:url" content="https://3secondtrip-prof.vercel.app/"/>
 <meta property="og:image" content="https://3secondtrip-prof.vercel.app/assets/og-image.png"/>
@@ -68,8 +68,8 @@
           </div>
           <div class="hero-text">
             <p class="hero-greet" id="homeGreet">오늘은 어디로 떠나볼까요?</p>
-            <h1 class="hero-title"><span>3초만에</span><br/><span>나만의 여행 일정</span></h1>
-            <p class="hero-sub">현지 데이터와 AI가 만드는 맞춤형 로드맵</p>
+            <h1 class="hero-title"><span>나만의 여행 일정을</span><br/><span>빠르게</span></h1>
+            <p class="hero-sub">여행지, 날짜, 예산에 맞춰 하루씩 일정을 짜보세요</p>
           </div>
           <button type="button" class="hero-cta" data-nav-to="create-trip">
             새 여행 만들기
@@ -176,12 +176,12 @@
           <p class="page-sub">4단계로 완성하는 맞춤 일정</p>
         </div>
 
-        <div class="step-progress" id="tripStepProgress" aria-label="진행 단계">
-          <div class="step-dot is-active" data-step="1">1<span>도시</span></div>
+        <div class="step-progress" id="tripStepProgress" role="group" aria-label="전체 4단계 중 1단계 · 여행지">
+          <div class="step-dot is-active" data-step="1">1<span>여행지</span></div>
           <div class="step-line"></div>
-          <div class="step-dot" data-step="2">2<span>일정</span></div>
+          <div class="step-dot" data-step="2">2<span>날짜·인원</span></div>
           <div class="step-line"></div>
-          <div class="step-dot" data-step="3">3<span>컨셉</span></div>
+          <div class="step-dot" data-step="3">3<span>여행 스타일</span></div>
           <div class="step-line"></div>
           <div class="step-dot" data-step="4">4<span>예산</span></div>
         </div>
@@ -282,47 +282,70 @@
 
         <!-- Step 4 — Budget (direct input + smart suggestion) -->
         <div class="step-pane" data-step-pane="4" hidden>
-          <h3 class="step-h">예산을 알려주세요</h3>
+          <h3 class="step-h">예산을 알려 주세요</h3>
+          <div class="budget-trip-summary" id="budgetTripSummary" aria-label="여행 요약"></div>
 
-          <div class="budget-input-wrap">
-            <input type="number" id="tripBudgetInput" class="budget-input" min="0" step="1" placeholder="0" inputmode="numeric"/>
-            <span class="bd-unit-fixed">만원</span>
+          <div class="form-row budget-field">
+            <label class="form-label" for="tripBudgetInput">총 여행 예산 <span class="form-label-meta">필수</span></label>
+            <p class="form-hint" id="budgetHelp">일행 전체가 쓸 금액이에요. 만원 단위로 입력해 주세요.</p>
+            <div class="budget-input-wrap">
+              <input type="text" id="tripBudgetInput" class="budget-input" inputmode="numeric" autocomplete="off"
+                     placeholder="예: 80" aria-describedby="budgetHelp budgetPerPerson budgetError" aria-required="true"/>
+              <span class="bd-unit-fixed">만원</span>
+            </div>
+            <p class="form-hint" id="budgetPerPerson" aria-live="polite"></p>
+            <p class="form-error" id="budgetError" role="alert" hidden></p>
+            <p class="budget-level-badge" id="budgetLevelBadge" aria-live="polite"></p>
           </div>
-          <div class="budget-level-badge" id="budgetLevelBadge">정도: -</div>
 
-          <div class="budget-suggest-row">
-            <div class="budget-suggest-text" id="budgetSuggestText">추천 예산 계산 중…</div>
-            <button type="button" class="btn btn-soft budget-apply" id="budgetApplyBtn">추천 적용</button>
-          </div>
+          <fieldset class="budget-includes">
+            <legend class="form-label">예산에 포함할 항목</legend>
+            <label class="check-row"><input type="checkbox" id="includeFlight" checked/> <span>항공권 <small id="includeFlightNote">왕복</small></span></label>
+            <label class="check-row"><input type="checkbox" id="includeHotel" checked/> <span>숙소 <small id="includeHotelNote"></small></span></label>
+            <p class="form-hint">식비·입장료·쇼핑·현지 교통은 항상 포함해요.</p>
+          </fieldset>
 
-          <div class="budget-marks" id="budgetMarks">
+          <section class="budget-suggest" aria-labelledby="budgetSuggestH">
+            <div class="budget-suggest-head">
+              <h4 class="form-section-title" id="budgetSuggestH">추천 예산</h4>
+              <button type="button" class="btn btn-soft budget-apply" id="budgetApplyBtn">추천 예산 적용</button>
+            </div>
+            <dl class="money-rows" id="budgetSuggestRows"></dl>
+            <p class="form-hint" id="budgetSuggestText"></p>
+          </section>
+
+          <div class="budget-marks" id="budgetMarks" role="group" aria-label="예산 수준 빠르게 고르기">
             <button type="button" data-budget-level="낮음">
-              <span class="bm-label">낮음</span>
+              <span class="bm-label">아껴서</span>
               <span class="bm-val" id="bmLow">-</span>
+              <span class="bm-desc">저가 항공·2성급·간단한 식사</span>
             </button>
             <button type="button" data-budget-level="보통">
               <span class="bm-label">보통</span>
               <span class="bm-val" id="bmMid">-</span>
+              <span class="bm-desc">일반 항공·3성급·현지 평균</span>
             </button>
             <button type="button" data-budget-level="높음">
-              <span class="bm-label">높음</span>
+              <span class="bm-label">넉넉하게</span>
               <span class="bm-val" id="bmHigh">-</span>
+              <span class="bm-desc">대형 항공사·4성급·좋은 식당</span>
             </button>
           </div>
 
           <div class="form-row">
-            <label class="form-label" for="tripCurrency">통화</label>
-            <select class="form-input" id="tripCurrency">
-              <option value="KRW">KRW · 원</option>
-              <option value="USD">USD · $</option>
-              <option value="JPY">JPY · ¥</option>
-              <option value="EUR">EUR · €</option>
-              <option value="THB">THB · ฿</option>
+            <label class="form-label" for="tripCurrency">결과 표시 통화</label>
+            <select class="form-input" id="tripCurrency" aria-describedby="currencyHelp">
+              <option value="KRW">원 (KRW)</option>
+              <option value="USD">달러 (USD)</option>
+              <option value="JPY">엔 (JPY)</option>
+              <option value="EUR">유로 (EUR)</option>
+              <option value="THB">바트 (THB)</option>
             </select>
+            <p class="form-hint" id="currencyHelp">예산은 원화로 입력해요. 다른 통화를 고르면 결과 금액을 그 통화로 환산해 보여 드려요. 환율 기준일도 함께 표시돼요.</p>
           </div>
           <!-- ───── 항공 옵션 ───── -->
-          <div class="form-section">
-            <h4 class="form-section-title">✈ 항공편 옵션</h4>
+          <details class="form-section form-details">
+            <summary class="form-section-title">항공편 세부 설정</summary>
 
             <label class="form-label">노선 종류</label>
             <div class="chip-row" id="flightRouteChips">
@@ -410,11 +433,11 @@
               <button type="button" class="chip" data-airline="에티오피아항공" data-airline-type="fsc">에티오피아항공</button>
               <button type="button" class="chip" data-airline="에어로플로트" data-airline-type="fsc">에어로플로트</button>
             </div>
-          </div>
+          </details>
 
           <!-- ───── 호텔 옵션 ───── -->
-          <div class="form-section">
-            <h4 class="form-section-title">🏨 숙소 옵션</h4>
+          <details class="form-section form-details">
+            <summary class="form-section-title">숙소 세부 설정</summary>
 
             <label class="form-label">숙소 유형 <span class="form-label-meta">중복 선택 가능</span></label>
             <div class="chip-row chip-row--wrap" id="hotelTypeChips">
@@ -453,7 +476,7 @@
               <button type="button" class="chip" data-hotel-amen="laundry">세탁 시설</button>
               <button type="button" class="chip" data-hotel-amen="kids">키즈 친화</button>
             </div>
-          </div>
+          </details>
 
           <div class="trip-summary" id="tripSummary"></div>
         </div>
@@ -461,7 +484,7 @@
         <div class="step-nav">
           <button type="button" class="btn btn-ghost" id="stepPrev">이전</button>
           <button type="button" class="btn btn-primary" id="stepNext">다음</button>
-          <button type="button" class="btn btn-primary btn-gradient" id="stepGenerate" hidden>일정 생성하기 ✨</button>
+          <button type="button" class="btn btn-primary btn-gradient" id="stepGenerate" hidden>일정 만들기</button>
         </div>
       </div>
     </section>
@@ -486,6 +509,14 @@
             </button>
           </div>
         </div>
+
+        <section class="budget-panel" id="budgetPanel" hidden aria-labelledby="budgetPanelH">
+          <h3 class="sr-only" id="budgetPanelH">예산과 예상 지출</h3>
+          <dl class="money-rows money-rows--panel" id="budgetPanelRows"></dl>
+          <p class="budget-panel-plan" id="budgetPanelPlan"></p>
+          <ul class="budget-notices" id="budgetNotices"></ul>
+          <div class="budget-alts" id="budgetAlts" hidden></div>
+        </section>
 
         <div class="day-row">
           <div class="day-chips" id="dayChips" role="tablist" aria-label="여행일"></div>
@@ -531,23 +562,11 @@
 
         <div class="timeline" id="scheduleTimeline" hidden></div>
 
-        <div class="cost-summary" id="costSummary" hidden>
-          <div class="cs-row cs-row--today">
-            <span class="cs-label">오늘 (<span id="csDayLabel">Day 1</span>)</span>
-            <span class="cs-val cs-day" id="csDayCost">0원</span>
-          </div>
-          <div class="cs-row">
-            <span class="cs-label">전체 합계</span>
-            <span class="cs-val cs-total" id="csTotal">0원</span>
-          </div>
-          <p class="cs-breakdown" id="csBreakdown" style="font-size:11px;color:var(--c-text-soft,#6b6555);margin:2px 0 0;text-align:right"></p>
-          <div class="cs-row">
-            <span class="cs-label">예산</span>
-            <span class="cs-val" id="csBudget">-</span>
-          </div>
-          <div class="cs-bar"><div class="cs-bar-fill" id="csBarFill"></div></div>
-          <p class="cs-disclaimer" style="font-size:10.5px;color:var(--c-text-soft,#9a948a);margin:6px 0 0;text-align:center">※ 항공·숙소 등은 예상가이며 실제 요금과 다를 수 있어요</p>
-        </div>
+        <section class="cost-summary" id="costSummary" hidden aria-labelledby="costSummaryH">
+          <h3 class="cost-summary-title" id="costSummaryH">비용 자세히 보기</h3>
+          <dl class="money-rows" id="costRows"></dl>
+          <p class="cs-disclaimer" id="costNote"></p>
+        </section>
 
         <div class="trip-tools" id="tripTools" hidden></div>
         <div class="tool-card" id="collabPanel" hidden></div>

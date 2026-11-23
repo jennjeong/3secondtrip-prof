@@ -29,3 +29,10 @@ def test_summary_requires_admin(client):
         db.query(User).filter(User.email == email).update({"is_admin": True})
         db.commit()
     assert client.get("/api/events/summary", headers=headers).status_code == 200
+
+
+def test_generation_events_are_accepted(client):
+    events._limit._hits.clear()
+    events._limit._all.clear()
+    for name in ("trip_generate_start", "trip_generate_done", "trip_generate_fail"):
+        assert client.post("/api/events", json={"name": name}).status_code == 204

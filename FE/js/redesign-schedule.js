@@ -16,7 +16,7 @@ import {
   getSchedulePlaceName, getScheduleCategory, getScheduleAddress, normalizeScheduleItem,
 } from './redesign-ui.js';
 import { getInsights, CONGESTION_LABEL } from './redesign-places.js';
-import { regenerateSchedule } from './redesign-trip-flow.js';
+import { regenerateSchedule, applyBudgetAlternative } from './redesign-trip-flow.js';
 
 let appState = null;
 let activeDay = 0;
@@ -112,6 +112,7 @@ export function renderSchedule() {
   const sub = $('#scheduleSub');
 
   if (!g) {
+    const panel = $('#budgetPanel'); if (panel) panel.hidden = true;
     if (empty) empty.hidden = false;
     if (timeline) timeline.hidden = true;
     if (cost) cost.hidden = true;
@@ -130,9 +131,15 @@ export function renderSchedule() {
   if (cta) cta.hidden = false;
   if (review) review.hidden = false;
 
-  if (title) title.textContent = `${g.city} ${g.days.length}일`;
-  if (sub) sub.textContent = [g.concept, _companion(g.companion), g.currency].filter(Boolean).join(' · ');
+  const nDays = g.days.length;
+  if (title) title.textContent = `${g.originName ? g.originName + ' → ' : ''}${g.city} 여행`;
+  if (sub) sub.textContent = [
+    nDays <= 1 ? '당일치기' : `${nDays - 1}박 ${nDays}일`,
+    g.people ? `${g.people}명` : _companion(g.companion),
+    g.concept && `${g.concept} 스타일`,
+  ].filter(Boolean).join(' · ');
 
+  _renderBudgetPanel(g);
   _renderDayChips(g);
   _renderAiSummary(g);
   _renderTimeline(g);
@@ -163,17 +170,17 @@ function _renderDayChips(g) {
   row.innerHTML = '';
   g.days.forEach((d, idx) => {
     // 일별 비용 합계
-    const dayCost = d.activities.reduce((sum, _, ai) => sum + _actCost(idx, ai, d.activities[ai].cost), 0);
-    const costLabel = _shortMoney(dayCost, g.currency);
+    const dayCost = _dayTotal(d, idx);
+    const costLabel = _shortMoney(dayCost, g);
     const chip = el('button', {
       type: 'button',
       class: 'day-chip' + (idx === activeDay ? ' is-active' : ''),
       role: 'tab',
       ariaSelected: String(idx === activeDay),
+      ariaLabel: `${idx + 1}일차 ${d.date} 예상 ${_money(dayCost, g)}`,
       onclick: () => { activeDay = idx; renderSchedule(); },
     }, [
-      `Day ${idx + 1}`, el('br'),
-      el('span', { style: { fontSize: '10px', fontWeight: 500, opacity: .8 } }, d.date.slice(5).replace('-', '/')),
+      el('span', { class: 'day-chip-label' }, `${idx + 1}일차 · ${Number(d.date.slice(5, 7))}/${Number(d.date.slice(8, 10))}`),
       el('span', { class: 'day-chip-cost' }, costLabel),
     ]);
     row.appendChild(chip);
@@ -218,6 +225,7 @@ function _renderTimeline(g) {
       metaEls.push(el('span', { class: 'schedule-dot', ariaHidden: 'true' }, '·'));
       metaEls.push(el('span', { class: 'schedule-category' }, n.category));
     }
+    if (a.sample) metaEls.push(el('span', { class: 'sample-badge', title: '실제 검색 결과가 없어 넣은 예시 장소예요' }, '예시 장소'));
 
     // ── Line 3 — sub-info: address line + cost line (separate visual rows) ──
     const subEls = [];
@@ -232,7 +240,11 @@ function _renderTimeline(g) {
       subEls.push(el('p', { class: 'schedule-place-subinfo schedule-memo' }, n.memo));
     }
     const costNumeric = _actCost(activeDay, ai, n.cost);
-    if (n.category === '숙박') {
+    if (a.excludedFromBudget && n.category === '숙박') {
+      subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' }, '숙소비는 예산에서 뺐어요'));
+    } else if (a.flightMeta?.source === 'excluded') {
+      subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' }, '항공권은 예산에서 뺐어요'));
+    } else if (n.category === '숙박') {
       // 모든 호텔 항목(체크인·복귀·체크아웃 등)에 1박 단가를 표시.
       // 출처(hotelPriceSource)에 따라 라벨 구분: SerpApi 실시간가 vs 순수 추정치.
       // 합계는 각 항목의 실제 cost를 쓰므로 영향 없음.
@@ -240,7 +252,7 @@ function _renderTimeline(g) {
         const _isReal = g.hotelPriceSource === 'serpapi';
         const _label  = _isReal ? '1박 실시간가 ' : '1박 예상가 ';
         const costEl = el('p', { class: 'schedule-place-subinfo schedule-cost' },
-          _label + formatCurrency(hotelNightly, g.currency));
+          _label + _money(hotelNightly, g));
         // 실시간가는 작은 배지로 신뢰도 표시, 추정가는 '추정' 표기
         costEl.appendChild(el('span', {
           class: 'schedule-price-tag',
@@ -253,7 +265,7 @@ function _renderTimeline(g) {
       // 항공권 — 출처(flightPriceSource)에 따라 실시간/예상 구분
       const _isReal = g.flightPriceSource === 'serpapi';
       const costEl = el('p', { class: 'schedule-place-subinfo schedule-cost' },
-        (_isReal ? '실시간 ' : '예상 ') + formatCurrency(costNumeric, g.currency));
+        (_isReal ? '실시간 ' : '예상 ') + _money(costNumeric, g));
       costEl.appendChild(el('span', {
         class: 'schedule-price-tag',
         style: 'margin-left:6px;font-size:11px;font-weight:600;'
@@ -262,7 +274,7 @@ function _renderTimeline(g) {
       subEls.push(costEl);
     } else if (costNumeric != null && costNumeric > 0) {
       subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' },
-        '예상 ' + formatCurrency(costNumeric, g.currency)));
+        '예상 ' + _money(costNumeric, g)));
     }
 
     const insightsBox = el('div', { class: 'schedule-insights' }, [
@@ -380,67 +392,159 @@ function _nightlyHotelRate(g) {
   return rate;
 }
 
-/** 총 예산 = 왕복 항공권 + 숙소(1박 × n박) + 타 장소 예산.
- *  카테고리로 분해해서 명시적으로 합산한다(사용자 수정값 expenses 반영). */
+/** 하루 합계 = 그날 항목 비용 + 하루 현지 교통비. 일별·전체 합계가 같은 데이터를 쓴다. */
+function _dayTotal(d, di) {
+  const items = d.activities.reduce((sum, a, ai) => sum + (a.excludedFromBudget ? 0 : _actCost(di, ai, a.cost)), 0);
+  return items + (Number(d.localTransport) || 0);
+}
+
+/** 전체 비용을 항목별로 나눈다(사용자 수정값 expenses 반영). */
 function _computeBudgetBreakdown(g) {
-  let flight = 0, hotel = 0, other = 0, nights = 0;
+  const bd = { flight: 0, hotel: 0, food: 0, entry: 0, shopping: 0, transport: 0, nights: 0 };
   g.days.forEach((d, di) => {
+    bd.transport += Number(d.localTransport) || 0;
     d.activities.forEach((a, ai) => {
+      if (a.excludedFromBudget) return;
       const c = _actCost(di, ai, a.cost);
-      if (a.category === '이동' && a.flightMeta) {
-        flight += c;                          // 왕복 항공권 (도착·출발 편도 합 = 왕복)
-      } else if (a.category === '숙박') {
-        hotel += c;                           // 숙박 — 1박 요금은 '복귀(1박)' 항목에만 실림
-        if (c > 0) nights += 1;
-      } else {
-        other += c;                           // 타 장소 (식사·관광·쇼핑·체험 등)
-      }
+      if (a.category === '이동' && a.flightMeta) bd.flight += c;     // 가는 편 + 오는 편 = 왕복
+      else if (a.category === '숙박') { bd.hotel += c; if (c > 0) bd.nights += 1; }   // 1박 요금은 '복귀(1박)'에만
+      else if (a.category === '식사' || a.category === '카페') bd.food += c;
+      else if (a.category === '쇼핑') bd.shopping += c;
+      else bd.entry += c;
     });
   });
-  const hotelPerNight = nights ? Math.round(hotel / nights) : 0;
-  return { flight, hotel, other, nights, hotelPerNight, total: flight + hotel + other };
+  bd.hotelPerNight = bd.nights ? Math.round(bd.hotel / bd.nights) : 0;
+  bd.total = bd.flight + bd.hotel + bd.food + bd.entry + bd.shopping + bd.transport;
+  return bd;
+}
+
+/** 원화 금액을 결과 통화로 보여 준다. 환율이 없으면 원화 그대로. */
+function _money(krw, g) {
+  const n = Number(krw) || 0;
+  if (g?.fx?.rate) return formatCurrency(n * g.fx.rate, g.fx.currency);
+  return formatCurrency(n, 'KRW');
+}
+
+function _row(label, value, { note, cls } = {}) {
+  return el('div', { class: 'money-row' + (cls ? ' ' + cls : '') }, [
+    el('dt', {}, note ? [label, ' ', el('small', {}, note)] : label),
+    el('dd', {}, value),
+  ]);
+}
+
+function _renderBudgetPanel(g) {
+  const panel = $('#budgetPanel');
+  if (!panel) return;
+  const bd = _computeBudgetBreakdown(g);
+  const budget = Number(g.budget) || 0;
+  const diff = budget - bd.total;
+  panel.hidden = false;
+  panel.classList.toggle('is-over', diff < 0);
+
+  const rows = $('#budgetPanelRows');
+  rows.replaceChildren(
+    _row('총 여행 예산', _money(budget, g), { note: g.people ? `${g.people}명 전체` : '' }),
+    _row('예상 지출', _money(bd.total, g), { cls: 'money-row--total' }),
+    diff < 0
+      ? _row('예산 초과', _money(-diff, g), { cls: 'money-row--over' })
+      : _row('남는 금액', _money(diff, g), { cls: 'money-row--under' }),
+  );
+
+  const bp = g.budgetPlan;
+  const plan = $('#budgetPanelPlan');
+  if (plan) {
+    plan.textContent = !bp ? ''
+      : bp.fits
+        ? `예산에 맞춰 ${bp.hotelLabel ? bp.hotelLabel + '·' : ''}${bp.levelLabel} 지출 기준으로 골랐어요.`
+        : `이 조건에서는 예산 안에 드는 조합이 없어 가장 저렴한 조합(${bp.hotelLabel || '숙소'}·아껴 쓰는 지출)으로 만들었어요.`;
+  }
+
+  // 대체 처리 안내 — 실시간 조회가 안 된 값, 예시 장소, 환율 기준
+  const notes = [];
+  const src = g.sources || { flight: g.flightPriceSource, hotel: g.hotelPriceSource };
+  const est = [src.flight === 'estimate' && '항공', src.hotel === 'estimate' && '숙소'].filter(Boolean);
+  if (est.length) {
+    const why = src.liveConfigured && !src.liveConfigured.flights ? '실시간 요금 조회가 연결되지 않아' : '실시간 요금을 받지 못해';
+    notes.push(`${est.join('·')} 비용은 추정치예요. ${why} 도시 물가와 시기로 계산했어요.`);
+  }
+  if (src.flight === 'serpapi' || src.hotel === 'serpapi') {
+    const at = src.flightCheckedAt || src.hotelCheckedAt;
+    notes.push(`실시간 요금은 Google 항공·호텔 검색 기준이에요${at ? ` (${new Date(at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 조회)` : ''}. 세금·수수료 포함 여부는 예약 사이트에서 확인해 주세요.`);
+  }
+  if (src.placesSample) notes.push(`장소 ${src.placesSample}곳은 검색 결과가 부족해 '예시 장소'로 채웠어요.`);
+  if (g.fx) notes.push(`금액은 ${g.fx.date} ${g.fx.source} 환율로 원화를 환산했어요 (1원 = ${g.fx.rate} ${g.fx.currency}).`);
+  else if (g.currency && g.currency !== 'KRW') notes.push('환율을 불러오지 못해 원화로 보여 드려요.');
+  if (g.sources?.liveConfigured && !g.sources.liveConfigured.ai) notes.push('AI 요약은 아직 연결되지 않았어요. 이 일정은 장소 검색 결과로 만든 기본 일정이에요.');
+  const ul = $('#budgetNotices');
+  ul.replaceChildren(...notes.map(t => el('li', {}, t)));
+
+  // 예산 초과 시 대안
+  const alts = $('#budgetAlts');
+  // '예산 올리기'는 실제 합계(편집 반영) 기준으로 다시 계산한다.
+  const raise = { key: 'raise', label: `예산을 ${Math.ceil(bd.total / 10000)}만원으로 올리기`, detail: '지금 일정 그대로 진행해요', total: bd.total, fits: true, apply: { budget: Math.ceil(bd.total / 10000) } };
+  const list = diff < 0 ? (bp?.alternatives?.length ? bp.alternatives.map(a => a.key === 'raise' ? raise : a)
+    : [{ key: 'raise', label: `예산을 ${Math.ceil(bd.total / 10000)}만원으로 올리기`, detail: '지금 일정 그대로 진행해요', total: bd.total, fits: true, apply: { budget: Math.ceil(bd.total / 10000) } }]) : [];
+  alts.hidden = !list.length;
+  alts.replaceChildren(...(list.length ? [
+    el('p', { class: 'budget-alts-title' }, '예산에 맞추는 방법'),
+    ...list.map(alt => el('button', {
+      type: 'button',
+      class: 'budget-alt' + (alt.fits ? ' is-fit' : ''),
+      onclick: () => _applyAlternative(alt),
+    }, [
+      el('span', { class: 'budget-alt-label' }, alt.label),
+      el('span', { class: 'budget-alt-detail' }, alt.detail),
+      el('span', { class: 'budget-alt-total' }, `예상 ${_money(alt.total, g)} · ${alt.fits ? '예산 안' : '여전히 초과'}`),
+    ])),
+  ] : []));
+}
+
+async function _applyAlternative(alt) {
+  if (alt.apply?.budget && Object.keys(alt.apply).length === 1) {
+    // 예산만 올리는 경우는 다시 만들 필요 없이 값만 바꾼다.
+    appState.generated.budget = alt.apply.budget * 10000;
+    if (appState.trip) appState.trip.budget = alt.apply.budget;
+    if (appState.generated.budgetPlan) appState.generated.budgetPlan.alternatives = [];
+    renderSchedule();
+    showToast(`예산을 ${alt.apply.budget}만원으로 바꿨어요`);
+    return;
+  }
+  await applyBudgetAlternative(alt.apply);
 }
 
 function _renderCostSummary(g) {
   const bd = _computeBudgetBreakdown(g);
-
-  // 오늘(선택일) 합계는 기존대로 일별 합으로 표시
-  const todayCost = (g.days[activeDay]?.activities || [])
-    .reduce((a, _, ai) => a + _actCost(activeDay, ai, g.days[activeDay].activities[ai].cost), 0);
-
-  const budgetKRW = g.budget;
-  if ($('#csDayLabel')) $('#csDayLabel').textContent = `Day ${activeDay + 1}`;
-  if ($('#csDayCost'))  $('#csDayCost').textContent  = formatCurrency(todayCost, g.currency);
-  $('#csBudget').textContent = formatCurrency(budgetKRW, g.currency);
-  _countTo($('#csTotal'), bd.total, v => formatCurrency(v, g.currency));
-
-  // 항목별 분해 표시: 왕복항공 + 숙소(1박×n박) + 타 장소
-  const bdEl = $('#csBreakdown');
-  if (bdEl) {
-    const hotelPart = bd.nights > 0
-      ? `숙소 ${_shortMoney(bd.hotelPerNight, g.currency)}×${bd.nights}박`
-      : `숙소 ${_shortMoney(bd.hotel, g.currency)}`;
-    bdEl.textContent = `왕복항공 ${_shortMoney(bd.flight, g.currency)} + ${hotelPart} + 타 장소 ${_shortMoney(bd.other, g.currency)}`;
-  }
-
-  const pct = Math.min(100, budgetKRW ? (bd.total / budgetKRW) * 100 : 0);
-  $('#csBarFill').style.width = pct + '%';
+  const day = g.days[activeDay];
+  const rows = $('#costRows');
+  if (!rows) return;
+  const list = [];
+  if (bd.flight) list.push(_row('항공', _money(bd.flight, g), { note: g.people ? `왕복 ${g.people}명` : '왕복' }));
+  if (bd.hotel) list.push(_row('숙소', _money(bd.hotel, g), { note: `1박 ${_money(bd.hotelPerNight, g)} × ${bd.nights}박` }));
+  list.push(_row('식비', _money(bd.food, g)));
+  list.push(_row('입장·체험', _money(bd.entry, g)));
+  if (bd.shopping) list.push(_row('쇼핑', _money(bd.shopping, g)));
+  if (bd.transport) list.push(_row('현지 교통', _money(bd.transport, g)));
+  list.push(_row('전체 합계', _money(bd.total, g), { cls: 'money-row--total' }));
+  if (day) list.push(_row(`${activeDay + 1}일차 합계`, _money(_dayTotal(day, activeDay), g)));
+  rows.replaceChildren(...list);
+  const note = $('#costNote');
+  if (note) note.textContent = '금액은 모두 추정치이고 원 단위에서 반올림했어요. 실제 요금은 예약할 때 확인해 주세요.';
 }
 
 /** 짧은 금액 라벨 (Day chip 표시용): 1,200,000원 → 120만원, 5,000원 → 5천원 */
-function _shortMoney(amount, currency) {
+function _shortMoney(amount, g) {
   const n = Number(amount) || 0;
-  if (currency !== 'KRW' && currency != null) {
-    // 비KRW는 1k 단위로 축약
-    if (n >= 1000) return Math.round(n / 100) / 10 + 'k';
-    return String(Math.round(n));
+  if (g?.fx?.rate) {
+    try {
+      return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: g.fx.currency, notation: 'compact', maximumFractionDigits: n * g.fx.rate >= 1000 ? 1 : 0 }).format(n * g.fx.rate);
+    } catch (_) { /* 아래 원화 표시로 */ }
   }
   if (n >= 10000) {
     const v = n / 10000;
-    return (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + '만';
+    return (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + '만원';
   }
-  if (n >= 1000) return Math.round(n / 1000) + '천';
-  return n > 0 ? Math.round(n) + '원' : '-';
+  if (n >= 1000) return Math.round(n / 1000) + '천원';
+  return n > 0 ? Math.round(n) + '원' : '0원';
 }
 
 /* ============ Edit modal ============ */
@@ -961,6 +1065,8 @@ function _renderAiSummary(g) {
   const tl = $('#scheduleTimeline');
   if (!tl || !tl.parentNode) return;
   document.getElementById('aiSummaryCard')?.remove();
+  // AI 요약이 서버에 연결돼 있지 않으면 카드를 만들지 않는다(안내는 예산 영역에 표시).
+  if (g.sources?.liveConfigured && !g.sources.liveConfigured.ai) return;
   // 새 일정이면 AI 상태 초기화
   if (_aiKey !== g.createdAt) { _aiKey = g.createdAt; _aiLoading = false; _aiFailed = false; }
   const card = el('div', {

@@ -191,6 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   //    renderSchedule() call, which covers: day chip click, edit save,
   //    delete, add place, drag-and-drop reorder, touch-drag reorder.
   document.addEventListener('redesign:schedule-changed', saveAppState);
+  document.addEventListener('redesign:trip-changed', saveAppState);   // 작성 중인 여행 임시 저장
 
   // 8.5) Surface friendly errors
   window.addEventListener('unhandledrejection', (e) => {

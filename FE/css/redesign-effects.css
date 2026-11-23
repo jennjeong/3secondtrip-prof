@@ -316,3 +316,18 @@
 @media print {
   .hero-illust, .city-marquee, .timeline::after { display: none !important; }
 }
+
+/* 일정 만드는 중 — 단계 목록과 실패 시 버튼 */
+.gl-steps { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; text-align: left; font-size: 14px; color: rgba(255,255,255,.55); }
+.gl-steps li { padding-left: 22px; position: relative; }
+.gl-steps li::before { content: ''; position: absolute; left: 0; top: .35em; width: 10px; height: 10px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); }
+.gl-steps li.is-current { color: #fff; font-weight: 700; }
+.gl-steps li.is-current::before { border-color: #A9C4E2; background: #A9C4E2; }
+.gl-steps li.is-done { color: rgba(255,255,255,.8); }
+.gl-steps li.is-done::before { border-color: #A9C4E2; background: transparent; }
+.gl-actions { display: flex; gap: 10px; margin-top: 14px; }
+.gl-actions:empty { display: none; }
+.gl-actions .gl-close { color: #fff; border-color: rgba(255,255,255,.4); }
+#genLoadingOverlay.is-failed .gl-route, #genLoadingOverlay.is-failed .gl-steps { display: none; }
+#genLoadingOverlay.is-failed .gl-msg { animation: none; color: #fff; background: none; }
+#genLoadingOverlay.is-failed .gl-sub { max-width: 320px; line-height: 1.5; }

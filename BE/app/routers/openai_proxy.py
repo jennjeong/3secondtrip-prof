@@ -26,7 +26,7 @@ async def chat(req: ChatRequest, _: Optional[User] = Depends(get_current_user_op
     # 데모: 로그인 없이도 AI 요약을 쓸 수 있도록 선택적 인증.
     # (공개 배포 시에는 레이트리밋/인증 강화 필요)
     if not settings.openai_api_key:
-        raise HTTPException(status_code=500, detail="OpenAI is not configured on server")
+        raise HTTPException(status_code=503, detail="AI summary is not configured on the server")
     try:
         # openai>=1.0 sync client; ASGI 워커가 적당해서 sync 호출도 OK
         from openai import OpenAI

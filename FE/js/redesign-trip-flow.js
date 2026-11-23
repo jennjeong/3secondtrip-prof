@@ -56,6 +56,9 @@ export function initTripFlow(state) {
   _bindFormHandlers();
   _bindDateTriggers();
   _bindBudgetHandlers();
+  // 폼 안에서 무엇이든 바꾸면 임시 저장
+  const page = document.getElementById('createTripPage');
+  ['change', 'click'].forEach(ev => page?.addEventListener(ev, () => setTimeout(_saveDraft, 0)));
 
   document.addEventListener('redesign:trip-prefill', () => {
     _applyState();
@@ -63,15 +66,21 @@ export function initTripFlow(state) {
   });
 
   document.addEventListener('redesign:nav', (e) => {
-    if (e.detail.page === 'create-trip') {
-      // meta.prefill === true 면 외부에서 trip 상태 미리 채워둔 것 → 보존
-      // 그렇지 않으면 (홈/FAB/탭 등에서 신규 진입) 깨끗하게 초기화
-      if (!e.detail.meta?.prefill) {
-        _resetTripState();
-      }
-      step = 1; _showStep(); _applyState();
-    }
+    if (e.detail.page === 'create-trip') _enterCreateTrip(e.detail.meta);
   });
+  // 주소로 바로 들어오거나 새로고침한 경우 — 첫 이동 알림이 이 모듈보다 먼저 지나가므로 직접 시작한다.
+  if (/page=create-trip/.test(location.hash)) _enterCreateTrip({});
+}
+
+/** 여행 만들기 진입. 작성 중이던 여행이 있으면 이어서, 없으면 새로 시작한다.
+ *  meta.prefill — 코스 상세 등에서 미리 채워 둔 값 보존 / meta.fresh — 무조건 새로 시작 */
+function _enterCreateTrip(meta = {}) {
+  const t = appState.trip;
+  const resume = !meta.prefill && !meta.fresh && !!t._draft;
+  if (!meta.prefill && !resume) _resetTripState();
+  step = resume ? Math.min(4, Math.max(1, t._draftStep || 1)) : 1;
+  _showStep(); _applyState();
+  _showDraftBanner(resume);
 }
 
 /* ============ Builders ============ */
@@ -465,7 +474,7 @@ function _bindFormHandlers() {
   $('#tripCurrency')?.addEventListener('change', (e) => {
     appState.trip.currency = e.target.value;
     _refreshSummary();
-    _refreshBudgetMarkLabels();
+    _saveDraft();
   });
 
   // ── 항공 노선 (단일 선택) ──
@@ -572,8 +581,6 @@ function _bindStepHandlers() {
 }
 
 /* ============ Budget — direct input + smart suggestion ============ */
-const COMPANION_MULT = { solo:1.0, friend:0.95, couple:1.05, family:0.85, group:0.75 };
-
 function _seasonMult(startISO) {
   if (!startISO) return 1.0;
   const m = parseInt(startISO.split('-')[1], 10);
@@ -581,132 +588,142 @@ function _seasonMult(startISO) {
   if ([4,5,9,10,11].includes(m)) return 1.05; // shoulder
   return 0.9;                                 // off
 }
-function _baselineFor(tier) {
-  return ({ high: 35, mid: 22, low: 12 })[tier] || 20;
-}
 function _round10(n) { return Math.max(10, Math.round(n / 10) * 10); }
+function _manwon(krw) { return Math.ceil((Number(krw) || 0) / 10000); }
+function _won(krw) { return formatCurrency(Math.round(krw || 0), 'KRW'); }
 
-/** Compute suggested budget in 만원 — 활동 + 항공 + 숙박 모두 포함. */
+/** 예산 단계: 추천 예산(만원)과 낮음·보통·높음 구성을 실제 계산으로 만든다. */
 function _computeSuggested() {
   const t = appState.trip;
-  const days = Math.max(1, t.days || diffDays(t.startDate, t.endDate) || 1);
-  const cmp = COMPANION_MULT[t.companion] ?? 1;
-  const season = _seasonMult(t.startDate);
-  const concept = CONCEPT_MULT[t.concept] ?? 1;
+  const includes = { includeFlight: t.includeFlight !== false, includeHotel: t.includeHotel !== false };
+  const userTypes = t.hotelP?.types?.length ? null : undefined;   // 사용자가 숙소 유형을 골랐으면 그 유형 그대로
+  const low  = _estimatePlan(t, { ...includes, hotelType: userTypes === null ? null : 'budget',   level: '낮음', flightClass: 'lcc' });
+  const mid  = _estimatePlan(t, { ...includes, hotelType: userTypes === null ? null : 'midscale', level: '보통' });
+  const high = _estimatePlan(t, { ...includes, hotelType: userTypes === null ? null : 'upscale',  level: '높음', flightClass: 'fsc' });
+  t._suggestedPlans = { low, mid, high };
+  return { low: _round10(_manwon(low.total)), mid: _round10(_manwon(mid.total)), high: _round10(_manwon(high.total)) };
+}
 
-  // 1) 활동 비용 (식사·관광·쇼핑·체험 등) — 만원 단위
-  const activityWon = _baselineFor(t.cityTier) * days * cmp * season * concept * 10000;
-
-  // 2) 항공 — 왕복 1인 기준
-  const flightWon = t.cityName ? _calcFlightPrice(t) : 0;
-
-  // 3) 숙박 — 1박 가격 × (days - 1) 박 × 방 수
-  const nights = Math.max(0, days - 1);
-  const rooms = _roomCount(t);
-  const hotelWon = _calcHotelPerNight(t) * nights * rooms;
-
-  const totalWon = activityWon + flightWon + hotelWon;
-  const totalMW  = Math.round(totalWon / 10000);   // 만원
-
-  const people = _peopleCount(t);
-  // 디버그 — 콘솔에서 산정 내역 확인 가능
-  console.log('[추천예산] 활동 ' + Math.round(activityWon/10000) + '만 + 항공 ' +
-              Math.round(flightWon/10000) + '만 (' + people + '명) + 숙박 ' +
-              Math.round(hotelWon/10000) + '만 (' + nights + '박 × ' + rooms + '실) = ' + totalMW + '만');
-
-  // breakdown 캐싱 — 텍스트 표시에서 사용
-  appState.trip._budgetBreakdown = {
-    activityMW: Math.round(activityWon / 10000),
-    flightMW:   Math.round(flightWon   / 10000),
-    hotelMW:    Math.round(hotelWon    / 10000),
-    nights,
-    rooms,
-    people,
-    perNightWon: _calcHotelPerNight(t),
-  };
-
-  return _round10(totalMW);
+function _suggestRow(label, value, note) {
+  return `<div class="money-row"><dt>${escapeHtml(label)}${note ? ` <small>${escapeHtml(note)}</small>` : ''}</dt><dd>${escapeHtml(_won(value))}</dd></div>`;
 }
 
 function _refreshBudget() {
   const t = appState.trip;
-  const mid = _computeSuggested();
-  const low  = _round10(mid * 0.62);
-  const high = _round10(mid * 1.6);
+  const sug = _computeSuggested();
+  const plan = t._suggestedPlans.mid;
+  t._suggested = sug;
 
-  // Initialize input if empty
   const inp = $('#tripBudgetInput');
-  if (inp) {
-    if (!t.budget || t.budget === 120) { t.budget = mid; inp.value = mid; }
-    else inp.value = String(t.budget);
-  }
+  if (inp && document.activeElement !== inp) inp.value = t.budget ? String(t.budget) : '';
 
+  const people = _peopleCount(t);
+  const days = Math.max(1, t.days || 1);
+  const sumEl = $('#budgetTripSummary');
+  if (sumEl) {
+    const route = `${t.originName || '출발지 미선택'} → ${t.cityName || '도착지 미선택'}`;
+    sumEl.innerHTML = `<strong>${escapeHtml(route)}</strong><span>${escapeHtml(_durationLabel(days))} · ${people}명</span>`;
+  }
+  const fn = $('#includeFlightNote');
+  if (fn) fn.textContent = _isLocalTrip(t) ? '같은 도시 여행이라 필요 없어요' : `왕복 · ${people}명`;
+  const hn = $('#includeHotelNote');
+  if (hn) hn.textContent = days > 1 ? `${days - 1}박 · 객실 ${_roomCount(t)}개` : '당일치기라 필요 없어요';
+
+  const rows = $('#budgetSuggestRows');
+  if (rows) {
+    const html = [];
+    if (plan.flight) html.push(_suggestRow('항공', plan.flight, `왕복 ${people}명`));
+    if (plan.hotel) html.push(_suggestRow('숙소', plan.hotel, `1박 ${_won(plan.perRoomNight)} × ${plan.nights}박 × ${plan.rooms}실`));
+    html.push(_suggestRow('식비', plan.food));
+    html.push(_suggestRow('입장·체험', plan.entry));
+    if (plan.shopping) html.push(_suggestRow('쇼핑', plan.shopping));
+    html.push(_suggestRow('현지 교통', plan.transport));
+    html.push(`<div class="money-row money-row--total"><dt>합계 (보통 기준)</dt><dd>${escapeHtml(_won(plan.total))}</dd></div>`);
+    rows.innerHTML = html.join('');
+  }
   const sText = $('#budgetSuggestText');
   if (sText) {
-    const factors = [];
-    if (t.cityName) factors.push(`${t.cityName}(${({high:'고물가',mid:'중간',low:'저물가'})[t.cityTier] || ''})`);
-    factors.push(`${t.days||'-'}일`);
-    factors.push(_companionLabelShort(t.companion));
     const sm = _seasonMult(t.startDate);
-    factors.push(sm > 1.2 ? '성수기' : (sm < 1 ? '비수기' : '준성수기'));
-    if (t.concept) factors.push(`${escapeHtml(t.concept)} 컨셉`);
-    // breakdown — 왕복항공 + 숙소(1박×n박) + 타 장소 (계획 페이지와 동일 공식)
-    // 1박 단가는 hotelMW/박수로 환산 — 방 수가 반영된 실효 단가라 합계와 일치.
-    const bd = t._budgetBreakdown || {};
-    const hotelPart = (bd.nights)
-      ? `숙소 ${Math.round(bd.hotelMW / bd.nights)}만×${bd.nights}박`
-      : `숙소 ${bd.hotelMW}만`;
-    const bdLine = (bd.activityMW != null)
-      ? `<br/><span style="font-size:11px;color:var(--c-text-soft,#6b6555)">왕복항공 ${bd.flightMW}만 (${bd.people}명) + ${hotelPart} + 타 장소 ${bd.activityMW}만</span>`
-      : '';
-    sText.innerHTML = `추천 <strong>${mid}만원</strong> · ${factors.filter(Boolean).join(' · ')}` + bdLine;
+    const season = sm > 1.2 ? '성수기' : (sm < 1 ? '비수기' : '준성수기');
+    const tier = ({ high: '물가 높은 도시', mid: '물가 보통 도시', low: '물가 낮은 도시' })[t.cityTier] || '';
+    sText.textContent = `${[t.cityName, tier, season, t.concept && `${t.concept} 스타일`].filter(Boolean).join(' · ')} 기준 추정치예요. 실제 요금과 다를 수 있어요.`;
   }
-
-  // Marks labels & active states
   const lowEl = $('#bmLow'); const midEl = $('#bmMid'); const highEl = $('#bmHigh');
-  if (lowEl)  lowEl.textContent  = `${low}만원`;
-  if (midEl)  midEl.textContent  = `${mid}만원`;
-  if (highEl) highEl.textContent = `${high}만원`;
-
-  // Stash for click handlers
-  appState.trip._suggested = { low, mid, high };
+  if (lowEl)  lowEl.textContent  = `${sug.low}만원`;
+  if (midEl)  midEl.textContent  = `${sug.mid}만원`;
+  if (highEl) highEl.textContent = `${sug.high}만원`;
   _refreshLevelBadge();
 }
 
-function _refreshBudgetMarkLabels() {
-  // currency conversion display — keep label in 만원 for now (KRW unit)
+function _durationLabel(days) {
+  return days <= 1 ? '당일치기' : `${days - 1}박 ${days}일`;
+}
+
+/** 입력 예산 검사 — 오류 문구를 돌려주고, 괜찮으면 null. */
+function _budgetError(raw) {
+  const v = String(raw ?? '').replace(/[,\s]/g, '');
+  if (!v) return '총 여행 예산을 입력해 주세요.';
+  if (!/^\d+$/.test(v)) return '숫자만 입력해 주세요. (예: 80)';
+  const n = Number(v);
+  if (n <= 0) return '0원보다 큰 금액을 입력해 주세요.';
+  if (n > 100000) return '10억 원(100,000만원) 이하로 입력해 주세요.';
+  return null;
 }
 
 function _refreshLevelBadge() {
   const t = appState.trip;
   const badge = $('#budgetLevelBadge');
+  const per = $('#budgetPerPerson');
+  const people = _peopleCount(t);
+  if (per) per.textContent = t.budget > 0 ? `${people}명 기준 1인당 약 ${Math.round(t.budget / people)}만원` : '';
   if (!badge) return;
   const sug = t._suggested || {};
-  if (!sug.mid || !t.budget) { badge.innerHTML = '정도: -'; return; }
-  let lvl = '보통';
-  let cls = 'is-mid';
+  if (!sug.mid || !t.budget) { badge.textContent = ''; return; }
   const ratio = t.budget / sug.mid;
-  if (ratio < 0.78) { lvl = '낮음'; cls = 'is-low'; }
-  else if (ratio > 1.35) { lvl = '높음'; cls = 'is-high'; }
+  let lvl, text;
+  if (t.budget < sug.low) { lvl = '낮음'; text = '추천 예산보다 많이 낮아요. 숙소 등급과 지출을 최대한 줄여 맞춰 보고, 그래도 넘으면 대안을 알려 드릴게요.'; }
+  else if (ratio < 0.9)   { lvl = '낮음'; text = '추천 예산보다 조금 낮아요. 숙소 등급이나 현지 지출을 낮춰 맞출게요.'; }
+  else if (ratio <= 1.15) { lvl = '보통'; text = '추천 예산과 비슷해요.'; }
+  else                    { lvl = '높음'; text = '추천 예산보다 여유 있어요. 더 좋은 숙소와 식당을 고를게요.'; }
   t.budgetLevel = lvl;
-  badge.innerHTML = `정도: <span class="lvl-pill ${cls}">${lvl}</span>`;
+  badge.textContent = text;
+  badge.dataset.level = lvl;
+}
+
+function _setBudget(v) {
+  const t = appState.trip;
+  t.budget = v;
+  const inp = $('#tripBudgetInput');
+  if (inp) inp.value = v ? String(v) : '';
+  const err = $('#budgetError');
+  if (err) { err.hidden = true; err.textContent = ''; }
+  inp?.removeAttribute('aria-invalid');
+  _refreshLevelBadge();
+  _refreshSummary();
+  _saveDraft();
 }
 
 function _bindBudgetHandlers() {
   $('#tripBudgetInput')?.addEventListener('input', (e) => {
-    const v = Number(e.target.value) || 0;
-    appState.trip.budget = v;
+    const raw = e.target.value;
+    const err = _budgetError(raw);
+    appState.trip.budget = err ? 0 : Number(String(raw).replace(/[,\s]/g, ''));
+    const errEl = $('#budgetError');
+    // 입력 중에는 형식 오류만 바로 보여 주고, 빈 값 안내는 다음 버튼을 누를 때 보여 준다.
+    if (errEl) {
+      const show = err && String(raw).trim() !== '';
+      errEl.hidden = !show; errEl.textContent = show ? err : '';
+      e.target.toggleAttribute('aria-invalid', !!show);
+    }
     _refreshLevelBadge();
     _refreshSummary();
+    _saveDraft();
   });
   $('#budgetApplyBtn')?.addEventListener('click', () => {
     const sug = appState.trip._suggested || {};
     if (!sug.mid) return;
-    appState.trip.budget = sug.mid;
-    $('#tripBudgetInput').value = String(sug.mid);
-    _refreshLevelBadge();
-    _refreshSummary();
-    showToast('추천 예산 적용');
+    _setBudget(sug.mid);
+    showToast(`추천 예산 ${sug.mid}만원을 넣었어요`);
   });
   document.querySelectorAll('[data-budget-level]').forEach(b => {
     b.addEventListener('click', () => {
@@ -714,13 +731,37 @@ function _bindBudgetHandlers() {
       const sug = appState.trip._suggested || {};
       const v = lvl === '낮음' ? sug.low : (lvl === '높음' ? sug.high : sug.mid);
       if (!v) return;
-      appState.trip.budget = v;
-      $('#tripBudgetInput').value = String(v);
       setActiveByData(b.parentElement, 'data-budget-level', lvl);
-      _refreshLevelBadge();
-      _refreshSummary();
+      _setBudget(v);
     });
   });
+  $('#includeFlight')?.addEventListener('change', (e) => { appState.trip.includeFlight = e.target.checked; _refreshBudget(); _saveDraft(); });
+  $('#includeHotel')?.addEventListener('change', (e) => { appState.trip.includeHotel = e.target.checked; _refreshBudget(); _saveDraft(); });
+}
+
+/** 작성 중인 여행을 기기에 바로 저장 — 새로고침·이탈 후에도 이어서 쓸 수 있게. */
+function _saveDraft() {
+  const t = appState.trip;
+  if (!t) return;
+  t._draft = !!(t.cityName || t.originName || t.startDate || t.concept || t.budget);
+  t._draftStep = step;
+  document.dispatchEvent(new CustomEvent('redesign:trip-changed'));
+}
+
+/** 이어서 작성할 때 위쪽에 '새로 시작' 선택지를 보여 준다. */
+function _showDraftBanner(show) {
+  let bar = document.getElementById('draftBanner');
+  if (!show) { bar?.remove(); return; }
+  if (!bar) {
+    bar = el('div', { id: 'draftBanner', class: 'draft-banner', role: 'status' }, [
+      el('span', {}, '작성하던 여행을 이어서 보여 드려요.'),
+      el('button', { type: 'button', class: 'btn-text', onclick: () => {
+        _resetTripState(); step = 1; _showStep(); _applyState(); _showDraftBanner(false);
+        showToast('새 여행을 처음부터 시작해요');
+      } }, '새로 시작'),
+    ]);
+    $('#tripStepProgress')?.before(bar);
+  }
 }
 
 /* ============ Duration / Summary / Steps ============ */
@@ -728,7 +769,7 @@ function _refreshDuration() {
   const d = diffDays(appState.trip.startDate, appState.trip.endDate);
   appState.trip.days = d;
   const t = $('#tripDuration');
-  if (t) t.textContent = d ? `기간: ${d}일 (${appState.trip.startDate} → ${appState.trip.endDate})` : '기간: -';
+  if (t) t.textContent = d ? `${_durationLabel(d)} (${appState.trip.startDate} → ${appState.trip.endDate})` : '날짜를 골라 주세요';
 }
 
 function _refreshSummary() {
@@ -779,6 +820,8 @@ function _showStep() {
   $$('#tripStepProgress .step-line').forEach((line, i) => {
     line.classList.toggle('is-done', i < step - 1);
   });
+  const names = ['여행지', '날짜·인원', '여행 스타일', '예산'];
+  $('#tripStepProgress')?.setAttribute('aria-label', `전체 4단계 중 ${step}단계 · ${names[step - 1]}`);
   $$('#createTripPage .step-pane').forEach(p => {
     const on = Number(p.dataset.stepPane) === step;
     p.classList.toggle('is-active', on);
@@ -788,6 +831,7 @@ function _showStep() {
   $('#stepNext').hidden = step === 4;
   $('#stepGenerate').hidden = step !== 4;
   if (step === 4) { _refreshBudget(); _refreshSummary(); }
+  _saveDraft();
 }
 
 function _validateStep() {
@@ -809,7 +853,15 @@ function _validateStep() {
     if (!t.concept) { showToast('컨셉을 한 가지 선택해 주세요'); return false; }
   }
   if (step === 4) {
-    if (!t.budget) { showToast('예산을 입력해 주세요'); return false; }
+    const inp = $('#tripBudgetInput');
+    const err = _budgetError(inp ? inp.value : t.budget);
+    if (err) {
+      const errEl = $('#budgetError');
+      if (errEl) { errEl.hidden = false; errEl.textContent = err; }
+      inp?.setAttribute('aria-invalid', 'true');
+      inp?.focus();
+      return false;
+    }
   }
   return true;
 }
@@ -830,6 +882,10 @@ function _resetTripState() {
   t.budget = 0;
   t.budgetLevel = '보통';
   t._suggested = undefined;
+  t.includeFlight = true;
+  t.includeHotel = true;
+  t._draft = false;
+  t._draftStep = 1;
   t.flight = { route: 'any', classType: 'any', airlines: [] };
   t.hotelP = { types: [], locations: [], amenities: [] };
   // (currency 는 사용자 선택이라 유지)
@@ -895,6 +951,8 @@ function _applyState() {
   }
 
   _refreshBudget();
+  const fi = $('#includeFlight'); if (fi) fi.checked = t.includeFlight !== false;
+  const hi = $('#includeHotel');  if (hi) hi.checked = t.includeHotel !== false;
 }
 
 /* ============ Generation ============
@@ -1380,6 +1438,156 @@ const SLOT_TIMES = [
   ['15:30','afternoon'],['19:00','evening'],['20:30','dinner'],
 ];
 
+/* ════════════════════════════════════════════════════════════════
+ * 예산 계획 — 입력 예산을 항공·숙소·현지 지출 선택에 반영한다.
+ *   금액은 모두 원(KRW)이다. 일정 항목의 비용도 같은 공식으로 만들기
+ *   때문에, 여기서 고른 계획과 결과 화면 합계가 같은 기준을 쓴다.
+ * ════════════════════════════════════════════════════════════════ */
+const HOTEL_TIER_LABEL = {
+  luxury: '5성급 호텔', upscale: '4성급 호텔', midscale: '3성급 호텔', budget: '2성급·비즈니스 호텔', hostel: '호스텔·게스트하우스',
+};
+const LEVEL_LABEL = { '낮음': '아껴 쓰는', '보통': '보통', '높음': '넉넉한' };
+// 1인 하루 현지 교통비(지하철·버스 위주)
+const LOCAL_TRANSPORT_PER_DAY = { high: 15000, mid: 10000, low: 6000 };
+// 편안한 조합부터 차례로 시도해 예산 안에 들어오는 첫 조합을 고른다.
+const PLAN_LADDER = [
+  ['upscale', '높음'], ['upscale', '보통'], ['midscale', '보통'], ['midscale', '낮음'],
+  ['budget', '보통'], ['budget', '낮음'], ['hostel', '낮음'],
+];
+// 사용자가 숙소 유형을 직접 고른 경우엔 숙소는 그대로 두고 지출 수준만 조정한다.
+const LEVEL_LADDER = [[null, '높음'], [null, '보통'], [null, '낮음']];
+
+function _slotTimesFor(t) {
+  const styles = Array.isArray(t.styles) ? t.styles : [];
+  if (styles.includes('빽빽한 일정')) return PACKED_SLOTS;
+  if (styles.includes('여유로운 일정')) return RELAXED_SLOTS;
+  return CONCEPT_SLOTS[t.concept] || SLOT_TIMES_DEFAULT;
+}
+
+/** 출발·도착이 같은 도시면 현지 여행 — 항공권이 필요 없다. */
+function _isLocalTrip(t) {
+  return !!(t.city && t.origin && t.city === t.origin);
+}
+
+function _localTransportPerDay(t) {
+  return LOCAL_TRANSPORT_PER_DAY[t.cityTier] || LOCAL_TRANSPORT_PER_DAY.mid;
+}
+
+/** 1실 1박 추정가. typeKey 가 없으면 사용자가 고른 숙소 유형을 쓴다. */
+function _hotelNightFor(t, typeKey) {
+  if (!typeKey) return _calcHotelPerNight(t);
+  return _calcHotelPerNight({ ...t, hotelP: { ...(t.hotelP || {}), types: [typeKey] } });
+}
+
+/** 한 조합의 예상 비용. 항목 이름은 결과 화면의 비용 행과 같다. */
+function _estimatePlan(t, opts = {}) {
+  const days = Math.max(1, opts.days ?? (t.days || 1));
+  const people = _peopleCount(t);
+  const rooms = _roomCount(t);
+  const nights = Math.max(0, days - 1);
+  const level = opts.level || '보통';
+  const includeFlight = opts.includeFlight !== false && !_isLocalTrip(t) && !!t.cityName;
+  const includeHotel = opts.includeHotel !== false && nights > 0;
+  const flightTrip = opts.flightClass ? { ...t, flight: { ...(t.flight || {}), classType: opts.flightClass, airlines: [] } } : t;
+  const flight = includeFlight ? _calcFlightPrice(flightTrip) : 0;
+  const perRoomNight = includeHotel ? _hotelNightFor(t, opts.hotelType) : 0;
+  const hotel = perRoomNight * rooms * nights;
+  let food = 0, entry = 0, shopping = 0;
+  _slotTimesFor(t).forEach(([, slot]) => {
+    const cat = CATEGORY_BY_SLOT[slot] || '관광';
+    const v = _costFor(cat, level, t.concept) * people;
+    if (cat === '식사' || cat === '카페') food += v;
+    else if (cat === '쇼핑') shopping += v;
+    else entry += v;
+  });
+  food *= days; entry *= days; shopping *= days;
+  const transport = _localTransportPerDay(t) * people * days;
+  const local = food + entry + shopping + transport;
+  return {
+    hotelType: opts.hotelType ?? null, level, days, people, rooms, nights,
+    includeFlight, includeHotel, flight, perRoomNight, hotel,
+    food, entry, shopping, transport, local, total: flight + hotel + local,
+  };
+}
+
+/** 입력 예산 안에 들어오는 가장 편안한 조합을 고른다. 없으면 가장 저렴한 조합 + 초과 표시. */
+function _fitPlan(t) {
+  const budget = (Number(t.budget) || 0) * 10000;
+  const base = { includeFlight: t.includeFlight !== false, includeHotel: t.includeHotel !== false };
+  const userChoseHotel = !!(t.hotelP?.types?.length);
+  const ladder = userChoseHotel ? LEVEL_LADDER : PLAN_LADDER;
+  let chosen = null;
+  for (const [hotelType, level] of ladder) {
+    const p = _estimatePlan(t, { ...base, hotelType, level });
+    if (p.total <= budget) { chosen = p; break; }
+  }
+  const fits = !!chosen;
+  if (!chosen) {
+    const [hotelType, level] = ladder[ladder.length - 1];
+    chosen = _estimatePlan(t, { ...base, hotelType, level });
+  }
+  return { ...chosen, budget, fits, userChoseHotel };
+}
+
+/** 예산 안으로 맞출 수 있는 대안들. apply 는 저장 가능한 값만 담는다. */
+function _planAlternatives(t, plan) {
+  const out = [];
+  const B = plan.budget;
+  const base = { hotelType: plan.hotelType, level: plan.level, includeFlight: plan.includeFlight, includeHotel: plan.includeHotel };
+  const add = (key, label, detail, p, apply) => out.push({ key, label, detail, total: p.total, fits: p.total <= B, apply });
+  if (plan.flight > 0) add('noFlight', '항공권 빼고 보기', '항공권을 이미 샀거나 따로 예약할 때', _estimatePlan(t, { ...base, includeFlight: false }), { includeFlight: false });
+  if (plan.hotel > 0) add('noHotel', '숙소 빼고 보기', '지인 집처럼 숙소가 따로 있을 때', _estimatePlan(t, { ...base, includeHotel: false }), { includeHotel: false });
+  if (plan.hotel > 0 && plan.hotelType !== 'hostel') {
+    add('hostel', '숙소를 호스텔로 바꾸기', '게스트하우스·호스텔 기준', _estimatePlan(t, { ...base, hotelType: 'hostel', level: '낮음' }), { hotelTypes: ['hostel'] });
+  }
+  if (plan.days > 1) {
+    add('shorter', `${_durationLabel(plan.days - 1)}로 줄이기`, '돌아오는 날을 하루 앞당겨요', _estimatePlan(t, { ...base, days: plan.days - 1 }), { days: plan.days - 1 });
+  }
+  const near = _cheaperNearby(t);
+  if (near) {
+    const tt = { ...t, city: near.key, cityName: near.name, cityTier: near.tier, country: near.country, arrivalAirport: '' };
+    add('nearby', `${near.name}(으)로 바꾸기`, `${near.country} 안에서 물가가 더 낮은 도시`, _estimatePlan(tt, base),
+        { city: { key: near.key, name: near.name, tier: near.tier, country: near.country, flag: near.flag } });
+  }
+  out.push({ key: 'raise', label: `예산을 ${_manwon(plan.total)}만원으로 올리기`, detail: '지금 조건 그대로 진행해요',
+             total: plan.total, fits: true, apply: { budget: _manwon(plan.total) } });
+  return out;
+}
+
+/** 같은 나라 안에서 물가 등급이 더 낮은 도시 하나. */
+function _cheaperNearby(t) {
+  const rank = { high: 3, mid: 2, low: 1 };
+  const mine = rank[t.cityTier] || 2;
+  const pool = CITIES.filter(c => c.country === t.country && c.key !== t.city && (rank[c.tier] || 2) < mine);
+  return pool.find(c => _CITY_FLIGHT_DURATION_MIN[c.name]) || pool[0] || null;
+}
+
+/** 결과 화면의 대안 버튼 — 조건을 바꿔 일정을 다시 만든다. */
+export async function applyBudgetAlternative(apply) {
+  const t = appState.trip;
+  if (!apply || !t) return;
+  if (apply.includeFlight === false) t.includeFlight = false;
+  if (apply.includeHotel === false) t.includeHotel = false;
+  if (apply.hotelTypes) t.hotelP = { ...(t.hotelP || {}), types: apply.hotelTypes };
+  if (apply.budget) t.budget = apply.budget;
+  if (apply.days && t.startDate) {
+    const d = new Date(t.startDate + 'T00:00:00');
+    d.setDate(d.getDate() + apply.days - 1);
+    t.endDate = _isoLocal(d);
+    t.days = apply.days;
+  }
+  if (apply.city) {
+    Object.assign(t, { city: apply.city.key, cityName: apply.city.name, cityTier: apply.city.tier,
+                       country: apply.city.country, cityFlag: apply.city.flag, arrivalAirport: '', arrivalAirportName: '' });
+  }
+  return regenerateSchedule();
+}
+
+function _isoLocal(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+
 function _pick(arr, seed = Math.random() * 1e6) { return arr[Math.abs(seed | 0) % arr.length]; }
 function _costFor(cat, level, concept) {
   const base = { '식사': 25000, '카페': 9000, '관광': 18000, '쇼핑': 30000, '액티비티': 45000, '숙박': 120000, '이동': 30000 }[cat] || 15000;
@@ -1389,10 +1597,10 @@ function _costFor(cat, level, concept) {
 }
 
 /** Build one search query for a given slot. */
-function _queryFor(slot, t) {
+function _queryFor(slot, t, level) {
   const base = _pick(SLOT_QUERIES[slot]);
   const conceptHint = CONCEPT_HINT[t.concept] || '';
-  const budgetHint  = BUDGET_HINT[t.budgetLevel] || '';
+  const budgetHint  = BUDGET_HINT[level || t.budgetLevel] || '';
   return [t.cityName, conceptHint, budgetHint, base].filter(Boolean).join(' ').trim();
 }
 
@@ -1443,38 +1651,100 @@ function _addMinutes(hhmm, mins) {
  *  (city / days / concept / budget).  Used by the "다시 만들기" button on
  *  the schedule page so users don't have to re-walk the 4-step flow. */
 export async function regenerateSchedule() {
-  try {
-    return await _generateSchedule();
-  } finally {
-    _hideGenLoading();
-  }
+  return _generateSchedule();
 }
 
-/* ============ 생성 로딩 오버레이 (전체화면 스피너) ============ */
+/* ============ 생성 진행 화면 ============ */
+const GEN_STEPS = ['도시 위치 찾기', '항공권 확인', '숙소 확인', '날짜별 장소 고르기', '예산 맞추기'];
 function _showGenLoading(msg) {
   let ov = document.getElementById('genLoadingOverlay');
   if (!ov) {
-    ov = document.createElement('div'); ov.id = 'genLoadingOverlay';
-    ov.innerHTML = '<svg class="gl-route" viewBox="0 0 120 80" fill="none" aria-hidden="true">'
-      + '<path pathLength="1" d="M10 68 C50 68 86 50 110 12"/></svg>'
-      + '<div class="gl-msg" id="glMsg">일정을 만드는 중…</div>'
-      + '<div class="gl-sub">현지 데이터로 동선을 짜고 있어요</div>';
+    ov = el('div', { id: 'genLoadingOverlay', role: 'dialog', ariaModal: 'true', ariaLabelledby: 'glMsg' }, [
+      el('svg', {}),
+      el('div', { class: 'gl-msg', id: 'glMsg' }, '일정을 만드는 중…'),
+      el('ol', { class: 'gl-steps', id: 'glSteps' }, GEN_STEPS.map((s, i) => el('li', { dataset: { i: String(i) } }, s))),
+      el('p', { class: 'gl-sub', id: 'glSub', ariaLive: 'polite' }, ''),
+      el('div', { class: 'gl-actions', id: 'glActions' }),
+    ]);
+    ov.firstChild.outerHTML = '<svg class="gl-route" viewBox="0 0 120 80" fill="none" aria-hidden="true"><path pathLength="1" d="M10 68 C50 68 86 50 110 12"/></svg>';
     document.body.appendChild(ov);
   }
+  ov.classList.remove('is-failed');
   const m = ov.querySelector('#glMsg'); if (m && msg) m.textContent = msg;
+  const act = ov.querySelector('#glActions'); if (act) act.innerHTML = '';
   ov.style.display = 'flex';
+  _genProgress(0, '');
+}
+function _genProgress(stepIdx, detail) {
+  const ov = document.getElementById('genLoadingOverlay');
+  if (!ov) return;
+  ov.querySelectorAll('#glSteps li').forEach(li => {
+    const i = Number(li.dataset.i);
+    li.classList.toggle('is-done', i < stepIdx);
+    li.classList.toggle('is-current', i === stepIdx);
+    if (i === stepIdx) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+  });
+  const sub = ov.querySelector('#glSub');
+  if (sub) sub.textContent = `${GEN_STEPS[stepIdx] || ''}${detail ? ` · ${detail}` : ''}`;
+}
+function _showGenFailure(message) {
+  const ov = document.getElementById('genLoadingOverlay');
+  if (!ov) return;
+  ov.classList.add('is-failed');
+  ov.querySelector('#glMsg').textContent = '일정을 만들지 못했어요';
+  ov.querySelector('#glSub').textContent = message;
+  const act = ov.querySelector('#glActions');
+  act.innerHTML = '';
+  act.append(
+    el('button', { type: 'button', class: 'btn btn-primary', onclick: () => { _hideGenLoading(); regenerateSchedule(); } }, '다시 시도'),
+    el('button', { type: 'button', class: 'btn btn-ghost gl-close', onclick: () => { _hideGenLoading(); } }, '입력 화면으로'),
+  );
+  act.querySelector('button')?.focus();
 }
 function _hideGenLoading() {
   document.getElementById('genLoadingOverlay')?.remove();
 }
 
+/** 응답이 없을 때 오래 기다리지 않도록 — 시간이 지나면 실패로 보고 대체값을 쓴다. */
+function _withTimeout(promise, ms, label) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} 응답 시간 초과`)), ms); }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+let _generating = false;
+
 async function _generateSchedule() {
+  if (_generating) return;              // 중복 요청 막기
+  _generating = true;
   const t = appState.trip;
   const btn = $('#stepGenerate');
-  if (btn) { btn.disabled = true; btn.textContent = `${t.cityName}의 진짜 명소를 찾는 중…`; }
+  if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = '일정 만드는 중…'; }
   _showGenLoading(`${t.cityName || ''} 일정을 만드는 중…`);
+  const startedAt = Date.now();
+  trackEvent('trip_generate_start');
+  try {
+    await _generateScheduleInner(t, btn, startedAt);
+    trackEvent('trip_generate_done');
+  } catch (e) {
+    console.error('[trip-flow] 일정 생성 실패:', e);
+    trackEvent('trip_generate_fail');
+    _showGenFailure('연결이 불안정하거나 서버가 응답하지 않았어요. 입력한 내용은 그대로 남아 있어요.');
+  } finally {
+    _generating = false;
+    if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.textContent = '일정 만들기'; }
+  }
+}
 
-  const start = new Date(t.startDate);
+async function _generateScheduleInner(t, btn, startedAt) {
+  const features = await api.features();
+  const plan = _fitPlan(t);
+  const level = plan.level;
+  const people = plan.people;
+
+  const start = new Date(t.startDate + 'T00:00:00');
   const days = [];
 
   // ── STEP A — Resolve the destination city's centre FIRST.
@@ -1484,12 +1754,12 @@ async function _generateSchedule() {
   // are too scattered.
   let cityCenter = null;
   try {
-    const cityRes = await api.searchPlaces({
+    const cityRes = await _withTimeout(api.searchPlaces({
       query: t.cityName,
       language_code: 'ko', language: 'ko',
       region: _guessRegion(t.country),
       max_results: 1,
-    });
+    }), 12000, '도시 위치');
     const c = cityRes?.places?.[0];
     if (c && Number.isFinite(c.latitude) && Number.isFinite(c.longitude)) {
       cityCenter = { lat: c.latitude, lng: c.longitude };
@@ -1516,16 +1786,16 @@ async function _generateSchedule() {
   const slotCache = new Map();
   async function searchForSlot(slot) {
     if (slotCache.has(slot)) return slotCache.get(slot);
-    const q = _queryFor(slot, t);
+    const q = _queryFor(slot, t, level);
     try {
-      const res = await api.searchPlaces({
+      const res = await _withTimeout(api.searchPlaces({
         query: q,
         language_code: 'ko', language: 'ko',
         region: _guessRegion(t.country),
         max_results: 15,
         center_lat: cityCenter?.lat,
         center_lng: cityCenter?.lng,
-      });
+      }), 12000, '장소 검색');
       let places = (res?.places || []).filter(p =>
         Number.isFinite(p.latitude) && Number.isFinite(p.longitude)
       );
@@ -1549,33 +1819,24 @@ async function _generateSchedule() {
   //   1) 스타일 "빽빽한 일정" → PACKED (식사 제외 7곳)
   //   2) 스타일 "여유로운 일정" → RELAXED (식사 제외 3곳)
   //   3) 컨셉 기본
-  const styles = Array.isArray(t.styles) ? t.styles : [];
-  let slotTimes;
-  if (styles.includes('빽빽한 일정')) {
-    slotTimes = PACKED_SLOTS;
-    console.log('[trip-flow] style override → 빽빽한 일정 (slots=' + slotTimes.length + ')');
-  } else if (styles.includes('여유로운 일정')) {
-    slotTimes = RELAXED_SLOTS;
-    console.log('[trip-flow] style override → 여유로운 일정 (slots=' + slotTimes.length + ')');
-  } else {
-    slotTimes = CONCEPT_SLOTS[t.concept] || SLOT_TIMES_DEFAULT;
-  }
-  console.log('[trip-flow] CONCEPT_SLOTS build=v6 — concept=' + t.concept + ', slots=' + slotTimes.length);
+  const slotTimes = _slotTimesFor(t);
 
   // ── STEP C — Resolve AIRPORT + HOTEL once for the destination city. ──
   // These power the per-day start/end markers (공항 도착 / 호텔 체크인 / 복귀 / 체크아웃 / 공항 출발).
   // Falls back to readable mock names if Places API is unavailable.
   let airportPlace = null;
   let hotelPlace = null;
-  try {
-    const ar = await api.searchPlaces({
+  const localTrip = _isLocalTrip(t);
+  _genProgress(1, plan.includeFlight ? '' : (localTrip ? '같은 도시 여행이라 건너뛰어요' : '예산에서 제외했어요'));
+  if (!localTrip) try {
+    const ar = await _withTimeout(api.searchPlaces({
       query: `${t.cityName} 국제공항`,
       language_code: 'ko', language: 'ko',
       region: _guessRegion(t.country),
       max_results: 3,
       center_lat: cityCenter?.lat,
       center_lng: cityCenter?.lng,
-    });
+    }), 12000, '공항 검색');
     airportPlace = (ar?.places || []).find(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude)) || null;
   } catch (e) {
     console.warn('[trip-flow] airport resolve failed:', e?.message);
@@ -1597,7 +1858,7 @@ async function _generateSchedule() {
     // 쿼리 후보 빌드 — 사용자 선택 유형(다중) × 위치 × 다양성 suffix 조합
     const hotelTypes = (t.hotelP?.types && t.hotelP.types.length)
       ? t.hotelP.types
-      : ['midscale'];
+      : [plan.hotelType || 'midscale'];
     const hotelLocs = (t.hotelP?.locations && t.hotelP.locations.length)
       ? t.hotelP.locations
       : [null];
@@ -1619,14 +1880,15 @@ async function _generateSchedule() {
     const hotelQuery = queryCandidates[Math.floor(Math.random() * queryCandidates.length)];
     console.log('[trip-flow] 호텔 검색 쿼리:', hotelQuery);
 
-    const hr = await api.searchPlaces({
+    _genProgress(2, plan.includeHotel ? '' : '예산에서 제외했어요');
+    const hr = await _withTimeout(api.searchPlaces({
       query: hotelQuery,
       language_code: 'ko', language: 'ko',
       region: _guessRegion(t.country),
       max_results: 15,   // 더 많은 후보
       center_lat: cityCenter?.lat,
       center_lng: cityCenter?.lng,
-    });
+    }), 12000, '숙소 검색');
     let hotelCandidates = (hr?.places || []).filter(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude));
     if (cityCenter) {
       const near = hotelCandidates.filter(p => _kmFromCentre(p) <= 30);
@@ -1655,19 +1917,19 @@ async function _generateSchedule() {
   // 1실 1박 단가 결정 — 우선순위:
   //   1) SerpApi(Google Hotels) 실시간 요금  → 'serpapi'
   //   2) 실패 시 순수 추정 공식 (보정 없음)   → 'estimate'
-  let _perRoomNight = _calcHotelPerNight(t);
+  let _perRoomNight = _hotelNightFor(t, plan.hotelType);
   let _hotelPriceSource = 'estimate';
 
   // ── 1) SerpApi 실시간 호텔 요금 (해당 도시·날짜·인원의 실제 1박가) ──
   //   check_out 이 check_in 보다 뒤이고, 둘 다 있어야 호출 (SerpApi 요구사항).
   let _serpNightly = null;
   try {
-    if (t.startDate && t.endDate && t.endDate > t.startDate) {
-      const adults = Math.max(1, t.people || _PEOPLE_COUNT[t.companion] || 2);
+    if (features.liveHotels && plan.includeHotel && t.startDate && t.endDate && t.endDate > t.startDate) {
+      const adults = people;
       // 사용자가 고른 성급(2~5)을 SerpApi hotel_class 필터로 전달 → 보여줄 호텔 등급·가격대 일치
       const _starMap = { luxury: '5', upscale: '4', midscale: '3', budget: '2' };
-      const _stars = [...new Set((t.hotelP?.types || []).map(x => _starMap[x]).filter(Boolean))];
-      const hres = await api.searchHotels({
+      const _stars = [...new Set((t.hotelP?.types?.length ? t.hotelP.types : [plan.hotelType]).map(x => _starMap[x]).filter(Boolean))];
+      const hres = await _withTimeout(api.searchHotels({
         query: t.cityName,
         check_in_date: t.startDate,
         check_out_date: t.endDate,
@@ -1677,7 +1939,7 @@ async function _generateSchedule() {
         language: 'ko',
         hotel_class: _stars.length ? _stars.join(',') : undefined,
         max_results: 25,
-      });
+      }), 20000, '실시간 숙소 요금');
       const hotels = (hres?.hotels || []).filter(h => Number.isFinite(h.price_per_night) && h.price_per_night > 0);
       if (hotels.length) {
         // ★ 표시 호텔을 Google Hotels(SerpApi) 매물 '하나'로 통일한다.
@@ -1725,13 +1987,12 @@ async function _generateSchedule() {
   } else {
     // ── 2) 폴백 — SerpApi 실패 시 순수 추정 공식 결과값을 보정 없이 그대로 사용 ──
     //   (Google 가격대 priceLevel 보정은 하지 않는다 — 추정치를 임의로 올리고 내리지 않음)
-    _perRoomNight = Math.round(_calcHotelPerNight(t) / 1000) * 1000;
+    _perRoomNight = Math.round(_hotelNightFor(t, plan.hotelType) / 1000) * 1000;
     _hotelPriceSource = 'estimate';
     console.log('[trip-flow] SerpApi 미사용 — 순수 추정 1박',
                 _perRoomNight.toLocaleString('ko-KR'), '원 (보정 없음)');
   }
-  const hotelPerNightCost = _perRoomNight * _rooms;
-  const transitCost       = _costFor('이동', t.budgetLevel, t.concept);
+  const hotelPerNightCost = plan.includeHotel ? _perRoomNight * _rooms : 0;
   console.log('[trip-flow] 숙박 — 1박 ' + hotelPerNightCost.toLocaleString('ko-KR') + '원 (' + _rooms + '실) × ' + nights + '박 = 총 ' + (hotelPerNightCost * nights).toLocaleString('ko-KR') + '원');
 
   // Helpers to build a "transition" activity (airport/hotel) with proper fields.
@@ -1742,12 +2003,12 @@ async function _generateSchedule() {
   try {
     const depIata = t.departureAirport || _CITY_IATA[t.origin];   // 사용자가 고른 출발 공항 우선
     const arrIata = t.arrivalAirport || _CITY_IATA[t.city];       // 사용자가 고른 도착 공항 우선
-    if (depIata && arrIata && depIata !== arrIata && t.startDate && t.endDate && t.endDate > t.startDate) {
-      const fres = await api.searchFlights({
+    if (features.liveFlights && plan.includeFlight && depIata && arrIata && depIata !== arrIata && t.startDate && t.endDate && t.endDate > t.startDate) {
+      const fres = await _withTimeout(api.searchFlights({
         departure_id: depIata, arrival_id: arrIata,
         outbound_date: t.startDate, return_date: t.endDate,
         adults: 1, currency: 'KRW', country: 'kr', language: 'ko',
-      });
+      }), 20000, '실시간 항공 요금');
       if (fres && Number.isFinite(fres.lowest_price) && fres.lowest_price > 0) {
         _flightPerPax = fres.lowest_price;
         _flightSource = 'serpapi';
@@ -1765,7 +2026,7 @@ async function _generateSchedule() {
   }
   // 왕복 1인가를 인원수만큼 곱해 그룹 총액 → 도착·출발에 절반씩 분배 (추정 폴백은 기존 공식)
   const _pax = _peopleCount(t);
-  const flightTotalKRW = (Number.isFinite(_flightPerPax) && _flightPerPax > 0)
+  const flightTotalKRW = !plan.includeFlight ? 0 : (Number.isFinite(_flightPerPax) && _flightPerPax > 0)
     ? Math.round(_flightPerPax * _pax * (t.companion === 'group' ? 0.95 : 1) / 100) * 100
     : _calcFlightPrice(t);
   const flightHalfKRW  = Math.round(flightTotalKRW / 2 / 100) * 100;
@@ -1785,7 +2046,8 @@ async function _generateSchedule() {
       time,
       name: label ? `${airportName} (${label})` : airportName,
       category: '이동',
-      cost: flightHalfKRW,
+      // 가는 편은 절반, 오는 편은 나머지 — 두 편을 더하면 왕복 총액과 정확히 같다.
+      cost: isArrival ? flightHalfKRW : flightTotalKRW - flightHalfKRW,
       placeId: airportPlace?.place_id || `airport-${t.cityName}`,
       latitude:  airportPlace?.latitude,
       longitude: airportPlace?.longitude,
@@ -1799,7 +2061,7 @@ async function _generateSchedule() {
         flightCode:   _flightMeta?.flightCode || flightInfo.split(' · ')[0],
         route:        f.route || 'any',
         startDate:    t.startDate,
-        source:       _flightSource,
+        source:       plan.includeFlight ? _flightSource : 'excluded',
       },
     };
   }
@@ -1816,7 +2078,8 @@ async function _generateSchedule() {
       time,
       name: (label ? `${hotelName} (${label})` : hotelName) + typeNote,
       category: '숙박',
-      cost: cost ?? 0,
+      cost: plan.includeHotel ? (cost ?? 0) : 0,
+      excludedFromBudget: !plan.includeHotel,
       placeId: hotelPlace?.place_id || `hotel-${t.cityName}`,
       latitude:  hotelPlace?.latitude,
       longitude: hotelPlace?.longitude,
@@ -1829,7 +2092,9 @@ async function _generateSchedule() {
   // 실데이터(Places) vs 폴백(임시 명소) 슬롯 집계 — 너무 많이 폴백되면 사용자에게 안내.
   let _realSlots = 0, _fallbackSlots = 0;
 
+  const transportPerDay = _localTransportPerDay(t) * people;
   for (let i = 0; i < totalDays; i++) {
+    _genProgress(3, `${i + 1}일차 / 전체 ${totalDays}일`);
     const d = new Date(start); d.setDate(start.getDate() + i);
     const activities = [];
 
@@ -1844,10 +2109,10 @@ async function _generateSchedule() {
     // ── START items (per day type) ──
     if (isSingleDay) {
       // 당일치기: just airport arrival, no overnight stay
-      activities.push(_airportItem(_addMinutes(firstSlotTime, -120), '도착'));
+      if (!localTrip) activities.push(_airportItem(_addMinutes(firstSlotTime, -120), '도착'));
     } else if (isFirstDay) {
       // 첫날 (multi-day): 공항 도착 → 호텔 체크인
-      activities.push(_airportItem(_addMinutes(firstSlotTime, -120), '도착'));
+      if (!localTrip) activities.push(_airportItem(_addMinutes(firstSlotTime, -120), '도착'));
       activities.push(_hotelItem  (_addMinutes(firstSlotTime, -30),  '체크인', 0));
     } else {
       // 중간일 또는 마지막날 아침: 호텔에서 출발
@@ -1868,7 +2133,7 @@ async function _generateSchedule() {
           time,
           name: pick.name,
           category: cat,
-          cost: _costFor(cat, t.budgetLevel, t.concept),
+          cost: _costFor(cat, level, t.concept) * people,
           placeId: pick.place_id,
           latitude: pick.latitude,
           longitude: pick.longitude,
@@ -1879,12 +2144,14 @@ async function _generateSchedule() {
         _fallbackSlots++;
         const fallback = _legacyMock(slot, i, si);
         const cat = fallback.c;
+        const costCat = CATEGORY_BY_SLOT[slot] || cat;   // 비용은 슬롯 기준 — 예산 계획과 같은 공식
         activities.push({
           time,
           name: `${fallback.n} · ${t.cityName}`,
           category: cat,
-          cost: _costFor(cat, t.budgetLevel, t.concept),
+          cost: _costFor(costCat, level, t.concept) * people,
           placeId: `${t.cityName}-${i}-${si}`,
+          sample: true,
           googleMapsQuery: `${fallback.n} ${t.cityName}`,
         });
       }
@@ -1893,18 +2160,58 @@ async function _generateSchedule() {
     // ── END items (per day type) ──
     if (isSingleDay) {
       // 당일치기: 공항 출발
-      activities.push(_airportItem(_addMinutes(lastSlotTime, +180), '출발'));
+      if (!localTrip) activities.push(_airportItem(_addMinutes(lastSlotTime, +180), '출발'));
     } else if (isLastDay) {
       // 마지막날 (multi-day): 호텔 체크아웃 → 공항 출발
       activities.push(_hotelItem  (_addMinutes(lastSlotTime, +60),  '체크아웃', 0));
-      activities.push(_airportItem(_addMinutes(lastSlotTime, +180), '출발'));
+      if (!localTrip) activities.push(_airportItem(_addMinutes(lastSlotTime, +180), '출발'));
     } else {
       // 첫날 또는 중간일 저녁: 호텔 복귀 — 이날 밤 숙박 1박 비용 적용
       activities.push(_hotelItem(_addMinutes(lastSlotTime, +90), '복귀 (1박)', hotelPerNightCost));
     }
 
-    days.push({ date: d.toISOString().slice(0,10), activities });
+    // 현지 교통비는 장소가 아니라 하루 단위 비용이라 날짜에 따로 둔다(일별·전체 합계에 포함).
+    days.push({ date: _isoLocal(d), activities, localTransport: transportPerDay });
   }
+  _genProgress(4, '');
+
+  // 결과 통화 — 원화가 아니면 유럽중앙은행 환율로 환산해 보여 준다(기준일 표시).
+  let fx = null;
+  const currency = t.currency || 'KRW';
+  if (currency !== 'KRW') {
+    try {
+      const res = await _withTimeout(fetch(`https://api.frankfurter.dev/v1/latest?base=KRW&symbols=${currency}`), 6000, '환율');
+      const data = res.ok ? await res.json() : null;
+      const rate = data?.rates?.[currency];
+      if (Number.isFinite(rate) && rate > 0) fx = { currency, rate, date: data.date, source: '유럽중앙은행(Frankfurter)' };
+    } catch (e) { console.warn('[trip-flow] 환율 조회 실패 — 원화로 표시:', e?.message); }
+  }
+
+  const sources = {
+    flight: !plan.includeFlight ? 'excluded' : _flightSource,          // 'serpapi' | 'estimate' | 'excluded'
+    hotel: !plan.includeHotel ? 'excluded' : _hotelPriceSource,
+    flightCheckedAt: _flightSource === 'serpapi' ? new Date().toISOString() : null,
+    hotelCheckedAt: _hotelPriceSource === 'serpapi' ? new Date().toISOString() : null,
+    placesReal: _realSlots,
+    placesSample: _fallbackSlots,
+    liveConfigured: { flights: !!features.liveFlights, hotels: !!features.liveHotels, ai: !!features.ai },
+  };
+  const budgetPlan = {
+    budget: plan.budget,
+    estimate: plan.total,
+    fits: plan.fits,
+    hotelType: plan.hotelType,
+    hotelLabel: plan.userChoseHotel ? '직접 고른 숙소 유형' : (HOTEL_TIER_LABEL[plan.hotelType] || ''),
+    level: plan.level,
+    levelLabel: LEVEL_LABEL[plan.level] || '',
+    people: plan.people,
+    rooms: plan.rooms,
+    nights: plan.nights,
+    includeFlight: plan.includeFlight,
+    includeHotel: plan.includeHotel,
+    localTrip,
+    alternatives: plan.fits ? [] : _planAlternatives(t, plan),
+  };
 
   const generated = {
     origin: t.origin || '',
@@ -1914,7 +2221,11 @@ async function _generateSchedule() {
     country: t.country,
     concept: t.concept,
     budget: (t.budget || 0) * 10000,
-    currency: t.currency,
+    currency,
+    fx,
+    people: plan.people,
+    startDate: t.startDate,
+    endDate: t.endDate,
     days,
     createdAt: new Date().toISOString(),
     companion: t.companion,
@@ -1927,19 +2238,23 @@ async function _generateSchedule() {
     } : null,
     hotelPriceSource: _hotelPriceSource,   // 'serpapi' | 'estimate'
     flightPriceSource: _flightSource,      // 'serpapi' | 'estimate'
+    sources,
+    budgetPlan,
+    generationMs: Date.now() - startedAt,
+    version: 2,
   };
   appState.generated = generated;
   appState.expenses = {};
+  t._draft = false;                      // 일정이 만들어졌으니 임시 저장은 끝
 
-  if (btn) { btn.disabled = false; btn.textContent = '일정 생성하기 ✨'; }
   _hideGenLoading();
-  // 실데이터가 충분치 않으면(절반 이상 임시 명소) 솔직하게 안내 — 데모 중 가짜 명소를 진짜처럼 보이지 않게.
   const _totalSlots = _realSlots + _fallbackSlots;
   if (_totalSlots > 0 && _fallbackSlots > _realSlots) {
-    console.warn(`[trip-flow] 실데이터 부족 — 실제 ${_realSlots} / 임시 ${_fallbackSlots} 슬롯`);
-    showToast('현지 장소를 충분히 못 찾아 일부는 임시 명소로 채웠어요. 도시명을 더 구체적으로 바꿔 다시 시도해 보세요.');
+    showToast('현지 장소를 충분히 찾지 못해 일부는 예시 장소로 채웠어요. 예시 장소에는 표시가 붙어 있어요.');
+  } else if (!plan.fits) {
+    showToast('일정을 만들었어요. 예산보다 많이 들어서 맞출 방법을 함께 보여 드려요.');
   } else {
-    showToast('일정이 생성되었어요!');
+    showToast('일정을 만들었어요');
   }
   navigate('schedule');
 }
