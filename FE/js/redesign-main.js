@@ -200,6 +200,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 5) Initial paint
   renderHomeRoadmaps();
   renderReviewPreview();
+  // 첫 화면을 그렸으니 시작 화면을 걷는다(로그인 확인 같은 네트워크는 기다리지 않음).
+  requestAnimationFrame(() => {
+    const sp = document.getElementById('bootSplash');
+    if (!sp) return;
+    sp.classList.add('is-done');
+    setTimeout(() => sp.remove(), 250);
+  });
 
   // 6) Auth bootstrap (best-effort)
   if (getAccessToken()) {

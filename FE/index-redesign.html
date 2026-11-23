@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<meta name="theme-color" content="#111418"/>
+<meta name="theme-color" content="#F4F5F7"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-title" content="3초 여행"/>
@@ -25,9 +25,23 @@
 <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=09d"/>
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=09d"/>
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=09d"/>
+<!-- iOS 홈 화면 앱 시작 이미지(실행 직후 흰 화면 대신) -->
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1260x2736.png" media="(device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<!-- 글꼴은 첫 화면을 막지 않게 불러온다(그동안 시스템 글꼴) -->
+<link rel="preload" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" onload="this.onload=null;this.rel='stylesheet'" />
+<noscript><link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" /></noscript>
 <link rel="modulepreload" href="./js/redesign-main.js">
 <link rel="modulepreload" href="./js/redesign-api-adapter.js">
 <link rel="modulepreload" href="./js/redesign-app-shell.js">
@@ -54,8 +68,31 @@
 <link rel="stylesheet" href="./css/redesign-responsive.css">
 <link rel="stylesheet" href="./css/redesign-effects.css">
 <link rel="stylesheet" href="./css/redesign-system.css">
+<style>
+/* 첫 화면: CSS 파일이 오기 전에도 배경을 칠하고, 시작 이미지와 같은 배치의 시작 화면을 보여 준다 */
+html, body { background: #F4F5F7; }
+html.theme-dark, html.theme-dark body { background: #111418; }
+@media (prefers-color-scheme: dark) { html.allow-dark, html.allow-dark body { background: #111418; } }
+#bootSplash { position: fixed; inset: 0; z-index: 10000; display: grid; place-content: center; justify-items: center; gap: 16px;
+  background: inherit; font: 700 20px/1.2 -apple-system, "Apple SD Gothic Neo", system-ui, sans-serif; color: #1E222A;
+  transition: opacity .2s ease; animation: bootSplashOut .2s ease 6s forwards; }
+#bootSplash img { width: 96px; height: 96px; }
+#bootSplash.is-done { opacity: 0; pointer-events: none; }
+html.theme-dark #bootSplash { color: #EEF2F6; }
+@media (prefers-color-scheme: dark) { html.allow-dark #bootSplash { color: #EEF2F6; } }
+@keyframes bootSplashOut { to { opacity: 0; visibility: hidden; } }   /* 스크립트가 실패해도 6초 뒤 사라짐 */
+</style>
+<script>
+  // 저장된 테마를 첫 그림 전에 적용해 다크 테마에서 밝은 화면이 번쩍이지 않게 한다.
+  try {
+    var t = localStorage.getItem('tst_theme_v1') || (localStorage.getItem('tst_dark_v1') === '1' ? 'system' : 'light');
+    if (t === 'dark') document.documentElement.classList.add('theme-dark');
+    if (t === 'system') document.documentElement.classList.add('allow-dark');
+  } catch (e) {}
+</script>
 </head>
 <body>
+<div id="bootSplash" aria-hidden="true"><img src="/assets/icon-192.png" alt="" width="96" height="96"><span>3초 여행</span></div>
 
 <div id="app" class="app-shell" data-app="redesign">
 
