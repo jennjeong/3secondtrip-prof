@@ -18,8 +18,9 @@ function _theme() {
   try {
     const v = localStorage.getItem(THEME_KEY);
     if (v === 'system' || v === 'light' || v === 'dark') return v;
-    // 예전 '다크 모드(시스템 따름)' 켜짐 → 시스템
-    return localStorage.getItem(OLD_DARK_KEY) === '1' ? 'system' : 'light';
+    // 기본은 기기 설정을 따른다(홈 화면 앱 시작 이미지와 같은 밝기).
+    // 예전 '다크 모드' 토글을 직접 끈 사람('0')만 라이트로 둔다.
+    return localStorage.getItem(OLD_DARK_KEY) === '0' ? 'light' : 'system';
   } catch (_) { return 'light'; }
 }
 const _sysDark = () => matchMedia('(prefers-color-scheme: dark)').matches;

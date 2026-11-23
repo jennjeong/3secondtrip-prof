@@ -455,6 +455,8 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus, h3[tabindex="-1"]:focus, .page
 
 /* ===== 설정: 테마(시스템/라이트/다크) · 알림 상태 · 초기화 안내 ===== */
 :root.theme-dark {
+  --c-primary: #EEF2F6; --c-primary-strong: #FFFFFF; --c-accent: #C9D3DE; --c-on-ink: #111418;
+  --c-sky: #22303F; --c-mint: #2F4A66;
   --c-bg:        #111418;
   --c-surface:   #1A1E24;
   --c-surface-2: #22272E;
@@ -490,3 +492,55 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus, h3[tabindex="-1"]:focus, .page
 .fb-preview img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; background: var(--c-surface-2); }
 .fb-preview-meta { display: grid; gap: 6px; font-size: 12.5px; color: var(--c-text-soft); min-width: 0; overflow-wrap: anywhere; }
 .fb-preview-meta .btn { justify-self: start; min-height: 44px; }
+
+/* 다크 모드(시스템 따름)에서도 진한 바탕 토큰을 뒤집는다 */
+@media (prefers-color-scheme: dark) {
+  :root.allow-dark {
+  --c-primary: #EEF2F6; --c-primary-strong: #FFFFFF; --c-accent: #C9D3DE; --c-on-ink: #111418;
+  --c-sky: #22303F; --c-mint: #2F4A66;
+  }
+}
+
+/* 다크 모드: 손으로 칠한 밝은 면 */
+:root.theme-dark .bottom-tab-nav { background: rgba(26,30,36,.96); border-top-color: var(--c-border); }
+:root.theme-dark .day-chip.is-active .day-chip-cost { color: var(--c-on-ink); opacity: .8; }
+:root.theme-dark .sub-toggle, :root.theme-dark .sub-cta, :root.theme-dark .sub-footnote, :root.theme-dark .sub-cancel-block { background: var(--c-surface-2); }
+:root.theme-dark .sub-toggle-btn.is-on { background: var(--c-surface); color: var(--c-text); }
+:root.theme-dark .book-cb { background: var(--c-surface); }
+:root.theme-dark .setting-sub button.is-active { background: var(--c-surface); }
+:root.theme-dark { --c-bg-soft: var(--c-surface-2); }
+@media (prefers-color-scheme: dark) {
+:root.allow-dark .bottom-tab-nav { background: rgba(26,30,36,.96); border-top-color: var(--c-border); }
+:root.allow-dark .day-chip.is-active .day-chip-cost { color: var(--c-on-ink); opacity: .8; }
+:root.allow-dark .sub-toggle, :root.allow-dark .sub-cta, :root.allow-dark .sub-footnote, :root.allow-dark .sub-cancel-block { background: var(--c-surface-2); }
+:root.allow-dark .sub-toggle-btn.is-on { background: var(--c-surface); color: var(--c-text); }
+:root.allow-dark .book-cb { background: var(--c-surface); }
+:root.allow-dark .setting-sub button.is-active { background: var(--c-surface); }
+:root.allow-dark { --c-bg-soft: var(--c-surface-2); }
+}
+
+/* 다크 모드: 대비 보정 */
+:root.theme-dark .hero-cta { color: #111418; }
+:root.theme-dark .sub-badge--accent { color: var(--c-on-ink); }
+:root.theme-dark .budget-alt-total, :root.theme-dark .budget-panel .is-over, :root.theme-dark .money-row .is-over, :root.theme-dark .budget-over-amt { color: #F97066; }
+:root.theme-dark .book-hint.is-nudge { color: #F97066; }
+:root.theme-dark .money-row--over dt, :root.theme-dark .money-row--over dd { color: #F97066; }
+:root.theme-dark .money-row--under dd { color: #6CCF95; }
+:root.theme-dark { --c-text-mute: #8F97A1; --c-blue: #86AEDC; --c-focus: #86AEDC; }
+@media (prefers-color-scheme: dark) {
+:root.allow-dark .hero-cta { color: #111418; }
+:root.allow-dark .sub-badge--accent { color: var(--c-on-ink); }
+:root.allow-dark .budget-alt-total, :root.allow-dark .budget-panel .is-over, :root.allow-dark .money-row .is-over, :root.allow-dark .budget-over-amt { color: #F97066; }
+:root.allow-dark .book-hint.is-nudge { color: #F97066; }
+:root.allow-dark .money-row--over dt, :root.allow-dark .money-row--over dd { color: #F97066; }
+:root.allow-dark .money-row--under dd { color: #6CCF95; }
+:root.allow-dark { --c-text-mute: #8F97A1; --c-blue: #86AEDC; --c-focus: #86AEDC; }
+}
+
+/* 다크 모드: 로고 글자색 뒤집기, 히어로 테두리 */
+:root.theme-dark .topbar-brand-logo { filter: invert(1) hue-rotate(180deg); }
+:root.theme-dark #homePage .hero-card { box-shadow: inset 0 0 0 1px var(--c-border); }
+@media (prefers-color-scheme: dark) {
+:root.allow-dark .topbar-brand-logo { filter: invert(1) hue-rotate(180deg); }
+:root.allow-dark #homePage .hero-card { box-shadow: inset 0 0 0 1px var(--c-border); }
+}

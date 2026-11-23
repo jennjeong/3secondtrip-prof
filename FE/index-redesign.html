@@ -37,6 +37,18 @@
 <link rel="apple-touch-startup-image" href="/assets/splash/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
 <link rel="apple-touch-startup-image" href="/assets/splash/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"/>
 <link rel="apple-touch-startup-image" href="/assets/splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"/>
+<!-- 기기가 다크 모드일 때(뒤에 있어야 우선 적용) -->
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1320x2868-dark.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1260x2736-dark.png" media="(device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1206x2622-dark.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1290x2796-dark.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1179x2556-dark.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1284x2778-dark.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1170x2532-dark.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1125x2436-dark.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-1242x2688-dark.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-828x1792-dark.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)"/>
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-750x1334-dark.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- 글꼴은 첫 화면을 막지 않게 불러온다(그동안 시스템 글꼴) -->
@@ -85,10 +97,10 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
 <script>
   // 저장된 테마를 첫 그림 전에 적용해 다크 테마에서 밝은 화면이 번쩍이지 않게 한다.
   try {
-    var t = localStorage.getItem('tst_theme_v1') || (localStorage.getItem('tst_dark_v1') === '1' ? 'system' : 'light');
+    var t = localStorage.getItem('tst_theme_v1') || (localStorage.getItem('tst_dark_v1') === '0' ? 'light' : 'system');
     if (t === 'dark') document.documentElement.classList.add('theme-dark');
     if (t === 'system') document.documentElement.classList.add('allow-dark');
-  } catch (e) {}
+  } catch (e) { document.documentElement.classList.add('allow-dark'); }
 </script>
 </head>
 <body>

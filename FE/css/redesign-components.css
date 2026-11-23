@@ -101,7 +101,7 @@
 .chip.is-active {
   background: var(--c-primary);
   border-color: transparent;
-  color: #fff;
+  color: var(--c-on-ink);
 }
 
 .chip-mini {
@@ -116,7 +116,7 @@
 }
 .chip-mini.is-active {
   background: var(--c-primary-strong);
-  color: #fff;
+  color: var(--c-on-ink);
   border-color: transparent;
 }
 
@@ -141,7 +141,7 @@
 }
 .sort-tab.is-active {
   background: var(--c-text);
-  color: #fff;
+  color: var(--c-on-ink);
 }
 
 /* ===================== ROADMAP CARDS ===================== */
@@ -255,11 +255,11 @@
 
 .btn-primary {
   background: var(--c-text);
-  color: #fff;
+  color: var(--c-on-ink);
 }
 .btn-primary.btn-gradient {
   background: var(--c-primary);
-  color: #fff;
+  color: var(--c-on-ink);
 }
 .btn-soft {
   background: var(--c-surface-2);
@@ -285,7 +285,7 @@
   transition: background .15s, color .15s;
 }
 .icon-btn:hover { background: var(--c-surface-2); color: var(--c-primary-strong); }
-.icon-btn.is-active { background: var(--c-primary-strong); color: #fff; border-color: transparent; }
+.icon-btn.is-active { background: var(--c-primary-strong); color: var(--c-on-ink); border-color: transparent; }
 
 /* ===================== STEP PROGRESS ===================== */
 .step-progress {
@@ -322,12 +322,12 @@
 .step-dot.is-active {
   background: var(--c-primary);
   border-color: var(--c-primary);
-  color: #fff;
+  color: var(--c-on-ink);
 }
 .step-dot.is-done {
   background: var(--c-primary-strong);
   border-color: var(--c-primary-strong);
-  color: #fff;
+  color: var(--c-on-ink);
 }
 .step-line {
   flex: 1;
@@ -536,7 +536,7 @@
 }
 .budget-mark.is-active {
   background: var(--c-text);
-  color: #fff;
+  color: var(--c-on-ink);
   border-color: transparent;
 }
 
@@ -587,7 +587,7 @@
 }
 .day-chip.is-active {
   background: var(--c-text);
-  color: #fff;
+  color: var(--c-on-ink);
   border-color: transparent;
 }
 .btn-edit {
@@ -602,7 +602,7 @@
 .day-row:has(#dayChips:empty) { display: none; }
 .btn-edit.is-active {
   background: var(--c-primary-strong);
-  color: #fff;
+  color: var(--c-on-ink);
   border-color: transparent;
 }
 
@@ -840,7 +840,7 @@
   margin: 0 auto 14px;
   background: var(--c-primary);
   display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 36px; font-weight: 900;
+  color: var(--c-on-ink); font-size: 36px; font-weight: 900;
   box-shadow: 0 10px 24px rgba(20,30,45,.18);
 }
 .auth-title { font-size: 24px; font-weight: 900; letter-spacing: -.4px; }
@@ -1081,7 +1081,7 @@
 .book-cb.is-checked {
   background: var(--c-primary-strong);
   border-color: var(--c-primary-strong);
-  color: #fff;
+  color: var(--c-on-ink);
 }
 
 /* ===================== TAG PREVIEW ===================== */
@@ -1308,7 +1308,7 @@
 .msr-text .msr-name { font-size: 14px; font-weight: 800; }
 .msr-text .msr-addr { font-size: 12px; color: var(--c-text-soft); margin-top: 2px; }
 .msr-text .msr-rating { font-size: 11.5px; color: #f59e0b; margin-top: 2px; font-weight: 700; }
-.msr-add { padding: 6px 10px; font-size: 12px; border-radius: 999px; background: var(--c-primary-strong); color: #fff; border: 0; font-weight: 800; }
+.msr-add { padding: 6px 10px; font-size: 12px; border-radius: 999px; background: var(--c-primary-strong); color: var(--c-on-ink); border: 0; font-weight: 800; }
 
 .map-canvas-wrap {
   position: relative;
@@ -1504,7 +1504,7 @@
   padding: 0 6px;
   border-radius: 999px;
   background: var(--c-primary-strong);
-  color: #fff;
+  color: var(--c-on-ink);
   font-size: 11px;
   font-weight: 900;
   line-height: 1;
@@ -1815,7 +1815,7 @@
 }
 .cal-cell.range-start, .cal-cell.range-end {
   background: var(--c-primary);
-  color: #fff;
+  color: var(--c-on-ink);
   border-radius: 10px;
   box-shadow: 0 3px 8px rgba(20,30,45,.16);
   z-index: 1;
@@ -3030,7 +3030,7 @@ body.is-typing .bottom-tab-nav { display: none; }
 .tab-fab-button .fab-plus {
   display: inline-grid; place-items: center;
   width: 50px; height: 50px; margin: -22px 0 0;
-  border-radius: 50%; background: var(--c-primary); color: #fff;
+  border-radius: 50%; background: var(--c-primary); color: var(--c-on-ink);
   font-size: 28px; font-weight: 300; line-height: 1;
   box-shadow: 0 8px 20px rgba(17,20,24,.22), 0 0 0 4px var(--c-bg);
   transition: transform .18s ease;
