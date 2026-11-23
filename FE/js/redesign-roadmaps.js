@@ -323,9 +323,7 @@ function _daysLabel(d) {
 function _cardEl(m, opts = {}) {
   // 사진(없으면 같은 크기의 브랜드 배경) 영역은 비율을 고정하고, 글은 아래 본문 영역에 둔다.
   const media = el('div', { class: 'rc-media', style: { background: m.gradient }, 'aria-hidden': 'true' }, [
-    el('div', { class: 'rc-top' }, [
-      m.isSample ? el('span', { class: 'rc-sample' }, '예시') : null,
-    ].filter(Boolean)),
+    el('div', { class: 'rc-top' }, []),
   ]);
   const card = el('button', {
     type: 'button',
@@ -336,7 +334,8 @@ function _cardEl(m, opts = {}) {
     el('div', { class: 'rc-bottom' }, [
       el('div', { class: 'rc-place' }, [m.city, m.country].filter(Boolean).join(' · ')),
       el('div', { class: 'rc-title' }, m.title),
-      el('div', { class: 'rc-info' }, [el('span', { class: 'nowrap' }, _daysLabel(m.days)), ' · ', el('span', { class: 'nowrap' }, m.concept)]),
+      el('div', { class: 'rc-info' }, [el('span', { class: 'nowrap' }, _daysLabel(m.days)), ' · ', el('span', { class: 'nowrap' }, m.concept),
+        m.isSample ? el('span', { class: 'rc-sample-tag', 'aria-hidden': 'true' }, '예시') : null]),
       opts.reason ? el('div', { class: 'rc-reason-line' }, `추천 이유 · ${opts.reason}`) : null,
       // 예시 코스의 좋아요 수는 실제 기록이 아니라 보여 주지 않는다(서버에 올라온 코스만 실제 수).
       m.isSample ? null : el('div', { class: 'rc-likes' }, [

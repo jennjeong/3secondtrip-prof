@@ -226,6 +226,11 @@ function _emitScheduleChanged() {
 
 function _companion(k) { return ({ solo:'혼자', friend:'친구', couple:'커플', family:'가족', group:'단체' })[k] || ''; }
 
+function _dow(iso) {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  return y ? '일월화수목금토'[new Date(Date.UTC(y, m - 1, d)).getUTCDay()] : '';
+}
+
 function _renderDayChips(g) {
   const row = $('#dayChips');
   if (!row) return;
@@ -242,7 +247,8 @@ function _renderDayChips(g) {
       ariaLabel: `${idx + 1}일차 ${d.date}${g.hideCost ? '' : ' 예상 ' + _money(dayCost, g)}`,
       onclick: () => { activeDay = idx; focusedAi = null; renderSchedule(); },
     }, [
-      el('span', { class: 'day-chip-label' }, `${idx + 1}일차 · ${Number(d.date.slice(5, 7))}/${Number(d.date.slice(8, 10))}`),
+      el('span', { class: 'day-chip-date' }, `${Number(d.date.slice(5, 7))}.${Number(d.date.slice(8, 10))} ${_dow(d.date)}`),
+      el('span', { class: 'day-chip-label' }, `${idx + 1}일차`),
     ]);
     row.appendChild(chip);
   });
@@ -452,7 +458,12 @@ function _renderDayChecks(g, check) {
   box.hidden = !checksOpen;
   const btn = $('#dayChecksBtn');
   if (btn) {
-    btn.textContent = warn.length ? `⚠ ${warn.length}건` : need.length ? `확인 ${need.length}` : '✓ 점검';
+    btn.replaceChildren(
+      el('span', { class: 'cb-ico', 'aria-hidden': 'true' }, warn.length ? '⚠' : need.length ? 'i' : '✓'),
+      el('span', { class: 'cb-text' }, warn.length ? `해결할 것 ${warn.length}건${need.length ? ` · 확인할 것 ${need.length}건` : ''}` : need.length ? `확인할 것 ${need.length}건` : '일정 점검 · 이상 없음'),
+      el('span', { class: 'cb-chev', 'aria-hidden': 'true' }, '›'),
+    );
+    btn.classList.toggle('is-check', !warn.length && need.length > 0);
     btn.setAttribute('aria-label', warn.length ? `일정 점검 — 해결 필요 ${warn.length}건${need.length ? `, 정보 확인 필요 ${need.length}건` : ''}` : need.length ? `일정 점검 — 정보 확인 필요 ${need.length}건` : '일정 점검 — 이상 없음');
     btn.classList.toggle('is-warn', warn.length > 0);
     btn.setAttribute('aria-expanded', String(checksOpen));
@@ -558,17 +569,19 @@ function _renderTimeline(g) {
       dataset: { di: String(activeDay), ai: String(ai), placeId: n.placeId || n.id || '', movable: movable ? '1' : '0' },
       'aria-labelledby': `scName${ai}`,
     }, [
+      el('div', { class: 'sc-when' }, [
+        el('span', { class: 'schedule-time' }, n.time || '미정'),
+        el('span', { class: 'sc-num', 'aria-hidden': 'true' }, String(ai + 1)),
+      ]),
       el('div', { class: 'schedule-card-main' }, [
-        el('div', { class: 'schedule-card-meta-line' }, [
-          el('span', { class: 'sc-num', 'aria-hidden': 'true' }, String(ai + 1)),
-          el('span', { class: 'schedule-time' }, n.time || '시간 미정'),
+        el('h3', { class: 'schedule-place-name', id: `scName${ai}` }, placeName),
+        el('p', { class: 'schedule-card-meta-line' }, [
           n.category ? el('span', { class: 'schedule-category' }, n.category) : null,
+          a.pinned ? el('span', { class: 'pin-badge' }, '고정') : null,
+          a.visited ? el('span', { class: 'visited-badge' }, '다녀옴') : null,
           a.sample ? el('span', { class: 'sample-badge', title: '실제 검색 결과가 없어 넣은 예시 장소예요' }, '예시 장소') : null,
           a.edited ? el('span', { class: 'edited-badge' }, '직접 수정') : null,
-          a.pinned ? el('span', { class: 'pin-badge' }, '📌 고정') : null,
-          a.visited ? el('span', { class: 'visited-badge' }, '✓ 다녀옴') : null,
-        ]),
-        el('h3', { class: 'schedule-place-name', id: `scName${ai}` }, placeName),
+        ].filter(Boolean)),
         n.memo ? el('p', { class: 'schedule-place-subinfo schedule-memo' }, '메모 · ' + n.memo) : null,
         costText ? el('p', { class: 'schedule-place-subinfo schedule-cost' }, [
           el('span', { class: 'sr-only' }, '예상 비용 '), costText,
@@ -587,7 +600,7 @@ function _renderTimeline(g) {
           'aria-label': `${placeName} ${a.pinned ? '고정 풀기' : '고정 — 다시 만들어도 남겨요'}`,
           title: '다시 만들기를 해도 이 장소를 남겨요',
           onclick: (e) => { e.stopPropagation(); a.pinned = !a.pinned; renderSchedule(); showToast(a.pinned ? '고정했어요. 다시 만들어도 이 장소는 남아요' : '고정을 풀었어요'); },
-        }, a.pinned ? '📌 고정됨' : '고정')] : []),
+        }, a.pinned ? '고정됨' : '고정')] : []),
         ...(_tripStarted(g) && !g.sharedView ? [el('button', {
           type: 'button', class: 'visit-btn' + (a.visited ? ' is-on' : ''), 'aria-pressed': String(!!a.visited),
           'aria-label': `${placeName} 다녀옴 ${a.visited ? '표시 지우기' : '표시'}`,

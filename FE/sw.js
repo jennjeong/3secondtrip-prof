@@ -7,12 +7,12 @@
  * 홈 화면 앱을 오프라인에서 처음 열 때 빈 오류 화면이 뜬다.
  * 새 JS·CSS 파일을 추가하면 SHELL 목록에도 넣는다.
  */
-const CACHE = 'tst-shell-v6';
+const CACHE = 'tst-shell-v7';
 const SHELL = [
   '/index-redesign.html',
   '/manifest.webmanifest',
   '/css/redesign-reset.css', '/css/redesign-layout.css', '/css/redesign-components.css',
-  '/css/redesign-responsive.css', '/css/redesign-effects.css', '/css/redesign-system.css',
+  '/css/redesign-responsive.css', '/css/redesign-effects.css', '/css/redesign-system.css', '/css/redesign-refine.css',
   '/js/redesign-main.js', '/js/redesign-api-adapter.js', '/js/redesign-app-shell.js',
   '/js/redesign-auth.js', '/js/redesign-blog.js', '/js/redesign-calendar.js', '/js/redesign-cities.js',
   '/js/redesign-collab.js', '/js/redesign-course-samples.js', '/js/redesign-feedback.js',
