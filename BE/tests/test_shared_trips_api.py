@@ -68,3 +68,15 @@ def test_invalid_shapes_are_rejected(client, data):
 def test_create_is_rate_limited(client):
     codes = [client.post("/api/shared-trips", json={"data": TRIP}).status_code for _ in range(6)]
     assert codes == [201] * 5 + [429]
+
+
+def test_only_creator_can_revoke(client):
+    t = _create(client)
+    url = f"/api/shared-trips/{t['token']}"
+    assert len(t["manage_key"]) == 64
+    assert "manage_key" not in client.get(url).json()
+    assert client.delete(url).status_code == 403
+    assert client.delete(url, headers={"X-Manage-Key": "0" * 64}).status_code == 403
+    assert client.delete(url, headers={"X-Manage-Key": t["manage_key"]}).status_code == 204
+    assert client.get(url).status_code == 404
+    assert client.put(url, json={"data": TRIP, "version": 1}).status_code == 404

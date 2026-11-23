@@ -2848,3 +2848,153 @@ body.is-typing .bottom-tab-nav { display: none; }
   .hp-cost b { color: #fff; }
 }
 @media (min-width: 1024px) { .hero-route { display: none; } }
+
+/* ===================== Phase 4 — 결과 화면 ===================== */
+.page-header.schedule-head { flex-wrap: wrap; align-items: flex-start; }
+.page-header.schedule-head > div:first-child { min-width: 0; flex: 1 1 220px; }
+.schedule-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.schedule-actions[hidden] { display: none; }
+.action-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 40px; padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: 13px; font-weight: 700;
+}
+.action-btn svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.action-btn.is-active { background: var(--c-text); color: var(--c-bg); border-color: var(--c-text); }
+.action-btn.is-active svg { fill: currentColor; }
+.save-status { margin: 6px 0 10px; font-size: 12.5px; color: var(--c-text-soft); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.save-status.is-error { color: #B4432F; }
+.shared-banner { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: var(--c-surface-2); font-size: 13px; }
+
+/* 날짜 탭 — 작은 화면에서도 일자와 금액이 겹치지 않게 두 줄 */
+.day-chip { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; white-space: nowrap; }
+.day-chip-label, .day-chip-cost { display: block; line-height: 1.25; }
+
+/* 목록 ↔ 지도 */
+.view-toggle {
+  display: inline-flex; gap: 4px; padding: 4px; margin: 4px 0 10px;
+  border: 1px solid var(--c-border); border-radius: 999px; background: var(--c-surface);
+}
+.view-toggle[hidden] { display: none; }
+.view-toggle button { min-height: 36px; padding: 0 18px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--c-text-soft); }
+.view-toggle button[aria-pressed="true"] { background: var(--c-text); color: var(--c-bg); }
+.schedule-split[hidden] { display: none; }
+#schedulePage:not(.view-map) .schedule-map-col { display: none; }
+#schedulePage.view-map .schedule-list-col { display: none; }
+@media (min-width: 1024px) {
+  .view-toggle { display: none !important; }
+  .schedule-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .schedule-split .schedule-list-col { order: 1; display: block !important; }
+  .schedule-split .schedule-map-col { order: 2; display: block !important; position: sticky; top: 12px; }
+}
+.map-pick {
+  display: flex; align-items: center; gap: 10px;
+  margin: 10px 0; padding: 10px 12px;
+  border: 1px solid var(--c-border); border-radius: 14px; background: var(--c-surface);
+}
+.map-pick[hidden] { display: none; }
+.map-pick .mp-body { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 13px; }
+.map-pick .mp-body strong { font-size: 14px; overflow-wrap: anywhere; }
+
+/* 하루 점검 */
+.day-checks { margin: 0 0 12px; padding: 12px 14px; border-radius: 14px; background: var(--c-surface); border: 1px solid var(--c-border); }
+.day-checks[hidden] { display: none; }
+.dc-head { margin: 0 0 6px; font-size: 13px; color: var(--c-text-soft); }
+.dc-head strong { color: var(--c-text); }
+.dc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; line-height: 1.5; }
+.dc-list li { padding-left: 20px; position: relative; }
+.dc-list li::before { position: absolute; left: 0; top: 0; }
+.dc-ok::before { content: '✓'; color: #2F7D4F; }
+.dc-warn::before { content: '!'; font-weight: 900; color: #B4432F; left: 5px !important; }
+.dc-check::before { content: '?'; font-weight: 900; color: #8A6A16; left: 4px !important; }
+
+/* 카드 */
+.schedule-card { cursor: default; }
+.schedule-card.is-focused { box-shadow: 0 0 0 2px var(--c-text), var(--shadow-sm); }
+.schedule-card:focus { outline: none; }
+.schedule-card:focus-visible { box-shadow: 0 0 0 3px var(--c-primary); }
+.schedule-place-name { overflow-wrap: anywhere; word-break: keep-all; white-space: normal !important; text-overflow: clip !important; -webkit-line-clamp: unset !important; display: block !important; }
+.sc-num {
+  display: inline-grid; place-items: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--c-text); color: var(--c-bg);
+  font-size: 11px; font-weight: 800; flex: 0 0 auto;
+}
+.schedule-card-meta-line { flex-wrap: wrap; }
+.edited-badge { font-size: 11px; font-weight: 700; color: var(--c-text-soft); border: 1px dashed var(--c-border); padding: 1px 6px; border-radius: 999px; }
+.schedule-price-tag { font-size: 11px; font-weight: 600; color: var(--c-text-mute); }
+.schedule-price-tag.is-live { color: #3A6EA5; }
+.sc-flags { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.sc-flag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.sc-flag--warn { background: #FBE9E5; color: #9A3624; }
+.sc-flag--check { background: #F6EFD9; color: #6F5511; }
+.sc-more { margin-top: 6px; font-size: 12.5px; }
+.sc-more summary { cursor: pointer; color: var(--c-text-soft); font-weight: 600; min-height: 28px; display: inline-flex; align-items: center; }
+.sc-more .sc-addr { margin: 4px 0; color: var(--c-text-soft); overflow-wrap: anywhere; }
+.sc-map-link { font-size: 12.5px; }
+.schedule-card-actions { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.move-btn {
+  min-width: 36px; min-height: 32px; border-radius: 10px;
+  border: 1px solid var(--c-border); background: var(--c-surface-2);
+  font-size: 12px; color: var(--c-text);
+}
+.move-btn:disabled { opacity: .35; }
+.tl-move {
+  margin: -4px 0 6px 18px; padding: 4px 0 4px 14px;
+  border-left: 2px dashed var(--c-border);
+  font-size: 12px; color: var(--c-text-soft);
+}
+.tl-empty { padding: 20px 0; color: var(--c-text-soft); font-size: 14px; }
+.add-place-top { margin-bottom: 12px; }
+#scheduleEmpty .btn + .btn { margin-top: 8px; }
+
+/* 공유 시트 */
+.share-sec { padding: 4px 0 16px; }
+.share-sec + .share-sec { border-top: 1px solid var(--c-border); padding-top: 16px; }
+.share-sec h3 { margin: 0 0 4px; font-size: 15px; font-weight: 800; }
+.share-sec .check-row { display: flex; gap: 8px; align-items: center; min-height: 40px; font-size: 14px; }
+.share-preview-h { margin: 8px 0 4px; font-size: 12px; font-weight: 700; color: var(--c-text-soft); }
+.share-preview { list-style: none; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--c-surface-2); display: grid; gap: 4px; font-size: 13px; }
+.share-preview li::before { content: '✓ '; color: #2F7D4F; font-weight: 800; }
+.share-preview li.is-off { color: var(--c-text-mute); }
+.share-preview li.is-off::before { content: '– '; color: var(--c-text-mute); }
+#shareSheetTitle { font-size: 17px; margin: 0; }
+#shareSheetTitle:focus { outline: none; }
+/* 저장한 일정 */
+.my-sub-h { margin: 14px 0 8px; font-size: 13px; font-weight: 700; color: var(--c-text-soft); }
+.my-loading { padding: 20px 0; color: var(--c-text-soft); }
+.my-list-card--row { display: flex !important; flex-direction: column; align-items: stretch !important; gap: 6px; padding: 0 !important; overflow: hidden; }
+.my-list-card--row .mlc-open { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 16px 6px; text-align: left; }
+.my-list-card--row .mlc-body { flex: 1; min-width: 0; }
+.my-list-card--row .mlc-title { overflow-wrap: anywhere; }
+.mlc-actions { display: flex; gap: 14px; padding: 0 16px 12px; }
+.btn-text.is-danger { color: #B4432F; }
+.my-removed { margin-top: 16px; }
+.my-removed summary { cursor: pointer; font-size: 14px; font-weight: 700; min-height: 40px; display: flex; align-items: center; }
+.my-removed .my-list-card { margin-top: 8px; }
+.device-trip { margin-top: 8px; }
+/* PDF(인쇄) — 전체 일정만 인쇄 */
+#printSheet { display: none; }
+@media print {
+  body.has-print > *:not(#printSheet), body:has(#printSheet) > *:not(#printSheet) { display: none !important; }
+  #printSheet { display: block; color: #000; font-size: 11pt; }
+  #printSheet h1 { font-size: 18pt; margin: 0 0 4pt; overflow-wrap: anywhere; }
+  #printSheet h2 { font-size: 13pt; margin: 14pt 0 6pt; break-after: avoid; }
+  #printSheet table { width: 100%; border-collapse: collapse; }
+  #printSheet tr { break-inside: avoid; }
+  #printSheet td { border-bottom: .5pt solid #ccc; padding: 5pt 4pt; vertical-align: top; overflow-wrap: anywhere; }
+  #printSheet .ps-time { width: 48pt; font-weight: 700; }
+  #printSheet .ps-cat { width: 48pt; color: #555; }
+  #printSheet .ps-addr { color: #555; font-size: 9pt; }
+  #printSheet .ps-sub { color: #555; font-size: 9pt; }
+}
+.book-notice { margin: 0 18px 10px; padding: 10px 12px; border-radius: 12px; background: var(--c-surface-2); font-size: 12.5px; line-height: 1.5; color: var(--c-text-soft); }
+#bookingSheetTitle { font-size: 17px; margin: 0; }
+.review-vis { border: 0; padding: 0; margin: 8px 0; }
+.review-vis legend { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.review-vis .check-row { display: flex; gap: 8px; align-items: center; min-height: 40px; font-size: 14px; }
+.review-tags .chip-mini.is-active::before { content: "✓ "; }

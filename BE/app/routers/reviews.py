@@ -8,7 +8,7 @@ from app.db.database import get_db
 from app.models.review import Review
 from app.models.user import User
 from app.routers.dependencies import get_current_user, get_current_user_optional
-from app.schemas.review_schema import ReviewCreate, ReviewPublic
+from app.schemas.review_schema import ReviewCreate, ReviewPublic, ReviewUpdate
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
@@ -65,3 +65,19 @@ def delete_review(review_id: int, db: Session = Depends(get_db), current: User =
     if not r:
         raise HTTPException(404, "Review not found")
     db.delete(r); db.commit()
+
+
+@router.patch("/{review_id}", response_model=ReviewPublic)
+def update_review(review_id: int, payload: ReviewUpdate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    """내 후기 고치기 — 별점·내용·태그·공개 여부."""
+    r = db.query(Review).filter(Review.id == review_id, Review.user_id == current.id).first()
+    if not r:
+        raise HTTPException(404, "Review not found")
+    data = payload.model_dump(exclude_unset=True)
+    if "concept_tags" in data:
+        r.concept_tags_json = json.dumps(data.pop("concept_tags") or [], ensure_ascii=False)
+    for k, v in data.items():
+        if v is not None:
+            setattr(r, k, v)
+    db.commit(); db.refresh(r)
+    return _to_public(r)

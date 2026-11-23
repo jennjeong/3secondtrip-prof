@@ -1469,37 +1469,28 @@ const _CITY_FLIGHT_DURATION_MIN = {
 };
 
 /** 항공편 정보 생성 — 결정적 (도시+항공사+날짜 기반). */
-function _generateFlightInfo(t, isArrival, departTime) {
+/** 실시간 항공편이 없을 때 쓰는 예상 항공 정보.
+ *  도착 항목은 카드 시각이 '현지 도착 시각', 출발 항목은 '출발 시각'이 되도록 계산한다.
+ *  지어낸 편명은 쓰지 않는다(실제 편명처럼 보이면 안 됨). */
+function _generateFlightInfo(t, isArrival, time) {
   const f = t.flight || {};
   const airline = (f.airlines && f.airlines.length)
     ? f.airlines[0]
-    : (f.classType === 'lcc' ? '제주항공' : (f.classType === 'fsc' ? '대한항공' : '대한항공'));
-  const code = _AIRLINE_CODE[airline] || 'XX';
-  // 편명 — airline code + 3~4자리 숫자 (도시 해시 기반 결정적)
-  const seed = _strHash(`${airline}|${t.cityName}|${t.startDate}`);
-  const flightNum = String(100 + (seed % 900));
-  const flightCode = `${code}${flightNum}`;
-
+    : (f.classType === 'lcc' ? '제주항공' : '대한항공');
   const duration = _CITY_FLIGHT_DURATION_MIN[t.cityName] || 180;
-  // 경유 시 +2시간
   const totalMin = duration + (f.route === 'transit' ? 120 : 0);
-
-  // 출발/도착 시간 계산
-  const dep = departTime || '09:00';
-  const [dh, dm] = dep.split(':').map(Number);
-  const depMin = dh * 60 + dm;
+  const toMin = (hhmm) => { const [h, m] = (hhmm || '09:00').split(':').map(Number); return h * 60 + m; };
+  const fmt = (m) => { m = ((m % 1440) + 1440) % 1440; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
+  const depMin = isArrival ? toMin(time) - totalMin : toMin(time);
   const arrMin = depMin + totalMin;
-  const ah = Math.floor(arrMin / 60) % 24;
-  const am = arrMin % 60;
-  const arr = `${String(ah).padStart(2,'0')}:${String(am).padStart(2,'0')}`;
-
   const hours = Math.floor(totalMin / 60);
   const mins = totalMin % 60;
   const durationStr = `${hours}시간${mins ? ' ' + mins + '분' : ''}`;
   const routeStr = f.route === 'transit' ? '경유' : (f.route === 'direct' ? '직항' : '');
-  const parts = [flightCode, airline];
+  // 앞 두 칸(표시 이름·항공사)은 실시간 항공편이 있으면 교체된다.
+  const parts = ['예시 항공편', airline];
   if (routeStr) parts.push(routeStr);
-  parts.push(`출발 ${dep} → 도착 ${arr}`);
+  parts.push(`출발 ${fmt(depMin)} → 도착 ${fmt(arrMin)} (예상)`);
   parts.push(durationStr);
   return parts.join(' · ');
 }
@@ -1814,6 +1805,8 @@ function _guessRegion(country) {
 }
 
 /** Add/subtract minutes to an "HH:MM" string, clamping to 00:00–23:59. */
+const FIRST_DAY_ARRIVAL = '10:30';   // 여러 날 여행 첫날의 예상 현지 도착 시각
+
 function _addMinutes(hhmm, mins) {
   const [h, m] = String(hhmm).split(':').map(Number);
   let total = (h | 0) * 60 + (m | 0) + (mins | 0);
@@ -2237,7 +2230,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
         roundTripKRW: flightTotalKRW,
         oneWayKRW:    flightHalfKRW,
         airline:      _flightMeta?.airline || (f.airlines && f.airlines[0]) || (f.classType === 'lcc' ? '제주항공' : '대한항공'),
-        flightCode:   _flightMeta?.flightCode || flightInfo.split(' · ')[0],
+        flightCode:   _flightMeta?.flightCode || '',
         route:        f.route || 'any',
         startDate:    t.startDate,
         source:       plan.includeFlight ? _flightSource : 'excluded',
@@ -2291,8 +2284,9 @@ async function _generateScheduleInner(t, btn, startedAt) {
       if (!localTrip) activities.push(_airportItem(_addMinutes(firstSlotTime, -120), '도착'));
     } else if (isFirstDay) {
       // 첫날 (multi-day): 공항 도착 → 호텔 체크인
-      if (!localTrip) activities.push(_airportItem(_addMinutes(firstSlotTime, -120), '도착'));
-      activities.push(_hotelItem  (_addMinutes(firstSlotTime, -30),  '체크인', 0));
+      // 오전 도착(현지 10:30) → 숙소에 짐 맡기기 → 도착 1시간 30분 뒤부터 일정 시작
+      if (!localTrip) activities.push(_airportItem(FIRST_DAY_ARRIVAL, '도착'));
+      activities.push(_hotelItem  (localTrip ? _addMinutes(firstSlotTime, -30) : _addMinutes(FIRST_DAY_ARRIVAL, 60), '체크인·짐 맡기기', 0));
     } else {
       // 중간일 또는 마지막날 아침: 호텔에서 출발
       activities.push(_hotelItem(_addMinutes(firstSlotTime, -30), '출발', 0));
@@ -2301,6 +2295,8 @@ async function _generateScheduleInner(t, btn, startedAt) {
     // ── Regular slot loop (unchanged logic) ──
     for (let si = 0; si < slotTimes.length; si++) {
       const [time, slot] = slotTimes[si];
+      // 첫날은 항공 도착·짐 맡기기 이후 일정만 넣는다.
+      if (isFirstDay && !isSingleDay && !localTrip && time < _addMinutes(FIRST_DAY_ARRIVAL, 90)) continue;
       const candidates = await searchForSlot(slot);
       const pick = _pickUnused(candidates, usedIds);
 

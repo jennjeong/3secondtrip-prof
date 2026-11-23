@@ -180,9 +180,10 @@ export const api = {
   },
 
   // ===== Reviews =====
-  deleteReview:     (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }).catch(() => null),
+  deleteReview:     (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }),
+  updateReview:     (id, payload) => apiRequest(`/reviews/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   submitReview:     (payload) => tolerant(apiRequest('/reviews', { method: 'POST', body: JSON.stringify(payload) })),
-  saveReview:       (payload) => tolerant(apiRequest('/reviews', { method: 'POST', body: JSON.stringify(payload) })),
+  saveReview:       (payload) => apiRequest('/reviews', { method: 'POST', body: JSON.stringify(payload) }),
   listReviews:      (q = {}) => {
     const qs = new URLSearchParams(q).toString();
     return tolerant(apiRequest('/reviews' + (qs ? '?' + qs : '')));
@@ -217,6 +218,7 @@ export const api = {
   createSharedTrip: (payload) => apiRequest('/api/shared-trips', { method: 'POST', body: JSON.stringify(payload) }),
   getSharedTrip:    (token) => apiRequest(`/api/shared-trips/${encodeURIComponent(token)}`),
   updateSharedTrip: (token, payload) => apiRequest(`/api/shared-trips/${encodeURIComponent(token)}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  revokeSharedTrip: (token, manageKey) => apiRequest(`/api/shared-trips/${encodeURIComponent(token)}`, { method: 'DELETE', headers: { 'X-Manage-Key': manageKey } }),
 
   // ===== Google Maps proxy — server-side keys, never exposed =====
   searchPlaces: (payload) => apiRequest('/api/places/search', { method: 'POST', body: JSON.stringify(payload) }),

@@ -13,6 +13,13 @@ class ReviewCreate(BaseModel):
     city: Optional[str] = None
 
 
+class ReviewUpdate(BaseModel):
+    rating: Optional[int] = Field(default=None, ge=1, le=5)
+    content: Optional[str] = Field(default=None, max_length=2000)
+    concept_tags: Optional[list[str]] = None
+    is_public: Optional[bool] = None
+
+
 class ReviewPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int

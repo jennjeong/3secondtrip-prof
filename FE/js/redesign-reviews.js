@@ -19,14 +19,29 @@ const MOCK_REVIEWS = [
   { stars: 5, text: '예상 비용이 날짜별로 나뉘어 있어 예산 잡기 쉬웠어요.',   tags: ['프리미엄'],     city: '파리', at: '2026-03-28', sample: true },
 ];
 
+let sending = false;
+let lastSentKey = '';
+
+function _paintStars() {
+  $$('#starRow .star').forEach(s => {
+    const n = Number(s.dataset.star);
+    s.classList.toggle('is-on', n <= star);
+    s.setAttribute('role', 'radio');
+    s.setAttribute('aria-checked', String(n === star));
+  });
+  const out = $('#starValue'); if (out) out.textContent = star ? `별점 ${star}점 선택됨` : '';
+}
+
 export function initReviews(state) {
   appState = state;
+  _paintStars();
+  $$('#reviewTags [data-rtag]').forEach(b => b.setAttribute('aria-pressed', 'false'));
 
   $('#starRow')?.addEventListener('click', (e) => {
     const b = e.target.closest?.('[data-star]');
     if (!b) return;
     star = Number(b.dataset.star);
-    $$('#starRow .star').forEach(s => s.classList.toggle('is-on', Number(s.dataset.star) <= star));
+    _paintStars();
   });
   // 호버 시에도 1~n 별이 누적으로 칠해지도록(CSS :hover는 단일 별만 칠해짐)
   $('#starRow')?.addEventListener('mouseover', (e) => {
@@ -42,7 +57,8 @@ export function initReviews(state) {
     if (!b) return;
     const t = b.dataset.rtag;
     if (tags.has(t)) tags.delete(t); else tags.add(t);
-    b.classList.toggle('is-active');
+    b.classList.toggle('is-active', tags.has(t));
+    b.setAttribute('aria-pressed', String(tags.has(t)));
   });
   $('#reviewForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -51,33 +67,58 @@ export function initReviews(state) {
 }
 
 async function _submit() {
-  if (star < 1) { showToast('별점을 선택해 주세요'); return; }
+  if (sending) return;                                  // 두 번 눌러도 한 번만 보낸다
+  const err = $('#reviewError');
+  const fail = (msg, focusSel) => { if (err) { err.textContent = msg; err.hidden = false; } $(focusSel)?.focus(); };
+  if (err) err.hidden = true;
+  if (star < 1) return fail('별점을 골라 주세요.', '#starRow .star');
   const text = $('#reviewText').value.trim();
-  if (text.length < 3) { showToast('짧은 후기를 적어주세요'); return; }
+  if (text.length < 3) return fail('후기를 세 글자 이상 적어 주세요.', '#reviewText');
+  const vis = document.querySelector('input[name="reviewVisibility"]:checked')?.value;
+  if (!vis) return fail('공개 범위를 골라 주세요.', 'input[name="reviewVisibility"]');
+  // 서버 형식(rating·content·concept_tags·is_public)으로 보낸다.
   const payload = {
-    stars: star,
-    text,
-    tags: [...tags],
-    public: !!$('#reviewPublic').checked,
+    rating: star,
+    content: text,
+    concept_tags: [...tags],
+    is_public: vis === 'public',
     city: appState.generated?.city || '',
-    at: new Date().toISOString().slice(0, 10),
   };
-  // 게스트(401)·네트워크 오류여도 throw로 멈추지 않게 — 로컬 임시 저장으로 폴백.
-  let res = null;
-  try { res = await api.saveReview(payload); }
-  catch (e) { console.warn('[reviews] 후기 서버 저장 실패 — 로컬 임시 저장:', e?.message); }
-  // Always store locally so the user sees their review immediately
-  _cacheLocal(payload);
-  if (res) showToast('후기가 등록되었어요');
-  else if (!appState.currentUser) showToast('로그인하면 공개 후기로 등록돼요 — 임시 저장했어요');
-  else showToast('후기를 임시 저장했어요');
-  // Reset
-  star = 0; tags.clear();
-  $$('#starRow .star').forEach(s => s.classList.remove('is-on'));
-  $$('#reviewTags .chip-mini').forEach(c => c.classList.remove('is-active'));
-  $('#reviewText').value = '';
+  const key = JSON.stringify(payload);
+  if (key === lastSentKey) { showToast('이미 등록한 후기예요'); return; }
+
+  const btn = $('#reviewForm [type="submit"]');
+  sending = true;
+  if (btn) { btn.disabled = true; btn.textContent = '등록하는 중…'; }
+  try {
+    if (!appState.currentUser) {
+      _cacheLocal({ stars: star, text, tags: [...tags], city: payload.city, at: new Date().toISOString().slice(0, 10), local: true });
+      lastSentKey = key;
+      showToast('이 기기에만 저장했어요. 로그인하면 후기를 게시할 수 있어요', 3000);
+      _resetForm();
+    } else {
+      await api.saveReview(payload);
+      lastSentKey = key;
+      showToast(payload.is_public ? '후기를 공개로 게시했어요 · 마이 › 내 후기에서 고칠 수 있어요' : '나만 보는 후기로 저장했어요 · 마이 › 내 후기에서 고칠 수 있어요', 3000);
+      _resetForm();
+    }
+  } catch (e) {
+    // 실패하면 입력은 그대로 두고 다시 시도할 수 있게 한다.
+    fail(e?.status === 401 ? '로그인이 만료됐어요. 다시 로그인한 뒤 등록해 주세요.' : '후기를 등록하지 못했어요. 입력한 내용은 그대로 있으니 다시 눌러 주세요.', '#reviewForm [type="submit"]');
+  } finally {
+    sending = false;
+    if (btn) { btn.disabled = false; btn.textContent = '후기 등록'; }
+  }
   renderReviewSection();
   renderReviewPreview();
+}
+
+function _resetForm() {
+  star = 0; tags.clear();
+  _paintStars();
+  $$('#reviewTags .chip-mini').forEach(c => { c.classList.remove('is-active'); c.setAttribute('aria-pressed', 'false'); });
+  $('#reviewText').value = '';
+  $$('input[name="reviewVisibility"]').forEach(r => { r.checked = false; });
 }
 
 function _cacheLocal(r) {

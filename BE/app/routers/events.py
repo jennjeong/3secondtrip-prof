@@ -19,6 +19,7 @@ EventName = Literal[
     "trip_shared", "trip_exported", "collab_started", "booking_opened", "booking_link_clicked",
     "app_installed", "client_error",
     "trip_generate_start", "trip_generate_done", "trip_generate_fail",
+    "trip_saved", "collab_revoked",
 ]
 _limit = RateLimiter(per_ip=60, total=1200)
 

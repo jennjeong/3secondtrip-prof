@@ -8,6 +8,7 @@ import { api, trackEvent } from './redesign-api-adapter.js';
 import { $, el, showToast } from './redesign-ui.js';
 
 const TOKEN_KEY = 'tst_collab_v1';
+const MANAGE_KEY = 'tst_collab_manage_v1';   // 내가 만든 링크의 관리 키(회수용) — 이 기기에만 둔다
 const POLL_MS = 8000;
 const SAVE_DELAY_MS = 1500;
 
@@ -20,12 +21,34 @@ let saveTimer = null;
 let pollTimer = null;
 let saving = false;
 
-function _setToken(value) {
+function _setToken(value, manageKey) {
   token = value;
   try {
     if (value) localStorage.setItem(TOKEN_KEY, value);
     else localStorage.removeItem(TOKEN_KEY);
+    if (manageKey) localStorage.setItem(MANAGE_KEY, JSON.stringify({ token: value, key: manageKey }));
+    else if (!value) localStorage.removeItem(MANAGE_KEY);
   } catch (_) {}
+}
+function _manageKey() {
+  try {
+    const m = JSON.parse(localStorage.getItem(MANAGE_KEY) || 'null');
+    return m && m.token === token ? m.key : null;
+  } catch (_) { return null; }
+}
+
+async function _revoke() {
+  const key = _manageKey();
+  if (!token || !key) return;
+  if (!confirm('편집 링크를 회수할까요?\n받은 사람은 더 이상 이 링크로 일정을 보거나 고칠 수 없어요. 내 기기의 일정은 그대로 남아요.')) return;
+  try {
+    await api.revokeSharedTrip(token, key);
+    trackEvent('collab_revoked');
+    _stop('편집 링크를 회수했어요. 이제 그 링크로는 열 수 없어요');
+  } catch (e) {
+    if (e?.status === 404) { _stop('이미 회수된 링크예요'); return; }
+    showToast(e?.status === 403 ? '링크를 만든 기기에서만 회수할 수 있어요' : '회수하지 못했어요. 잠시 뒤 다시 시도해 주세요');
+  }
 }
 
 function _link() {
@@ -102,7 +125,7 @@ async function _create() {
   if (btn) btn.disabled = true;
   try {
     const created = await api.createSharedTrip({ data: appState.generated });
-    _setToken(created.token);
+    _setToken(created.token, created.manage_key);
     version = created.version;
     lastSynced = JSON.stringify(created.data);
     _start();
@@ -129,18 +152,23 @@ function _paint() {
   if (!box) return;
   box.hidden = !appState?.generated;
   box.textContent = '';
-  box.appendChild(el('h3', { class: 'tool-title' }, '함께 편집'));
+  box.appendChild(el('h3', { class: 'tool-title', id: 'collabTitle', tabIndex: -1 }, '함께 편집 (편집 가능 링크)'));
   if (token) {
+    const mine = !!_manageKey();
     box.append(
-      el('p', { class: 'tool-note' }, '편집 중이에요. 링크를 아는 사람은 누구나 이 일정을 보고 고칠 수 있어요.'),
+      el('p', { class: 'tool-note' }, mine
+        ? '함께 편집 중이에요. 링크를 아는 사람은 누구나 일정·메모·비용을 보고 고칠 수 있어요. 필요 없어지면 링크를 회수하세요.'
+        : '받은 편집 링크로 함께 고치는 중이에요. 링크 회수는 링크를 만든 사람만 할 수 있어요.'),
       el('div', { class: 'tool-actions' }, [
         el('button', { type: 'button', class: 'btn btn-soft', onclick: _copy }, '링크 복사'),
-        el('button', { type: 'button', class: 'btn btn-soft', onclick: () => _stop('이 기기에서 함께 편집을 끝냈어요') }, '끝내기'),
+        mine
+          ? el('button', { type: 'button', class: 'btn btn-soft is-danger', onclick: _revoke }, '링크 회수')
+          : el('button', { type: 'button', class: 'btn btn-soft', onclick: () => _stop('이 기기에서 함께 편집을 그만뒀어요. 링크는 계속 유효해요') }, '이 기기에서 그만하기'),
       ]),
     );
   } else {
     box.append(
-      el('p', { class: 'tool-note' }, '동행자에게 링크를 보내 같은 일정을 함께 고쳐요.'),
+      el('p', { class: 'tool-note' }, '동행자에게 링크를 보내 같은 일정을 함께 고쳐요. 링크를 아는 사람은 누구나 일정·메모·비용을 고칠 수 있어요. 보기만 하게 하려면 위의 ‘공유’를 쓰세요.'),
       el('button', { type: 'button', class: 'btn btn-soft btn-block', id: 'collabStart', onclick: _create }, '편집 링크 만들기'),
     );
   }
@@ -150,6 +178,12 @@ export async function initCollab(state, renderSchedule) {
   appState = state;
   rerender = renderSchedule;
   document.addEventListener('redesign:schedule-changed', () => { _paint(); _onChanged(); });
+  document.addEventListener('redesign:collab-open', () => {
+    const box = $('#collabPanel');
+    if (!box || box.hidden) return;
+    box.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+    $('#collabTitle')?.focus({ preventScroll: true });
+  });
 
   const params = new URLSearchParams((location.hash || '').replace(/^#/, ''));
   const fromUrl = params.get('collab');

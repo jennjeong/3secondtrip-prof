@@ -50,11 +50,11 @@ export function initBooking(state) {
     if (chosen.length === 0) { showToast('선택된 항목이 없어요'); return; }
     try {
       await api.saveBooking({ items: chosen, total: _total(), city: appState.generated?.city });
-      showToast(`${chosen.length}건의 예약 정보를 저장했어요`);
+      showToast(`${chosen.length}건을 예약 준비 목록에 저장했어요. 실제 예약은 각 사이트에서 해 주세요`, 3200);
       _close();
     } catch (e) {
       console.error('[booking] save failed', e);
-      showToast('예약 저장에 실패했어요');
+      showToast(e?.status === 401 ? '로그인하면 예약 준비 목록을 저장할 수 있어요' : '저장하지 못했어요. 잠시 뒤 다시 시도해 주세요');
     }
   });
 }
@@ -337,12 +337,13 @@ function _rowEl(it) {
       it.url ? el('a', {
         class: 'book-link', href: it.url, target: '_blank', rel: it.url.includes('aid=') ? 'noopener noreferrer sponsored' : 'noopener noreferrer',
         onclick: () => trackEvent('booking_link_clicked'),
-      }, it.url.includes('aid=') ? '제휴 링크로 찾아보기 ↗' : '예약처 찾아보기 ↗') : null,
+      }, it.url.includes('aid=') ? '제휴 사이트에서 찾아보기 (새 창) ↗' : '외부 사이트에서 찾아보기 (새 창) ↗')
+        : el('span', { class: 'book-desc' }, '연결된 예약처가 없어요 · 직접 찾아 주세요'),
     ]),
     el('div', { style: { display:'flex', alignItems:'center', gap:'10px' } }, [
       el('div', { class: 'book-price' }, [
         formatCurrency(it.price, 'KRW'),
-        it.estimated ? el('div', { class: 'book-estimate' }, '예상가') : null,
+        el('div', { class: 'book-estimate' }, it.estimated ? '참고용 예상가' : '일정에 넣은 금액'),
       ]),
       cb,
     ]),

@@ -13,15 +13,13 @@ import { navigate } from './redesign-navigation.js';
 import { api, trackEvent } from './redesign-api-adapter.js';
 import {
   el, $, $$, formatCurrency, showToast,
-  getSchedulePlaceName, getScheduleCategory, getScheduleAddress, normalizeScheduleItem,
+  getSchedulePlaceName, normalizeScheduleItem,
 } from './redesign-ui.js';
-import { getInsights, CONGESTION_LABEL } from './redesign-places.js';
 import { regenerateSchedule, applyBudgetAlternative } from './redesign-trip-flow.js';
 
 let appState = null;
 let activeDay = 0;
 let editMode = false;
-let savedTripId = null;
 let editing = null; // {di, ai} target for edit modal
 
 export function initSchedule(state) {
@@ -30,14 +28,22 @@ export function initSchedule(state) {
   $('#btnEditToggle')?.addEventListener('click', () => {
     editMode = !editMode;
     const b = $('#btnEditToggle');
-    b.textContent = editMode ? '완료' : '편집';
+    b.textContent = editMode ? '편집 완료' : '편집';
     b.classList.toggle('is-active', editMode);
+    b.setAttribute('aria-pressed', String(editMode));
+    if (editMode) showToast('▲▼ 버튼이나 끌어서 순서를 바꾸고, 각 장소의 편집에서 시간·날짜·메모를 고쳐요', 3200);
     $('#scheduleTimeline')?.classList.toggle('is-edit', editMode);
     renderSchedule();
   });
 
   $('#btnRegen')?.addEventListener('click', async () => {
-    if (!confirm('현재 일정을 같은 조건으로 새로 생성할까요?\n(저장하지 않은 변경은 사라집니다)')) return;
+    // 다시 만들기 전에 바뀌는 범위와 사라지는 편집을 알려 준다.
+    const g0 = appState.generated;
+    const edited = g0 ? g0.days.reduce((n, d) => n + d.activities.filter(a => a.edited || a.memo).length, 0) : 0;
+    const msg = `같은 조건(도시·날짜·예산·스타일)으로 ${g0?.days.length || ''}일 전체 일정을 새로 만들어요.`
+      + (edited ? `\n직접 고치거나 메모를 단 장소 ${edited}곳도 새 장소로 바뀌어요.` : '')
+      + '\n\n장소 하나만 바꾸려면 취소하고 그 장소의 [편집 › 비슷한 곳 추천]을 써 보세요.';
+    if (!confirm(msg)) return;
     // Have current trip params (city / days / concept / budget) → regen in place.
     if (appState.trip?.cityName && appState.trip?.days) {
       const btn = $('#btnRegen');
@@ -56,7 +62,16 @@ export function initSchedule(state) {
     }
   });
 
-  $('#btnShare')?.addEventListener('click', _share);
+  $('#btnShare')?.addEventListener('click', _openShareSheet);
+  $('#shareClose')?.addEventListener('click', _closeSheet);
+  $('#shareBackdrop')?.addEventListener('click', _closeSheet);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#shareSheet')?.hidden) _closeSheet(); });
+  $('#viewToggle')?.addEventListener('click', (e) => { const b = e.target.closest('[data-view]'); if (b) _setView(b.dataset.view); });
+  document.addEventListener('redesign:map-pick', (e) => {
+    if (e.detail?.day !== activeDay) return;
+    _pick(e.detail.ai, 'map');
+  });
+  document.addEventListener('redesign:auth-ready', () => _paintSaveStatus());
   $('#btnSave')?.addEventListener('click', _toggleSave);
   $('#openBookingBtn')?.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('redesign:open-booking'));
@@ -111,8 +126,11 @@ export function renderSchedule() {
   const title = $('#scheduleTitle');
   const sub = $('#scheduleSub');
 
+  const hasG = !!g;
+  ['#scheduleActions', '#scheduleDayRow', '#scheduleSplit', '#dayChecks', '#saveStatus', '#viewToggle'].forEach(sel => { const n = $(sel); if (n) n.hidden = !hasG; });
   if (!g) {
     const panel = $('#budgetPanel'); if (panel) panel.hidden = true;
+    const sb = $('#sharedBanner'); if (sb) sb.hidden = true;
     if (empty) empty.hidden = false;
     if (timeline) timeline.hidden = true;
     if (cost) cost.hidden = true;
@@ -125,27 +143,48 @@ export function renderSchedule() {
     return;
   }
 
+  _migrateExpenses(g);
+  if (activeDay >= g.days.length) activeDay = 0;
   if (empty) empty.hidden = true;
   if (timeline) timeline.hidden = false;
-  if (cost) cost.hidden = false;
+  if (cost) cost.hidden = !!g.hideCost;
+  const sb = $('#sharedBanner');
+  if (sb) sb.hidden = !g.sharedView;
   if (cta) cta.hidden = false;
   if (review) review.hidden = false;
 
   const nDays = g.days.length;
-  if (title) title.textContent = `${g.originName ? g.originName + ' → ' : ''}${g.city} 여행`;
+  if (title) title.textContent = g.title || `${g.originName ? g.originName + ' → ' : ''}${g.city} 여행`;
   if (sub) sub.textContent = [
     nDays <= 1 ? '당일치기' : `${nDays - 1}박 ${nDays}일`,
     g.people ? `${g.people}명` : _companion(g.companion),
     g.concept && `${g.concept} 스타일`,
   ].filter(Boolean).join(' · ');
 
-  _renderBudgetPanel(g);
+  if (g.hideCost) { const panel = $('#budgetPanel'); if (panel) panel.hidden = true; }
+  else _renderBudgetPanel(g);
   _renderDayChips(g);
   _renderAiSummary(g);
   _renderTimeline(g);
   _renderCostSummary(g);
+  _paintSaveStatus();
+  _queueSync();
+  const pick = $('#mapPick'); if (pick && focusedAi == null) pick.hidden = true;
 
   _emitScheduleChanged();
+}
+
+/** 예전 버전은 사용자가 고친 금액을 '몇 번째 칸' 기준(expenses)으로 따로 저장해
+ *  장소를 지우거나 옮기면 다른 장소에 붙었다.  장소의 cost 로 옮기고 비운다. */
+function _migrateExpenses(g) {
+  const ex = appState.expenses;
+  if (!ex || !Object.keys(ex).length) return;
+  for (const [k, v] of Object.entries(ex)) {
+    const [di, ai] = k.split('_').map(Number);
+    const a = g.days[di]?.activities[ai];
+    if (a && Number.isFinite(Number(v))) a.cost = Number(v);
+  }
+  appState.expenses = {};
 }
 
 /** Notify map module (and anyone else) that the schedule or active day
@@ -171,14 +210,14 @@ function _renderDayChips(g) {
   g.days.forEach((d, idx) => {
     // 일별 비용 합계
     const dayCost = _dayTotal(d, idx);
-    const costLabel = _shortMoney(dayCost, g);
+    const costLabel = g.hideCost ? '' : _shortMoney(dayCost, g);
     const chip = el('button', {
       type: 'button',
       class: 'day-chip' + (idx === activeDay ? ' is-active' : ''),
       role: 'tab',
       ariaSelected: String(idx === activeDay),
-      ariaLabel: `${idx + 1}일차 ${d.date} 예상 ${_money(dayCost, g)}`,
-      onclick: () => { activeDay = idx; renderSchedule(); },
+      ariaLabel: `${idx + 1}일차 ${d.date}${g.hideCost ? '' : ' 예상 ' + _money(dayCost, g)}`,
+      onclick: () => { activeDay = idx; focusedAi = null; renderSchedule(); },
     }, [
       el('span', { class: 'day-chip-label' }, `${idx + 1}일차 · ${Number(d.date.slice(5, 7))}/${Number(d.date.slice(8, 10))}`),
       el('span', { class: 'day-chip-cost' }, costLabel),
@@ -187,196 +226,301 @@ function _renderDayChips(g) {
   });
 }
 
+/* ============ 일정 검증 ============
+ * 데이터로 확인할 수 있는 것(시간 순서·이동 시간·중복·출도착)은 경고로,
+ * 확인할 수 없는 것(영업시간·휴무·체크인 가능 시간)은 '확인 필요'로 표시한다. */
+const _CHECKIN_FROM = 15 * 60;      // 보통 체크인 가능 시간
+const _AIRPORT_BEFORE = 120;        // 국제선 출발 2시간 전 공항 도착
+const _OPEN_CHECK_CATS = new Set(['관광', '식사', '카페', '쇼핑', '액티비티']);
+
+function _isFlight(a) { return a?.category === '이동' && !!a.flightMeta; }
+function _flightArrMin(a) {
+  const m = /도착\s*(\d{1,2}):(\d{2})/.exec(a?.address || '');
+  return m ? (+m[1]) * 60 + (+m[2]) : _timeToMin(a?.time);
+}
+function _flightDepMin(a) {
+  const m = /출발\s*(\d{1,2}):(\d{2})/.exec(a?.address || '');
+  return m ? (+m[1]) * 60 + (+m[2]) : _timeToMin(a?.time);
+}
+
+/** 하루치 점검 결과. items[ai] = 카드에 붙일 표시들, list = 위쪽 요약. */
+function _checkDay(g, di) {
+  const day = g.days[di];
+  const acts = day?.activities || [];
+  const items = acts.map(() => []);
+  const list = [];
+  const isArrivalFlight = (a) => _isFlight(a) && /도착/.test(a.name || '');
+  const isDepartFlight = (a) => _isFlight(a) && /출발/.test(a.name || '');
+
+  // 1) 항공 도착 전 일정
+  const arr = acts.findIndex(isArrivalFlight);
+  if (arr >= 0) {
+    const arrMin = _flightArrMin(acts[arr]);
+    acts.forEach((a, ai) => {
+      if (ai === arr || _isFlight(a)) return;
+      if (_timeToMin(a.time) < arrMin) {
+        items[ai].push({ lvl: 'warn', text: '항공편 도착 전이에요' });
+        list.push({ lvl: 'warn', text: `${a.time} ${_short(a.name)} — 항공편 도착(${_minToTime(arrMin)}) 전에 잡혀 있어요.` });
+      }
+    });
+  }
+  // 2) 체크인 가능 시간
+  acts.forEach((a, ai) => {
+    if (a.category === '숙박' && /체크인/.test(a.name || '') && _timeToMin(a.time) < _CHECKIN_FROM) {
+      items[ai].push({ lvl: 'check', text: '체크인 시간 확인 필요' });
+      list.push({ lvl: 'check', text: `체크인은 보통 15시부터예요. ${a.time}에는 짐만 맡길 수 있는지 숙소에 확인해 주세요.` });
+    }
+  });
+  // 3) 이동 시간 부족(동선 충돌) — 앞 장소 체류 + 이동 시간보다 다음 시작이 빠르면
+  for (let ai = 1; ai < acts.length; ai++) {
+    const prev = acts[ai - 1], cur = acts[ai];
+    if (_isFlight(prev) || _isFlight(cur)) continue;
+    if (_kmBetween(prev, cur) == null) continue;     // 위치를 모르면 이동 시간을 판단하지 않는다
+    const need = _timeToMin(prev.time) + _dwellMinutes(prev.category) + _travelMinutes(prev, cur);
+    if (_timeToMin(cur.time) + 10 < need) {
+      items[ai].push({ lvl: 'warn', text: '이동 시간이 부족해요' });
+      list.push({ lvl: 'warn', text: `${_short(prev.name)} → ${_short(cur.name)} 사이 시간이 약 ${need - _timeToMin(cur.time)}분 모자라요.` });
+    }
+    if (_timeToMin(cur.time) < _timeToMin(prev.time)) {
+      items[ai].push({ lvl: 'warn', text: '앞 일정보다 이른 시간' });
+    }
+  }
+  // 4) 마지막 날 출국 이동
+  const dep = acts.findIndex(isDepartFlight);
+  if (dep > 0) {
+    const depMin = _flightDepMin(acts[dep]);
+    const prev = acts[dep - 1];
+    const leave = _timeToMin(prev.time) + (prev.category === '숙박' ? 15 : _dwellMinutes(prev.category));
+    const travel = _travelMinutes(prev, acts[dep]);
+    if (leave + travel > depMin - _AIRPORT_BEFORE) {
+      items[dep].push({ lvl: 'warn', text: '공항 이동 시간 빠듯함' });
+      list.push({ lvl: 'warn', text: `출국 2시간 전 공항 도착 기준으로 ${_short(prev.name)}에서 늦어도 ${_minToTime(depMin - _AIRPORT_BEFORE - travel)}에는 출발해야 해요.` });
+    }
+  }
+  // 5) 중복 방문(여행 전체)
+  const seen = new Map();
+  g.days.forEach((d, dj) => d.activities.forEach((a) => {
+    if (a.category === '이동' || a.category === '숙박' || a.sample) return;
+    const k = (a.placeId && !String(a.placeId).startsWith('custom-')) ? a.placeId : _norm(a.name);
+    if (!seen.has(k)) seen.set(k, []);
+    seen.get(k).push(dj);
+  }));
+  acts.forEach((a, ai) => {
+    if (a.category === '이동' || a.category === '숙박' || a.sample) return;
+    const k = (a.placeId && !String(a.placeId).startsWith('custom-')) ? a.placeId : _norm(a.name);
+    const days = seen.get(k) || [];
+    if (days.length > 1) {
+      items[ai].push({ lvl: 'warn', text: `중복 방문 (${days.map(x => x + 1).join('·')}일차)` });
+    }
+  });
+  if (acts.some((a, ai) => items[ai].some(x => x.text.startsWith('중복')))) {
+    list.push({ lvl: 'warn', text: '같은 장소가 두 번 이상 들어 있어요. 한 곳을 바꿔 보세요.' });
+  }
+  // 6) 늦은 시간
+  acts.forEach((a, ai) => {
+    if (_timeToMin(a.time) >= 23 * 60 && !_isFlight(a) && a.category !== '숙박') items[ai].push({ lvl: 'check', text: '늦은 시간 — 영업 여부 확인' });
+  });
+  // 7) 영업시간·휴무 — 데이터가 없으면 확인 필요
+  acts.forEach((a, ai) => {
+    if (_OPEN_CHECK_CATS.has(a.category) && !a.openingHours) items[ai].push({ lvl: 'check', text: '영업시간·휴무 확인 필요' });
+  });
+  return { items, list };
+}
+
+function _short(name) {
+  const s = String(name || '').replace(/\s*\(.*?\)\s*/g, ' ').trim();
+  return s.length > 14 ? s.slice(0, 13) + '…' : s;
+}
+function _norm(s) { return String(s || '').toLowerCase().replace(/\s+/g, ''); }
+
+function _renderDayChecks(g, check) {
+  const box = $('#dayChecks');
+  if (!box) return;
+  const day = g.days[activeDay];
+  const total = day ? _dayTotal(day, activeDay) : 0;
+  const warn = check.list.filter(x => x.lvl === 'warn');
+  const need = check.list.filter(x => x.lvl === 'check');
+  const head = el('p', { class: 'dc-head' }, [
+    el('strong', {}, `${activeDay + 1}일차`),
+    ` · 장소 ${day?.activities.length || 0}곳 · 예상 지출 ${_money(total, g)}`,
+  ]);
+  const rows = [];
+  if (!warn.length && !need.length) rows.push(el('li', { class: 'dc-ok' }, '시간 순서와 이동 시간에 문제가 없어요.'));
+  warn.forEach(x => rows.push(el('li', { class: 'dc-warn' }, x.text)));
+  need.forEach(x => rows.push(el('li', { class: 'dc-check' }, x.text)));
+  box.replaceChildren(head, el('ul', { class: 'dc-list' }, rows));
+  box.hidden = false;
+}
+
+/* ============ 타임라인 ============
+ * 카드 순서: 현지 시각 → 장소명 → 활동 → (다음 장소까지 이동) → 예상 비용.
+ * 주소와 지도 열기는 '자세히' 안으로 묶는다. */
 function _renderTimeline(g) {
   const tl = $('#scheduleTimeline');
   if (!tl) return;
   tl.innerHTML = '';
   const day = g.days[activeDay];
   if (!day) return;
+  const check = _checkDay(g, activeDay);
+  _renderDayChecks(g, check);
 
-  // 편집 모드: '장소 추가' 버튼을 타임라인 맨 위에 노출
   if (editMode) {
     tl.appendChild(el('button', {
       type: 'button',
       class: 'btn btn-soft btn-block add-place-top',
-      style: { marginBottom: '12px' },
       onclick: _addPlace,
     }, '+ 장소 추가'));
   }
+  if (!day.activities.length) {
+    tl.appendChild(el('p', { class: 'tl-empty' }, '이 날은 아직 장소가 없어요. 편집에서 장소를 추가해 보세요.'));
+    return;
+  }
 
-  // 표시용 1박 단가 — 모든 호텔 카드에 같은 값을 보여준다(계산엔 미사용).
   const hotelNightly = _nightlyHotelRate(g);
+  const movables = day.activities.map(a => a.category !== '이동' && a.category !== '숙박');
 
   day.activities.forEach((a, ai) => {
-    // Normalize the activity into a stable shape (handles any field-name
-    // drift across legacy mock / Google Places / search results / etc.)
     const n = normalizeScheduleItem(a, ai);
     const placeName = n.placeName;
-    const hasName   = placeName && placeName !== 'Place name not available';
+    const hasName = placeName && placeName !== 'Place name not available';
+    const movable = movables[ai];
 
-    // ── Line 1 — meta: TIME (or ORDER fallback) · CATEGORY (badge) ──
-    const metaEls = [];
-    if (n.time) {
-      metaEls.push(el('span', { class: 'schedule-time' }, n.time));
-    } else {
-      metaEls.push(el('span', { class: 'schedule-order' }, String(n.order)));
-    }
-    if (n.category) {
-      metaEls.push(el('span', { class: 'schedule-dot', ariaHidden: 'true' }, '·'));
-      metaEls.push(el('span', { class: 'schedule-category' }, n.category));
-    }
-    if (a.sample) metaEls.push(el('span', { class: 'sample-badge', title: '실제 검색 결과가 없어 넣은 예시 장소예요' }, '예시 장소'));
-
-    // ── Line 3 — sub-info: address line + cost line (separate visual rows) ──
-    const subEls = [];
-    // Skip address if it accidentally equals the place name (de-dup safety)
-    if (n.address && n.address !== placeName) {
-      subEls.push(el('p', {
-        class: 'schedule-place-subinfo',
-        title: n.address,
-      }, n.address));
-    }
-    if (n.memo) {
-      subEls.push(el('p', { class: 'schedule-place-subinfo schedule-memo' }, n.memo));
-    }
-    const costNumeric = _actCost(activeDay, ai, n.cost);
-    if (a.excludedFromBudget && n.category === '숙박') {
-      subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' }, '숙소비는 예산에서 뺐어요'));
-    } else if (a.flightMeta?.source === 'excluded') {
-      subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' }, '항공권은 예산에서 뺐어요'));
-    } else if (n.category === '숙박') {
-      // 모든 호텔 항목(체크인·복귀·체크아웃 등)에 1박 단가를 표시.
-      // 출처(hotelPriceSource)에 따라 라벨 구분: SerpApi 실시간가 vs 순수 추정치.
-      // 합계는 각 항목의 실제 cost를 쓰므로 영향 없음.
+    // 비용 줄
+    let costText = '';
+    let costTag = '';
+    const c = _actCost(activeDay, ai, n.cost);
+    if (a.excludedFromBudget && n.category === '숙박') costText = '숙소비는 예산에서 뺐어요';
+    else if (a.flightMeta?.source === 'excluded') costText = '항공권은 예산에서 뺐어요';
+    else if (n.category === '숙박') {
       if (hotelNightly > 0) {
-        const _isReal = g.hotelPriceSource === 'serpapi';
-        const _rooms  = g.budgetPlan?.rooms || 1;
-        const _label  = (_isReal ? '1박 실시간가 ' : '1박 예상가 ') + (_rooms > 1 ? `(객실 ${_rooms}개 합계) ` : '');
-        const costEl = el('p', { class: 'schedule-place-subinfo schedule-cost' },
-          _label + _money(hotelNightly, g));
-        // 실시간가는 작은 배지로 신뢰도 표시, 추정가는 '추정' 표기
-        costEl.appendChild(el('span', {
-          class: 'schedule-price-tag',
-          style: 'margin-left:6px;font-size:11px;font-weight:600;'
-               + (_isReal ? 'color:#3A6EA5;' : 'color:#929aa5;'),
-        }, _isReal ? '· 실시간' : '· 추정'));
-        subEls.push(costEl);
+        const rooms = g.budgetPlan?.rooms || 1;
+        costText = `1박 ${_money(hotelNightly, g)}${rooms > 1 ? ` (객실 ${rooms}개 합계)` : ''}`;
+        costTag = g.hotelPriceSource === 'serpapi' ? '실시간' : '추정';
       }
-    } else if (n.category === '이동' && costNumeric != null && costNumeric > 0) {
-      // 항공권 — 출처(flightPriceSource)에 따라 실시간/예상 구분
-      const _isReal = g.flightPriceSource === 'serpapi';
-      const costEl = el('p', { class: 'schedule-place-subinfo schedule-cost' },
-        (_isReal ? '실시간 ' : '예상 ') + _money(costNumeric, g));
-      costEl.appendChild(el('span', {
-        class: 'schedule-price-tag',
-        style: 'margin-left:6px;font-size:11px;font-weight:600;'
-             + (_isReal ? 'color:#3A6EA5;' : 'color:#929aa5;'),
-      }, _isReal ? '· 실시간' : '· 추정'));
-      subEls.push(costEl);
-    } else if (costNumeric != null && costNumeric > 0) {
-      subEls.push(el('p', { class: 'schedule-place-subinfo schedule-cost' },
-        '예상 ' + _money(costNumeric, g)));
+    } else if (c > 0) {
+      costText = _money(c, g);
+      costTag = n.category === '이동' ? (g.flightPriceSource === 'serpapi' ? '실시간' : '추정') : '추정';
     }
 
-    const insightsBox = el('div', { class: 'schedule-insights' }, [
-      el('div', { class: 'schedule-insight-row' }, [
-        el('span', { class: 'insight-label' }, '현지인 비율'),
-        el('div', { class: 'insight-bar' }, el('div', { class: 'insight-fill', style: { width: '0%' } })),
-        el('span', { class: 'insight-val' }, '...'),
-      ]),
-      el('div', { class: 'schedule-insight-row' }, [
-        el('span', { class: 'insight-label' }, '혼잡도'),
-        el('span', { class: 'insight-pill' }, '측정 중...'),
-        el('span', { class: 'insight-src' }, ''),
-      ]),
-    ]);
+    const flags = check.items[ai] || [];
+    const details = [];
+    if (n.address && n.address !== placeName) details.push(el('p', { class: 'sc-addr' }, n.address));
+    details.push(el('button', { type: 'button', class: 'btn-text sc-map-link', onclick: (e) => { e.stopPropagation(); _openMap(a); } }, 'Google 지도에서 열기 ↗'));
 
-    // 공항(이동)·호텔(숙박)은 일정의 고정 골격이므로 순서 변경에서 제외.
-    const movable = n.category !== '이동' && n.category !== '숙박';
     const card = el('article', {
-      class: 'schedule-card' + (hasName ? '' : ' schedule-card--no-name'),
-      // 네이티브 HTML5 드래그는 쓰지 않음 — 마우스/터치 포인터로 직접 처리(_bindDnd)
+      class: 'schedule-card' + (hasName ? '' : ' schedule-card--no-name') + (focusedAi === ai ? ' is-focused' : ''),
       draggable: 'false',
-      dataset: {
-        di: String(activeDay),
-        ai: String(ai),
-        placeId: n.placeId || n.id || '',
-        movable: movable ? '1' : '0',
-      },
+      tabIndex: -1,
+      dataset: { di: String(activeDay), ai: String(ai), placeId: n.placeId || n.id || '', movable: movable ? '1' : '0' },
+      'aria-labelledby': `scName${ai}`,
     }, [
       el('div', { class: 'schedule-card-main' }, [
-        // Line 1 — meta
-        el('div', { class: 'schedule-card-meta-line' }, metaEls),
-        // Line 2 — place name (h3, main visual; full text in title attr)
-        el('h3', {
-          class: 'schedule-place-name',
-          title: placeName,
-        }, placeName),
-        // Line 3 — sub-info(s)
-        ...subEls,
-        insightsBox,
+        el('div', { class: 'schedule-card-meta-line' }, [
+          el('span', { class: 'sc-num', 'aria-hidden': 'true' }, String(ai + 1)),
+          el('span', { class: 'schedule-time' }, n.time || '시간 미정'),
+          n.category ? el('span', { class: 'schedule-category' }, n.category) : null,
+          a.sample ? el('span', { class: 'sample-badge', title: '실제 검색 결과가 없어 넣은 예시 장소예요' }, '예시 장소') : null,
+          a.edited ? el('span', { class: 'edited-badge' }, '직접 수정') : null,
+        ]),
+        el('h3', { class: 'schedule-place-name', id: `scName${ai}` }, placeName),
+        n.memo ? el('p', { class: 'schedule-place-subinfo schedule-memo' }, '메모 · ' + n.memo) : null,
+        costText ? el('p', { class: 'schedule-place-subinfo schedule-cost' }, [
+          el('span', { class: 'sr-only' }, '예상 비용 '), costText,
+          costTag ? el('span', { class: 'schedule-price-tag' + (costTag === '실시간' ? ' is-live' : '') }, ' · ' + costTag) : null,
+        ]) : null,
+        flags.length ? el('ul', { class: 'sc-flags' }, flags.map(f => el('li', { class: 'sc-flag sc-flag--' + f.lvl }, f.text))) : null,
+        el('details', { class: 'sc-more' }, [el('summary', {}, '주소·지도'), ...details]),
       ]),
       el('div', { class: 'schedule-card-actions' }, [
         el('button', {
-          type: 'button',
-          class: 'map-button',
-          onclick: (e) => { e.stopPropagation(); _openMap(a); },
-        }, '지도'),
-        el('button', {
-          type: 'button',
-          class: 'edit-button',
-          title: '장소 편집',
+          type: 'button', class: 'edit-button', 'aria-label': `${placeName} 편집`,
           onclick: (e) => { e.stopPropagation(); _openEdit(activeDay, ai); },
-        }, '✏️ 편집'),
-        ...(movable ? [el('span', {
-          class: 'drag-handle',
-          title: '드래그하여 순서 변경',
-          ariaHidden: 'true',
-          draggable: editMode ? 'true' : 'false',
-        }, '⋮⋮')] : []),
+        }, '편집'),
+        ...(editMode && movable ? [
+          el('button', { type: 'button', class: 'move-btn', 'aria-label': `${placeName} 위로 이동`, disabled: !movables[ai - 1] || null,
+            onclick: (e) => { e.stopPropagation(); _moveActivity(ai, ai - 1, false); _focusCard(ai - 1, '위'); } }, '▲'),
+          el('button', { type: 'button', class: 'move-btn', 'aria-label': `${placeName} 아래로 이동`, disabled: !movables[ai + 1] || null,
+            onclick: (e) => { e.stopPropagation(); _moveActivity(ai, ai + 1, true); _focusCard(ai + 1, '아래'); } }, '▼'),
+          el('span', { class: 'drag-handle', title: '끌어서 순서 변경', 'aria-hidden': 'true' }, '⋮⋮'),
+        ] : []),
       ]),
     ]);
-    // 본체 클릭으로는 모달 열지 않음 — 텍스트 자유롭게 선택 가능
-    // 편집은 우측 "✏️ 편집" 버튼으로만 열림
-
-    // Populate insights async (cached) — uses the same place name as the card
-    getInsights(placeName, g.city, n.time).then(ins => {
-      try {
-        const fill = insightsBox.querySelector('.insight-fill');
-        const val  = insightsBox.querySelector('.insight-val');
-        if (fill && val) {
-          const pct = Math.round(ins.localRatio * 100);
-          fill.style.width = pct + '%';
-          val.textContent = pct + '%';
-          // 현지인 비율 단계별 색: 높음(로컬) 그린 · 보통 앰버 · 낮음(관광지) 테라코타
-          const c = pct >= 70 ? '#16A34A' : pct >= 45 ? '#E0A72C' : '#E5654A';
-          fill.style.background = c;
-          val.style.color = c;
-        }
-        const pill = insightsBox.querySelector('.insight-pill');
-        const src  = insightsBox.querySelector('.insight-src');
-        if (pill) {
-          const lab = CONGESTION_LABEL[ins.congestion] || CONGESTION_LABEL.normal;
-          pill.classList.add('lvl-' + ins.congestion);
-          pill.textContent = lab.ko;
-        }
-        if (src) src.textContent = ins.source;
-      } catch (_) {}
+    // 카드를 누르면 지도에서 같은 장소를 강조한다(버튼·링크 제외).
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('button, a, summary, details')) return;
+      _pick(ai, 'card');
     });
-
     if (editMode) _bindDnd(card);
     tl.appendChild(card);
-  });
 
+    // 다음 장소까지 이동
+    const next = day.activities[ai + 1];
+    if (next) {
+      let moveText;
+      if (_isFlight(a) || _isFlight(next)) moveText = _isFlight(next) ? '공항으로 이동 · 출국 2시간 전 도착 권장' : '공항에서 시내로 이동';
+      else {
+        const km = _kmBetween(a, next);
+        const min = _travelMinutes(a, next);
+        moveText = km == null ? `다음 장소까지 약 ${min}분 (위치 정보 없음 · 추정)`
+          : `${km < 1.2 ? '도보' : '대중교통·택시'} 약 ${min}분 · ${km < 1 ? Math.round(km * 1000) + 'm' : km.toFixed(1) + 'km'} (추정)`;
+      }
+      tl.appendChild(el('p', { class: 'tl-move' }, moveText));
+    }
+  });
+}
+
+/* ============ 목록 ↔ 지도 연결 ============ */
+let focusedAi = null;
+/** 옮긴 카드의 같은 방향 버튼(없으면 카드)으로 초점을 옮겨 연달아 누를 수 있게 한다. */
+function _focusCard(ai, dir) {
+  requestAnimationFrame(() => {
+    const card = $(`#scheduleTimeline .schedule-card[data-ai="${ai}"]`);
+    const btn = card?.querySelector(`.move-btn[aria-label$="${dir}로 이동"]:not(:disabled)`);
+    (btn || card)?.focus();
+  });
+}
+function _pick(ai, from) {
+  focusedAi = ai;
+  $$('#scheduleTimeline .schedule-card').forEach(c => c.classList.toggle('is-focused', Number(c.dataset.ai) === ai));
+  if (from === 'map') {
+    const card = $(`#scheduleTimeline .schedule-card[data-ai="${ai}"]`);
+    _renderMapPick(ai);
+    if (card && !card.closest('.is-hidden-view')) card.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  } else {
+    document.dispatchEvent(new CustomEvent('redesign:place-pick', { detail: { ai, day: activeDay } }));
+  }
+}
+function _renderMapPick(ai) {
+  const box = $('#mapPick');
+  const a = appState.generated?.days[activeDay]?.activities[ai];
+  if (!box) return;
+  if (!a) { box.hidden = true; return; }
+  box.replaceChildren(
+    el('span', { class: 'sc-num', 'aria-hidden': 'true' }, String(ai + 1)),
+    el('div', { class: 'mp-body' }, [
+      el('strong', {}, getSchedulePlaceName(a)),
+      el('span', {}, [a.time, a.category].filter(Boolean).join(' · ')),
+    ]),
+    el('button', { type: 'button', class: 'btn-text', onclick: () => { _setView('list'); _pick(ai, 'map'); $(`#scheduleTimeline .schedule-card[data-ai="${ai}"]`)?.focus(); } }, '목록에서 보기'),
+  );
+  box.hidden = false;
+}
+
+let view = 'list';
+function _setView(v) {
+  view = v;
+  const page = $('#schedulePage');
+  page?.classList.toggle('view-map', v === 'map');
+  $$('#viewToggle [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+  if (v === 'map') _emitScheduleChanged();   // 숨어 있던 지도를 다시 그린다
 }
 
 const _SWAP_QUERY = { 식사: '맛집', 카페: '인기 카페', 쇼핑: '쇼핑 명소', 관광: '인기 명소', 액티비티: '인기 체험' };
 
 function _actKey(di, ai) { return `${di}_${ai}`; }
 function _actCost(di, ai, fallback) {
-  const k = _actKey(di, ai);
-  if (appState.expenses && appState.expenses[k] != null) return appState.expenses[k];
-  return fallback || 0;
+  const a = appState.generated?.days[di]?.activities[ai];
+  return Number(a?.cost ?? fallback) || 0;
 }
 
 /** 숙소 1박 단가 — 일정 안의 '숙박' 항목 중 비용이 실린 항목(복귀 1박)의 값.
@@ -455,7 +599,7 @@ function _renderBudgetPanel(g) {
   const plan = $('#budgetPanelPlan');
   if (plan) {
     plan.textContent = !bp ? ''
-      : bp.fits
+      : (bp.fits || diff >= 0)
         ? `예산에 맞춰 ${bp.hotelLabel ? bp.hotelLabel + '·' : ''}${bp.levelLabel} 지출 기준으로 골랐어요.`
         : `이 조건에서는 예산 안에 드는 조합이 없어 가장 저렴한 조합(${bp.hotelLabel || '숙소'}·아껴 쓰는 지출)으로 만들었어요.`;
   }
@@ -681,6 +825,7 @@ function _openEdit(di, ai) {
   $('#editTime').value = a.time || '';
   $('#editCost').value = _actCost(di, ai, a.cost) || 0;
   $('#editMemo').value = a.memo || '';
+  _fillDaySelect(di, a.category !== '이동');
   $('#editSuggestions') && ($('#editSuggestions').hidden = true);
   $('#editPlaceHint')   && ($('#editPlaceHint').hidden = true);
   $('#editSheetTitle')  && ($('#editSheetTitle').textContent = '장소 편집');
@@ -693,6 +838,24 @@ function _openEdit(di, ai) {
     $('#editBackdrop').classList.add('is-visible');
     $('#editSheet').classList.add('is-visible');
   });
+}
+
+function _fillDaySelect(di, enabled) {
+  const sel = $('#editDay');
+  const row = $('#editDayRow');
+  if (!sel) return;
+  const g = appState.generated;
+  sel.replaceChildren(...g.days.map((d, i) => el('option', { value: String(i) }, `${i + 1}일차 · ${Number(d.date.slice(5, 7))}/${Number(d.date.slice(8, 10))}`)));
+  sel.value = String(di);
+  if (row) row.hidden = !enabled || g.days.length < 2;
+}
+
+/** 시간 순서를 지키며 끼워 넣는다(같은 시간이면 뒤에). */
+function _insertByTime(acts, a) {
+  const t = _timeToMin(a.time);
+  let idx = acts.findIndex(x => _timeToMin(x.time) > t);
+  if (idx < 0) idx = acts.length;
+  acts.splice(idx, 0, a);
 }
 
 function _closeEdit() {
@@ -725,20 +888,20 @@ function _commitEdit() {
       address:   picked?.address || '',
       googleMapsQuery: picked?.name || (name + ' ' + cityName).trim(),
     };
-    appState.generated.days[di].activities.push(newActivity);
-    appState.expenses[_actKey(di, appState.generated.days[di].activities.length - 1)] = cost;
-    _recomputeDayTimes(appState.generated.days[di]);
+    newActivity.edited = true;
+    _insertByTime(appState.generated.days[di].activities, newActivity);
     _closeEdit();
     renderSchedule();
     showToast('장소가 추가되었어요');
   } else {
     const { di, ai } = editing;
     const a = appState.generated.days[di].activities[ai];
+    const changed = a.name !== name || a.time !== time || Number(a.cost) !== cost;
     a.name = name;
     a.time = time;
     a.cost = cost;
-    appState.expenses[_actKey(di, ai)] = cost;
     a.memo = memo;
+    if (changed) a.edited = true;
     if (picked) {
       a.placeId   = picked.place_id;
       a.latitude  = picked.latitude;
@@ -749,9 +912,23 @@ function _commitEdit() {
       // 직접 입력된 이름 — 좌표는 유지, 지도 쿼리만 갱신
       a.googleMapsQuery = (name + ' ' + cityName).trim();
     }
+    // 다른 날짜로 옮기기
+    const toDay = Number($('#editDay')?.value);
+    if (Number.isInteger(toDay) && toDay !== di && appState.generated.days[toDay]) {
+      appState.generated.days[di].activities.splice(ai, 1);
+      _insertByTime(appState.generated.days[toDay].activities, a);
+      _closeEdit();
+      activeDay = toDay;
+      renderSchedule();
+      showToast(`${toDay + 1}일차로 옮겼어요`);
+      return;
+    }
+    // 시간을 바꾸면 시간 순서대로 다시 놓는다.
+    const acts = appState.generated.days[di].activities;
+    acts.splice(ai, 1); _insertByTime(acts, a);
     _closeEdit();
     renderSchedule();
-    showToast('수정되었어요');
+    showToast('수정했어요');
   }
 }
 
@@ -761,7 +938,6 @@ function _deleteEdit() {
   const { di, ai } = editing;
   if (!confirm('이 장소를 삭제할까요?')) return;
   appState.generated.days[di].activities.splice(ai, 1);
-  delete appState.expenses[_actKey(di, ai)];
   _closeEdit();
   renderSchedule();
   showToast('삭제되었어요');
@@ -774,6 +950,8 @@ function _addPlace() {
   $('#editTime').value = '12:00';
   $('#editCost').value = 0;
   $('#editMemo').value = '';
+  _fillDaySelect(activeDay, false);
+  $('#editSwap') && ($('#editSwap').hidden = true);
   $('#editSuggestions') && ($('#editSuggestions').hidden = true);
   $('#editPlaceHint')   && ($('#editPlaceHint').hidden = true);
   $('#editSheetTitle')  && ($('#editSheetTitle').textContent = '장소 추가');
@@ -872,10 +1050,12 @@ function _moveActivity(srcAi, dstAi, after) {
   const oldTops = _captureCardRects();                       // 재정렬 전 위치 기록 (FLIP)
   const [moved] = acts.splice(srcAi, 1);
   acts.splice(insertIdx, 0, moved);
+  moved.edited = true;
   _recomputeDayTimes(day);
+  focusedAi = insertIdx;
   renderSchedule();
   _flipReorder(oldTops, String(movedKey));                   // 새 위치로 부드럽게 미끄러짐
-  showToast('순서 변경');
+  showToast(`${insertIdx + 1}번째로 옮기고 시간을 다시 계산했어요`);
 }
 
 // ── FLIP 애니메이션: 재정렬 후 카드들이 옛 위치→새 위치로 부드럽게 이동 ──
@@ -1010,27 +1190,185 @@ function _openMap(a) {
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 
-/* ============ Save / share ============ */
+/* ============ 저장 ============
+ * 일정은 이 기기(브라우저)에 늘 자동 저장된다.  로그인하면 계정(/schedules)에도 저장하고,
+ * 저장한 뒤 고친 내용은 몇 초 뒤 계정에도 반영한다.  다시 보는 곳: 마이 > 저장한 일정. */
+let saveState = 'idle';      // idle | saving | saved | error
+let syncTimer = null;
+let lastSyncedJson = '';
+
+function _scheduleTitle(g) {
+  return g.title || `${g.originName ? g.originName + ' → ' : ''}${g.city} ${g.days.length <= 1 ? '당일치기' : `${g.days.length - 1}박 ${g.days.length}일`}`;
+}
+function _payload(g) {
+  const { savedScheduleId, ...data } = g;   // 저장 번호는 기기에만 둔다
+  return data;
+}
+
+function _paintSaveStatus() {
+  const g = appState?.generated;
+  const box = $('#saveStatus');
+  const btn = $('#btnSave');
+  if (!box) return;
+  if (!g) { box.hidden = true; return; }
+  box.hidden = false;
+  const onAccount = !!g.savedScheduleId;
+  btn?.classList.toggle('is-active', onAccount);
+  btn?.setAttribute('aria-pressed', String(onAccount));
+  const lbl = btn?.querySelector('.ab-label'); if (lbl) lbl.textContent = onAccount ? '저장됨' : '저장';
+  let text, cls = '';
+  if (saveState === 'saving') text = '계정에 저장하는 중…';
+  else if (saveState === 'error') { text = '계정 저장에 실패했어요. 이 기기에는 저장돼 있어요.'; cls = 'is-error'; }
+  else if (onAccount) text = '계정에 저장됨 · 마이 › 저장한 일정에서 다시 볼 수 있어요';
+  else text = appState.currentUser ? '이 기기에만 저장돼 있어요. 저장을 누르면 계정에도 보관해요.' : '이 기기에만 저장돼 있어요. 로그인하면 계정에 보관할 수 있어요.';
+  box.className = 'save-status ' + cls;
+  box.replaceChildren(...[el('span', {}, text),
+    saveState === 'error' ? el('button', { type: 'button', class: 'btn-text', onclick: _saveToAccount }, '다시 시도') : null].filter(Boolean));
+}
+
 async function _toggleSave() {
-  if (!appState.generated) { showToast('생성된 일정이 없어요'); return; }
-  if (!appState.currentUser) { showToast('로그인 후 저장할 수 있어요'); navigate('auth'); return; }
-  try {
-    if (savedTripId) {
-      await api.deleteTrip(savedTripId);
-      savedTripId = null;
-      $('#btnSave')?.classList.remove('is-active');
-      showToast('저장이 해제되었어요');
-    } else {
-      const payload = { ...appState.generated, expenses: appState.expenses };
-      const res = await api.saveTrip(payload);
-      savedTripId = res?.id || res?.tripId || 'saved';
-      $('#btnSave')?.classList.add('is-active');
-      showToast('일정이 저장되었어요');
-    }
-  } catch (e) {
-    console.error('[schedule] save failed', e);
-    showToast('저장 중 오류가 발생했어요');
+  const g = appState.generated;
+  if (!g) { showToast('저장할 일정이 없어요'); return; }
+  if (!appState.currentUser) {
+    showToast('로그인하면 계정에 저장할 수 있어요. 지금 일정은 이 기기에 저장돼 있어요', 3200);
+    navigate('auth');
+    return;
   }
+  if (g.savedScheduleId) {
+    if (!confirm('계정에 저장한 이 일정을 저장 목록에서 뺄까요?\n이 기기에서는 그대로 볼 수 있고, 다시 저장하면 되살아나요.')) return;
+    try {
+      await api.unsaveSchedule(g.savedScheduleId);
+      g.savedScheduleId = null;
+      saveState = 'idle';
+      _paintSaveStatus(); _persist();
+      showToast('저장 목록에서 뺐어요');
+    } catch (e) {
+      showToast('저장 해제에 실패했어요. 잠시 뒤 다시 시도해 주세요');
+    }
+    return;
+  }
+  await _saveToAccount();
+}
+
+async function _saveToAccount() {
+  const g = appState.generated;
+  if (!g || !appState.currentUser) return;
+  saveState = 'saving'; _paintSaveStatus();
+  try {
+    const data = _payload(g);
+    if (g.savedScheduleId) {
+      await api.updateSchedule(g.savedScheduleId, { title: _scheduleTitle(g), schedule_data: data, is_saved: true });
+    } else {
+      const res = await api.createSchedule({ title: _scheduleTitle(g), schedule_data: data, is_saved: true });
+      g.savedScheduleId = res?.id;
+      trackEvent('trip_saved');
+      showToast('계정에 저장했어요 · 마이 › 저장한 일정에서 볼 수 있어요', 3000);
+    }
+    lastSyncedJson = JSON.stringify(data);
+    saveState = 'saved';
+  } catch (e) {
+    console.warn('[schedule] 계정 저장 실패', e?.status, e?.message);
+    if (e?.status === 404 && g.savedScheduleId) { g.savedScheduleId = null; return _saveToAccount(); }
+    saveState = 'error';
+    showToast(e?.status === 401 ? '로그인이 만료됐어요. 다시 로그인해 주세요' : '계정 저장에 실패했어요');
+  }
+  _paintSaveStatus(); _persist();
+}
+
+/** 계정에 저장한 일정이 바뀌면 3초 뒤 계정에도 반영한다. */
+function _queueSync() {
+  const g = appState?.generated;
+  if (!g?.savedScheduleId || !appState.currentUser) return;
+  if (JSON.stringify(_payload(g)) === lastSyncedJson) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(_saveToAccount, 3000);
+}
+
+function _persist() {
+  document.dispatchEvent(new CustomEvent('redesign:trip-changed'));
+}
+
+/* ============ 공유 ============
+ * 보기 전용: 일정 내용을 링크에 담는다(서버에 남지 않음, 회수 불가 → 담을 항목을 고른다).
+ * 편집 가능: 서버에 공유 일정을 만들고 링크를 아는 사람이 함께 고친다(회수 가능). */
+function _shareData(g, opts) {
+  const copy = JSON.parse(JSON.stringify(_payload(g)));
+  delete copy.aiSummary;
+  copy.days.forEach(d => d.activities.forEach(a => {
+    if (!opts.memo) delete a.memo;
+    if (!opts.cost) { delete a.cost; if (a.flightMeta) { delete a.flightMeta.roundTripKRW; delete a.flightMeta.oneWayKRW; } }
+  }));
+  if (!opts.cost) {
+    delete copy.budget; delete copy.budgetPlan;
+    copy.days.forEach(d => { delete d.localTransport; });
+    copy.hideCost = true;
+  }
+  copy.sharedView = true;
+  return copy;
+}
+function _shareLink(data) {
+  try { return `${location.origin}${location.pathname}#page=schedule&trip=${_b64urlEnc(JSON.stringify(data))}`; }
+  catch (_) { return location.href; }
+}
+
+function _openShareSheet() {
+  const g = appState.generated;
+  if (!g) { showToast('공유할 일정이 없어요'); return; }
+  const sheet = $('#shareSheet');
+  const opts = { memo: false, cost: false };
+  const hasMemo = g.days.some(d => d.activities.some(a => a.memo));
+  const preview = el('ul', { class: 'share-preview' });
+  const paint = () => {
+    preview.replaceChildren(
+      el('li', {}, `여행 제목·도시·날짜 (${_scheduleTitle(g)})`),
+      el('li', {}, `날짜별 장소·시간 ${g.days.reduce((s, d) => s + d.activities.length, 0)}곳`),
+      el('li', { class: opts.cost ? '' : 'is-off' }, opts.cost ? '예상 비용·예산' : '예상 비용·예산 — 빼고 공유'),
+      el('li', { class: opts.memo ? '' : 'is-off' }, hasMemo ? (opts.memo ? '내가 쓴 메모' : '내가 쓴 메모 — 빼고 공유') : '메모 없음'),
+      el('li', { class: 'is-off' }, '경비 기록·준비물·계정 정보 — 공유하지 않아요'),
+    );
+  };
+  const chk = (key, label) => el('label', { class: 'check-row' }, [
+    el('input', { type: 'checkbox', onchange: (e) => { opts[key] = e.target.checked; paint(); } }),
+    el('span', {}, label),
+  ]);
+  paint();
+  const doShare = async () => {
+    const link = _shareLink(_shareData(g, opts));
+    trackEvent('trip_shared');
+    const title = `${_scheduleTitle(g)} · 3초 여행`;
+    if (navigator.share) {
+      try { await navigator.share({ title, url: link }); _closeSheet(); return; }
+      catch (e) { if (e?.name === 'AbortError') return; }
+    }
+    try { await navigator.clipboard.writeText(link); showToast('보기 전용 링크를 복사했어요'); _closeSheet(); }
+    catch (_) { window.prompt('이 링크를 복사해 공유하세요', link); }
+  };
+  sheet.querySelector('.sheet-body').replaceChildren(
+    el('section', { class: 'share-sec', 'aria-labelledby': 'shareViewH' }, [
+      el('h3', { id: 'shareViewH' }, '보기 전용 링크'),
+      el('p', { class: 'tool-note' }, '받는 사람은 일정을 볼 수만 있어요. 링크 안에 일정이 담겨 있어 한 번 보내면 회수할 수 없으니, 담을 항목을 골라 주세요.'),
+      chk('cost', '예상 비용·예산 포함'),
+      hasMemo ? chk('memo', '내가 쓴 메모 포함') : null,
+      el('p', { class: 'share-preview-h' }, '공유되는 항목'),
+      preview,
+      el('button', { type: 'button', class: 'btn btn-primary btn-block', onclick: doShare }, '보기 전용 링크 공유'),
+    ]),
+    el('section', { class: 'share-sec', 'aria-labelledby': 'shareEditH' }, [
+      el('h3', { id: 'shareEditH' }, '편집 가능 링크'),
+      el('p', { class: 'tool-note' }, '링크를 아는 사람은 누구나 일정·메모·비용을 함께 고칠 수 있어요. 언제든 링크를 회수할 수 있어요.'),
+      el('button', { type: 'button', class: 'btn btn-soft btn-block', onclick: () => { _closeSheet(); document.dispatchEvent(new CustomEvent('redesign:collab-open')); } }, '편집 링크 관리'),
+    ]),
+  );
+  $('#shareBackdrop').hidden = false; sheet.hidden = false;
+  requestAnimationFrame(() => { $('#shareBackdrop').classList.add('is-visible'); sheet.classList.add('is-visible'); sheet.querySelector('h2')?.focus(); });
+  shareReturnFocus = document.activeElement;
+}
+let shareReturnFocus = null;
+function _closeSheet() {
+  const sheet = $('#shareSheet');
+  $('#shareBackdrop')?.classList.remove('is-visible'); sheet?.classList.remove('is-visible');
+  setTimeout(() => { if ($('#shareBackdrop')) $('#shareBackdrop').hidden = true; if (sheet) sheet.hidden = true; }, 220);
+  $('#btnShare')?.focus();
 }
 
 /* ============ AI 코스 요약 (OpenAI 프록시) ============ */
@@ -1121,36 +1459,6 @@ function _b64urlDec(b64) {
   const bin = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
   return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
 }
-/** 받는 사람이 열면 이 일정이 그대로 보이도록, generated 전체를 URL 해시에 인코딩. */
-function _shareLink(g) {
-  try { return `${location.origin}${location.pathname}#page=schedule&trip=${_b64urlEnc(JSON.stringify(g))}`; }
-  catch (_) { return location.href; }
-}
-/** 일자별 대표 장소(고정 골격 제외)로 짧은 텍스트 요약. */
-function _shareText(g) {
-  const lines = g.days.map((d, i) => {
-    const hi = (d.activities || [])
-      .filter(a => a.category !== '이동' && a.category !== '숙박')
-      .slice(0, 3).map(a => a.name).join(' · ');
-    return `Day ${i + 1}  ${hi}`;
-  });
-  return `${g.city} ${g.days.length}일 · ${g.concept || ''} 일정\n` + lines.join('\n') + '\n— 3초 여행';
-}
-
-async function _share() {
-  const g = appState.generated;
-  if (!g) { showToast('공유할 일정이 없어요'); return; }
-  trackEvent('trip_shared');
-  const text = _shareText(g);
-  const link = _shareLink(g);
-  if (navigator.share) {
-    try { await navigator.share({ title: `${g.city} ${g.days.length}일 일정 · 3초 여행`, text, url: link }); return; }
-    catch (_) { /* 사용자가 취소했거나 미지원 → 폴백 */ }
-  }
-  try { await navigator.clipboard.writeText(text + '\n' + link); showToast('일정 링크를 복사했어요 — 붙여넣어 공유하세요'); }
-  catch (_) { showToast('공유를 지원하지 않는 환경이에요'); }
-}
-
 /** 공유 링크(#page=schedule&trip=…)로 진입한 경우, URL에서 일정을 복원해 state에 주입.
  *  부트스트랩에서 restoreAppState 직후·최초 렌더 전에 호출한다. */
 export function importSharedTripFromURL(state) {
@@ -1159,8 +1467,10 @@ export function importSharedTripFromURL(state) {
     if (!enc) return false;
     const g = JSON.parse(_b64urlDec(enc));
     if (!g || !Array.isArray(g.days)) return false;
+    delete g.savedScheduleId;
+    g.sharedView = true;
     state.generated = g;
-    state.expenses = state.expenses || {};
+    state.expenses = {};
     state.trip = Object.assign({}, state.trip, {
       cityName: g.city, country: g.country, days: g.days.length,
       concept: g.concept, currency: g.currency, budget: Math.round((g.budget || 0) / 10000),

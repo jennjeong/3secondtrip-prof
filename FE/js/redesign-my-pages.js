@@ -11,7 +11,7 @@
  *  so the UI stays usable even if a feature isn't wired yet.
  */
 import { api, API_URL } from './redesign-api-adapter.js';
-import { navigate } from './redesign-navigation.js';
+import { navigate, getCurrent } from './redesign-navigation.js';
 import { $, $$, el, showToast, formatCurrency } from './redesign-ui.js';
 
 let appState = null;
@@ -19,6 +19,15 @@ let appState = null;
 export function initMyPages(state) {
   appState = state;
 
+  const render = (page) => {
+    switch (page) {
+      case 'my-saved':    renderMySaved();    break;
+      case 'my-roadmaps': renderMyRoadmaps(); break;
+      case 'my-reviews':  renderMyReviews();  break;
+      case 'my-blogs':    renderMyBlogs();    break;
+    }
+  };
+  document.addEventListener('redesign:auth-ready', () => render(getCurrent()));
   // Render the right page when user arrives via nav
   document.addEventListener('redesign:nav', (e) => {
     switch (e.detail.page) {
@@ -66,40 +75,134 @@ function _fmtDate(iso) {
   return iso.slice(0, 10).replace(/-/g, '.');
 }
 
-/* ============ 1) SAVED SCHEDULES ============ */
+/* ============ 1) SAVED SCHEDULES ============
+ * 계정에 저장한 일정(/schedules, is_saved)을 최근 수정순으로 보여 준다.
+ * 저장 해제한 일정은 아래 '저장 해제한 일정'에서 되살리거나 완전히 지울 수 있다.
+ * 예전 버전이 /trips 에 남긴 일정도 불러올 수 있게 함께 보여 준다. */
+function _days(data) {
+  return Array.isArray(data?.days) ? data.days : [];
+}
+function _dateOf(s) { return s.updated_at || s.created_at || ''; }
+
+function _openSchedule(data, savedId, title) {
+  if (!_days(data).length) { showToast('이 일정은 날짜별 데이터가 없어 열 수 없어요'); return; }
+  appState.generated = { ...data, savedScheduleId: savedId || null };
+  if (title) appState.generated.title = title;
+  delete appState.generated.sharedView;
+  appState.expenses = {};
+  document.dispatchEvent(new CustomEvent('redesign:trip-changed'));
+  navigate('schedule');
+}
+
 export async function renderMySaved() {
-  if (_requireLogin('mySavedEmpty', '저장한 일정을 보려면 로그인 해주세요')) return;
+  const list = $('#mySavedList');
+  const empty = $('#mySavedEmpty');
+  const extra = $('#mySavedExtra');
+  if (!list || !empty) return;
+  list.replaceChildren(); if (extra) extra.replaceChildren();
+  const here = appState?.generated;
+  const deviceCard = here && _days(here).length ? el('div', { class: 'device-trip' }, [
+    el('p', { class: 'my-sub-h' }, '이 기기에 있는 일정'),
+    _card({ title: here.title || `${here.city} ${_days(here).length}일`, data: here, meta: here.savedScheduleId ? '계정에도 저장됨' : '이 기기에만 저장됨' },
+      () => navigate('schedule'), []),
+  ]) : null;
+
+  if (!appState?.currentUser) {
+    empty.hidden = false;
+    empty.querySelector('.empty-text').textContent = '계정에 저장한 일정을 보려면 로그인해 주세요. 이 기기에서 만든 일정은 로그인 없이도 남아 있어요.';
+    const btn = empty.querySelector('.btn'); if (btn) { btn.textContent = '로그인'; btn.dataset.navTo = 'auth'; }
+    if (deviceCard) list.appendChild(deviceCard);
+    return;
+  }
+  list.appendChild(el('p', { class: 'my-loading', role: 'status' }, '불러오는 중…'));
+  let rows = [], legacy = [];
   try {
-    const rows = await api.listSchedules?.() ?? [];
-    const saved = (Array.isArray(rows) ? rows : []).filter(s => s.is_saved);
-    _showState('mySavedList', 'mySavedEmpty', saved, _savedCard);
+    rows = await api.listSchedules();
   } catch (e) {
-    showToast('일정 목록을 불러오지 못했어요');
-    console.warn('[my-saved]', e);
+    list.replaceChildren(el('div', { class: 'empty-state' }, [
+      el('p', { class: 'empty-text' }, '저장한 일정을 불러오지 못했어요.'),
+      el('button', { type: 'button', class: 'btn btn-soft', onclick: renderMySaved }, '다시 시도'),
+    ]));
+    return;
+  }
+  try { legacy = (await api.listTrips()) || []; } catch (_) { legacy = []; }
+  rows = (Array.isArray(rows) ? rows : []).sort((a, b) => _dateOf(b).localeCompare(_dateOf(a)));
+  const saved = rows.filter(s => s.is_saved);
+  const removed = rows.filter(s => !s.is_saved);
+  const oldOnes = legacy.filter(t => _days(t.trip_data).length);
+
+  list.replaceChildren();
+  empty.hidden = saved.length > 0;
+  if (!saved.length) {
+    empty.querySelector('.empty-text').textContent = '아직 계정에 저장한 일정이 없어요. 일정 화면에서 ‘저장’을 누르면 여기에 모여요.';
+    const btn = empty.querySelector('.btn'); if (btn) { btn.textContent = '내 일정 보기'; btn.dataset.navTo = 'schedule'; }
+  } else {
+    list.appendChild(el('p', { class: 'my-sub-h' }, `계정에 저장한 일정 ${saved.length}개 · 최근 수정순`));
+    saved.forEach(s => list.appendChild(_savedCard(s)));
+  }
+  if (!extra) return;
+  if (deviceCard && !saved.some(s => s.id === here.savedScheduleId)) extra.appendChild(deviceCard);
+  if (removed.length) {
+    extra.appendChild(el('details', { class: 'my-removed' }, [
+      el('summary', {}, `저장 해제한 일정 ${removed.length}개`),
+      ...removed.map(s => _card({ title: s.title, data: s.schedule_data, meta: '저장 해제 · ' + _fmtDate(_dateOf(s)) }, null, [
+        el('button', { type: 'button', class: 'btn-text', onclick: async () => {
+          try { await api.saveSchedule(s.id); showToast('다시 저장했어요'); renderMySaved(); }
+          catch (_) { showToast('되살리지 못했어요. 다시 시도해 주세요'); }
+        } }, '되살리기'),
+        el('button', { type: 'button', class: 'btn-text is-danger', onclick: async () => {
+          if (!confirm(`‘${s.title || '이 일정'}’을 완전히 지울까요? 지우면 되살릴 수 없어요.`)) return;
+          try { await api.deleteSchedule(s.id); showToast('완전히 지웠어요'); renderMySaved(); }
+          catch (_) { showToast('지우지 못했어요. 다시 시도해 주세요'); }
+        } }, '완전히 삭제'),
+      ])),
+    ]));
+  }
+  if (oldOnes.length) {
+    extra.appendChild(el('details', { class: 'my-removed' }, [
+      el('summary', {}, `이전 버전에서 저장한 일정 ${oldOnes.length}개`),
+      ...oldOnes.map(t => _card({ title: t.title, data: t.trip_data, meta: '이전 버전 · ' + _fmtDate(t.updated_at || t.created_at) },
+        () => _openSchedule(t.trip_data, null, t.title), [])),
+    ]));
   }
 }
 
+function _card({ title, data, meta }, onOpen, actions) {
+  const city = data?.city || '여행';
+  const n = _days(data).length;
+  const body = [
+    el('div', { class: 'mlc-title' }, title || `${city} ${n}일`),
+    el('div', { class: 'mlc-meta' }, [city, n ? (n > 1 ? `${n - 1}박 ${n}일` : '당일치기') : '', meta].filter(Boolean).join(' · ')),
+  ];
+  return el('div', { class: 'my-list-card my-list-card--row' }, [
+    onOpen ? el('button', { type: 'button', class: 'mlc-open', onclick: onOpen }, [el('div', { class: 'mlc-body' }, body), el('span', { class: 'mlc-chev', 'aria-hidden': 'true' }, '›')])
+      : el('div', { class: 'mlc-open' }, [el('div', { class: 'mlc-body' }, body)]),
+    actions.length ? el('div', { class: 'mlc-actions' }, actions) : null,
+  ]);
+}
+
 function _savedCard(s) {
-  // schedule_data was stored as JSON object by our backend
   const data = s.schedule_data || {};
-  const city = data.city || '여행';
-  const days = (data.days?.length ?? 0);
-  return el('button', {
-    type: 'button',
-    class: 'my-list-card',
-    onclick: () => {
-      // load this schedule into app state, then navigate to schedule page
-      appState.generated = data;
-      appState.expenses  = {};
-      navigate('schedule');
-    },
-  }, [
-    el('div', { class: 'mlc-icon' }, '💾'),
-    el('div', { class: 'mlc-body' }, [
-      el('div', { class: 'mlc-title' }, s.title || `${city} ${days}일`),
-      el('div', { class: 'mlc-meta' }, `${city} · ${days}일 · ${_fmtDate(s.created_at)}`),
-    ]),
-    el('span', { class: 'mlc-chev', ariaHidden: 'true' }, '›'),
+  return _card({ title: s.title, data, meta: '수정 ' + _fmtDate(_dateOf(s)) }, () => _openSchedule(data, s.id, s.title), [
+    el('button', { type: 'button', class: 'btn-text', onclick: async () => {
+      const name = prompt('새 일정 이름', s.title || '');
+      if (name == null) return;
+      const title = name.trim().slice(0, 80);
+      if (!title) { showToast('이름을 입력해 주세요'); return; }
+      try {
+        await api.updateSchedule(s.id, { title });
+        if (appState.generated?.savedScheduleId === s.id) { appState.generated.title = title; document.dispatchEvent(new CustomEvent('redesign:trip-changed')); }
+        showToast('이름을 바꿨어요'); renderMySaved();
+      } catch (_) { showToast('이름을 바꾸지 못했어요'); }
+    } }, '이름 바꾸기'),
+    el('button', { type: 'button', class: 'btn-text is-danger', onclick: async () => {
+      if (!confirm(`‘${s.title || '이 일정'}’을 저장 목록에서 뺄까요?\n아래 ‘저장 해제한 일정’에서 되살릴 수 있어요.`)) return;
+      try {
+        await api.unsaveSchedule(s.id);
+        if (appState.generated?.savedScheduleId === s.id) { appState.generated.savedScheduleId = null; document.dispatchEvent(new CustomEvent('redesign:trip-changed')); }
+        showToast('저장 목록에서 뺐어요'); renderMySaved();
+      } catch (_) { showToast('저장 해제에 실패했어요'); }
+    } }, '저장 해제'),
   ]);
 }
 
@@ -149,29 +252,35 @@ export async function renderMyReviews() {
 function _reviewItem(r) {
   const stars = '★'.repeat(r.rating || 0) + '☆'.repeat(5 - (r.rating || 0));
   const tags = (r.concept_tags || []).join(' · ');
-  return el('div', { class: 'my-list-card my-list-card--review' }, [
-    el('div', { class: 'mlc-stars' }, stars),
-    el('div', { class: 'mlc-body' }, [
+  const act = (label, fn, danger) => el('button', { type: 'button', class: 'btn-text' + (danger ? ' is-danger' : ''), onclick: fn }, label);
+  return el('div', { class: 'my-list-card my-list-card--row' }, [
+    el('div', { class: 'mlc-open' }, [el('div', { class: 'mlc-body' }, [
+      el('div', { class: 'mlc-stars', 'aria-label': `별점 5점 중 ${r.rating}점`, role: 'img' }, stars),
       el('div', { class: 'mlc-title' }, r.content || '(내용 없음)'),
-      el('div', { class: 'mlc-meta' },
-        [r.city, tags, _fmtDate(r.created_at)].filter(Boolean).join(' · ')),
+      el('div', { class: 'mlc-meta' }, [r.is_public ? '공개' : '나만 보기', r.city, tags, _fmtDate(r.created_at)].filter(Boolean).join(' · ')),
+    ])]),
+    el('div', { class: 'mlc-actions' }, [
+      act('내용 고치기', async () => {
+        const text = prompt('후기 내용', r.content || '');
+        if (text == null) return;
+        if (text.trim().length < 3) { showToast('세 글자 이상 적어 주세요'); return; }
+        const rate = prompt('별점 (1~5)', String(r.rating || 5));
+        if (rate == null) return;
+        const n = Number(rate);
+        if (!(n >= 1 && n <= 5)) { showToast('별점은 1~5 사이로 적어 주세요'); return; }
+        try { await api.updateReview(r.id, { content: text.trim(), rating: Math.round(n) }); showToast('후기를 고쳤어요'); renderMyReviews(); }
+        catch (_) { showToast('고치지 못했어요. 다시 시도해 주세요'); }
+      }),
+      act(r.is_public ? '나만 보기로 바꾸기' : '공개로 바꾸기', async () => {
+        try { await api.updateReview(r.id, { is_public: !r.is_public }); showToast(r.is_public ? '나만 보는 후기로 바꿨어요' : '공개 후기로 바꿨어요'); renderMyReviews(); }
+        catch (_) { showToast('바꾸지 못했어요. 다시 시도해 주세요'); }
+      }),
+      act('삭제', async () => {
+        if (!confirm('이 후기를 삭제할까요? 삭제하면 되돌릴 수 없어요.')) return;
+        try { await api.deleteReview(r.id); showToast('삭제했어요'); renderMyReviews(); }
+        catch (_) { showToast('삭제하지 못했어요. 다시 시도해 주세요'); }
+      }, true),
     ]),
-    el('button', {
-      type: 'button',
-      class: 'mlc-delete',
-      title: '삭제',
-      onclick: async (e) => {
-        e.stopPropagation();
-        if (!confirm('이 후기를 삭제할까요?')) return;
-        try {
-          await api.deleteReview?.(r.id) ?? null;
-          showToast('삭제했어요');
-          renderMyReviews();
-        } catch (_) {
-          showToast('삭제 실패');
-        }
-      },
-    }, '✕'),
   ]);
 }
 

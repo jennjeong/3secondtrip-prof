@@ -82,6 +82,9 @@ export function initMap(state) {
 
   // External nav
   $('#scheduleMapOpenExt')?.addEventListener('click', openDayRouteInGoogleMaps);
+  document.addEventListener('redesign:place-pick', (e) => {
+    if (e.detail?.day === activeDay) _highlightMarker(e.detail.ai);
+  });
 
   // Listen for schedule changes (day change / add / remove / edit / drag)
   document.addEventListener('redesign:schedule-changed', (e) => {
@@ -132,8 +135,7 @@ export async function renderDayRoute(dayIdx) {
       await loadGoogleMapsScript();
       await initializeScheduleMap(activeDay);
     } catch (e) {
-      if (warn) { warn.hidden = false; warn.textContent = '지도를 불러올 수 없습니다 (' + (e?.message || 'unknown') + ')'; }
-      console.warn('[map] load failed', e);
+      _mapLoadFailed(warn, e);
     }
     return;
   }
@@ -145,8 +147,7 @@ export async function renderDayRoute(dayIdx) {
     await initializeScheduleMap(activeDay);
   } catch (e) {
     // Loading failed — show inline warning but keep app running.
-    if (warn) { warn.hidden = false; warn.textContent = '지도를 불러올 수 없습니다 (' + (e?.message || 'unknown') + ')'; }
-    console.warn('[map] load failed', e);
+    _mapLoadFailed(warn, e);
     return;
   }
 
@@ -277,14 +278,9 @@ export function loadGoogleMapsScript() {
   // toast + warning so the user knows where to look (GCP Console).
   if (!window.gm_authFailure) {
     window.gm_authFailure = () => {
-      const w = $('#scheduleMapWarning');
-      if (w) {
-        w.hidden = false;
-        w.innerHTML = 'Google 지도 인증 실패 — GCP Console 에서 (1) Maps JavaScript API 활성화, '
-                    + '(2) Cloud Billing 등록, (3) Browser 키 referrer 에 '
-                    + '<code>http://localhost:8080/*</code> 추가 여부를 확인하세요.';
-      }
-      try { showToast('Google Maps 키 인증 실패'); } catch (_) {}
+      // 개발자용 원인: Maps JavaScript API 활성화·결제·Browser 키 referrer 설정
+      console.warn('[map] Google Maps 인증 실패 — GCP Console 에서 API 활성화·결제·referrer 를 확인하세요.');
+      _mapLoadFailed($('#scheduleMapWarning'), new Error('auth'));
     };
   }
 
@@ -458,6 +454,7 @@ export async function normalizePlaceCoordinates(p) {
         p._ref.longitude = c.lng;
         p._ref.placeId   = c.place_id;
         p._ref.address   = c.address;
+        delete p._ref.sample;
       }
       return {
         ...p,
@@ -518,6 +515,7 @@ export async function normalizePlaceCoordinates(p) {
       p._ref.longitude = out.lng;
       p._ref.placeId   = out.place_id;
       p._ref.address   = out.address;
+      delete p._ref.sample;
     }
     return out;
   } catch (e) {
@@ -547,15 +545,44 @@ export async function requestRouteFromBackend(places, mode) {
 export function drawDayMarkers(mapInst, places) {
   clearMarkers();
   if (!places?.length) return;
+  const acts = appState?.generated?.days?.[activeDay]?.activities || [];
   places.forEach((p, i) => {
+    const ai = p._ref ? acts.indexOf(p._ref) : i;
+    const num = (ai >= 0 ? ai : i) + 1;
     const m = new google.maps.Marker({
       position: { lat: p.lat, lng: p.lng },
       map: mapInst,
-      label: { text: String(i + 1), color: '#ffffff', fontWeight: '900' },
-      title: p.name,
+      label: { text: String(num), color: '#ffffff', fontWeight: '900' },
+      title: `${num}. ${p.name}`,
+    });
+    m.__ai = num - 1;
+    m.addListener('click', () => {
+      _highlightMarker(m.__ai);
+      document.dispatchEvent(new CustomEvent('redesign:map-pick', { detail: { ai: m.__ai, day: activeDay } }));
     });
     markers.push(m);
   });
+}
+
+/** 목록에서 고른 장소의 핀을 잠깐 튀게 하고 지도 가운데로 옮긴다. */
+function _highlightMarker(ai) {
+  markers.forEach(m => m.setZIndex?.(m.__ai === ai ? 999 : null));
+  const m = markers.find(x => x.__ai === ai);
+  if (!m) return;
+  try {
+    map?.panTo(m.getPosition());
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      m.setAnimation(google.maps.Animation.BOUNCE);
+      setTimeout(() => m.setAnimation(null), 1400);
+    }
+  } catch (_) {}
+}
+
+function _mapLoadFailed(warn, e) {
+  console.warn('[map] load failed', e?.message || e);
+  if (!warn) return;
+  warn.hidden = false;
+  warn.textContent = '지금은 지도를 불러올 수 없어요. 일정 목록과 각 장소의 ‘Google 지도에서 열기’는 그대로 쓸 수 있어요.';
 }
 
 export function drawDayPolyline(mapInst, decodedPath) {

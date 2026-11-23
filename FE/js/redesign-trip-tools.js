@@ -127,7 +127,7 @@ async function _loadWeather(g, key) {
   const start = g.days[0]?.date;
   const daysAway = start ? Math.ceil((new Date(start) - Date.now()) / 86400000) : null;
   if (daysAway != null && daysAway > FORECAST_DAYS - g.days.length) {
-    if (box()) box().textContent = `출발 ${FORECAST_DAYS}일 전부터 날씨를 보여드려요.`;
+    if (box()) box().textContent = `일기예보는 최대 ${FORECAST_DAYS}일 뒤까지만 나와요. 출발 약 ${FORECAST_DAYS - g.days.length + 1}일 전부터 여행 기간 날씨를 보여 드려요.`;
     return;
   }
   let rows = fetched[`w:${key}`];
@@ -140,11 +140,12 @@ async function _loadWeather(g, key) {
   if (!rows?.length) { target.textContent = '날씨 정보를 불러오지 못했어요.'; return; }
   target.textContent = '';
   rows.forEach((r, i) => target.appendChild(el('div', { class: 'tool-day' }, [
-    el('strong', {}, `Day ${i + 1}`),
+    el('strong', {}, `${i + 1}일차 · ${Number(r.date.slice(5, 7))}/${Number(r.date.slice(8, 10))}`),
     el('span', {}, _weatherLabel(r.code)),
     el('span', {}, `${r.min}° / ${r.max}°`),
     el('span', { class: 'tool-note' }, `비 ${r.rain ?? '-'}%`),
   ])));
+  target.appendChild(el('p', { class: 'tool-note' }, `출처: Open-Meteo 일기예보 (여행지 현지 날짜 기준 · ${new Date().toLocaleDateString('ko-KR')} 조회). 출발이 가까울수록 정확해져요.`));
   _addWeatherItems(g, rows);
 }
 
@@ -160,16 +161,17 @@ async function _loadRate(g, key) {
   if (rate === undefined) {
     try {
       const res = await fetch(`https://api.frankfurter.dev/v1/latest?base=KRW&symbols=${currency}`);
-      rate = res.ok ? (await res.json()).rates?.[currency] ?? null : null;
+      const j = res.ok ? await res.json() : null;
+      rate = j?.rates?.[currency] ? { value: j.rates[currency], date: j.date || '' } : null;
     } catch (_) { rate = null; }
     fetched[`r:${currency}`] = rate;
   }
   const box = target();
   if (!box) return;
   if (!rate) { box.textContent = '환율 정보를 불러오지 못했어요.'; return; }
-  const krwPerUnit = (currency === 'JPY' || currency === 'IDR' ? 100 : 1) / rate;
+  const krwPerUnit = (currency === 'JPY' || currency === 'IDR' ? 100 : 1) / rate.value;
   const unit = currency === 'JPY' || currency === 'IDR' ? 100 : 1;
-  box.textContent = `${unit.toLocaleString('ko-KR')} ${currency} ≈ ${Math.round(krwPerUnit).toLocaleString('ko-KR')}원 (유럽중앙은행 기준, 실제 환전 금액과 달라요)`;
+  box.textContent = `${unit.toLocaleString('ko-KR')} ${currency} ≈ ${Math.round(krwPerUnit).toLocaleString('ko-KR')}원 · ${rate.date ? rate.date + ' ' : ''}유럽중앙은행 고시 기준 (Frankfurter). 실제 환전·카드 결제 금액은 수수료 때문에 달라요.`;
 }
 
 /* ============ 경비 ============ */
@@ -263,8 +265,20 @@ function _addWeatherItems(g, rows) {
 
 /* ============ 내보내기 ============ */
 function _icsText(v) {
-  return String(v ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  return String(v ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 }
+
+/* 여행지 현지 시간대 — 캘린더 앱이 현지 시각 그대로 넣도록 TZID 를 붙인다. 모르면 시간대 없이(기기 시간) 둔다. */
+const TZ_BY_CITY = { 뉴욕: 'America/New_York', 로스앤젤레스: 'America/Los_Angeles', 샌프란시스코: 'America/Los_Angeles', 라스베이거스: 'America/Los_Angeles', 하와이: 'Pacific/Honolulu', 호놀룰루: 'Pacific/Honolulu', 시카고: 'America/Chicago', 발리: 'Asia/Makassar', 퍼스: 'Australia/Perth', 밴쿠버: 'America/Vancouver', 토론토: 'America/Toronto' };
+const TZ_BY_COUNTRY = {
+  대한민국: 'Asia/Seoul', 일본: 'Asia/Tokyo', 중국: 'Asia/Shanghai', 홍콩: 'Asia/Hong_Kong', 대만: 'Asia/Taipei', 마카오: 'Asia/Macau',
+  태국: 'Asia/Bangkok', 베트남: 'Asia/Ho_Chi_Minh', 싱가포르: 'Asia/Singapore', 말레이시아: 'Asia/Kuala_Lumpur', 필리핀: 'Asia/Manila',
+  인도네시아: 'Asia/Jakarta', 인도: 'Asia/Kolkata', 괌: 'Pacific/Guam', 북마리아나: 'Pacific/Saipan', 호주: 'Australia/Sydney', 뉴질랜드: 'Pacific/Auckland',
+  미국: 'America/New_York', 캐나다: 'America/Toronto', 영국: 'Europe/London', 프랑스: 'Europe/Paris', 독일: 'Europe/Berlin', 이탈리아: 'Europe/Rome',
+  스페인: 'Europe/Madrid', 포르투갈: 'Europe/Lisbon', 네덜란드: 'Europe/Amsterdam', 스위스: 'Europe/Zurich', 오스트리아: 'Europe/Vienna', 체코: 'Europe/Prague',
+  그리스: 'Europe/Athens', 튀르키예: 'Europe/Istanbul', 터키: 'Europe/Istanbul', 아랍에미리트: 'Asia/Dubai', 스웨덴: 'Europe/Stockholm', 노르웨이: 'Europe/Oslo',
+};
+function _tzFor(g) { return TZ_BY_CITY[g.city] || TZ_BY_COUNTRY[g.country] || ''; }
 
 function _addMinutes(date, hhmm, minutes) {
   const [h, m] = hhmm.split(':').map(Number);
@@ -275,7 +289,9 @@ function _icsTime(d) {
 }
 
 export function buildIcs(g) {
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//3 Second Trip//KO', 'CALSCALE:GREGORIAN'];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//3 Second Trip//KO', 'CALSCALE:GREGORIAN', `X-WR-CALNAME:${_icsText(g.title || g.city + ' 여행')}`];
+  const tz = _tzFor(g);
+  const dt = (name, d) => tz ? `${name};TZID=${tz}:${_icsTime(d)}` : `${name}:${_icsTime(d)}`;
   const stamp = new Date().toISOString().replace(/[-:]|\.\d{3}/g, '');
   g.days.forEach((d, di) => {
     (d.activities || []).forEach((a, ai) => {
@@ -284,17 +300,30 @@ export function buildIcs(g) {
         'BEGIN:VEVENT',
         `UID:${di}-${ai}-${stamp}@3secondtrip`,
         `DTSTAMP:${stamp}`,
-        `DTSTART:${_icsTime(_addMinutes(d.date, a.time, 0))}`,
-        `DTEND:${_icsTime(_addMinutes(d.date, a.time, 60))}`,
+        dt('DTSTART', _addMinutes(d.date, a.time, 0)),
+        dt('DTEND', _addMinutes(d.date, a.time, 60)),
         `SUMMARY:${_icsText(a.name)}`,
-        `LOCATION:${_icsText(a.address)}`,
-        `DESCRIPTION:${_icsText(a.memo || a.category)}`,
+        `LOCATION:${_icsText(a.address || a.name)}`,
+        `DESCRIPTION:${_icsText([`${di + 1}일차 · ${a.category || ''}`, a.memo].filter(Boolean).join('\n'))}`,
         'END:VEVENT',
       );
     });
   });
   lines.push('END:VCALENDAR');
-  return lines.join('\r\n') + '\r\n';
+  return lines.map(_fold).join('\r\n') + '\r\n';
+}
+
+/** iCalendar 는 한 줄 75바이트 — 한글 장소명이 길면 접어서 이어 쓴다. */
+function _fold(line) {
+  const enc = new TextEncoder();
+  if (enc.encode(line).length <= 75) return line;
+  const out = []; let cur = '';
+  for (const ch of line) {
+    if (enc.encode(cur + ch).length > (out.length ? 74 : 75)) { out.push(cur); cur = ''; }
+    cur += ch;
+  }
+  out.push(cur);
+  return out.join('\r\n ');
 }
 
 function _downloadIcs(g) {
@@ -311,7 +340,30 @@ function _exportEl(g) {
     el('button', { type: 'button', class: 'btn btn-soft', onclick: () => _downloadIcs(g) }, '캘린더 저장'),
     el('button', {
       type: 'button', class: 'btn btn-soft',
-      onclick: () => { trackEvent('trip_exported'); window.print(); },
+      onclick: () => { trackEvent('trip_exported'); _printAll(g); },
     }, 'PDF로 저장'),
+    el('p', { class: 'tool-note' }, `캘린더 파일은 ${_tzFor(g) ? '여행지 현지 시간대' : '이 기기 시간대'}로 들어가요. PDF는 인쇄 창에서 ‘PDF로 저장’을 고르세요.`),
   ]);
+}
+
+/** PDF(인쇄) — 화면에 보이는 하루가 아니라 전체 일정을 한 문서로 만든다. */
+function _printAll(g) {
+  document.getElementById('printSheet')?.remove();
+  const sheet = el('div', { id: 'printSheet', 'aria-hidden': 'true' }, [
+    el('h1', {}, g.title || `${g.originName ? g.originName + ' → ' : ''}${g.city} 여행`),
+    el('p', { class: 'ps-sub' }, `${g.days[0]?.date || ''} ~ ${g.days.at(-1)?.date || ''} · ${g.days.length}일`),
+    ...g.days.map((d, di) => el('section', { class: 'ps-day' }, [
+      el('h2', {}, `${di + 1}일차 · ${d.date}`),
+      el('table', {}, [el('tbody', {}, (d.activities || []).map(a => el('tr', {}, [
+        el('td', { class: 'ps-time' }, a.time || ''),
+        el('td', {}, [el('strong', {}, a.name || ''), a.address ? el('div', { class: 'ps-addr' }, a.address) : null, a.memo ? el('div', { class: 'ps-addr' }, '메모: ' + a.memo) : null]),
+        el('td', { class: 'ps-cat' }, a.category || ''),
+      ])))]),
+    ])),
+    el('p', { class: 'ps-sub' }, '3초 여행에서 만든 일정 · 금액과 영업시간은 방문 전에 확인해 주세요.'),
+  ]);
+  document.body.appendChild(sheet);
+  const done = () => { sheet.remove(); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  window.print();
 }

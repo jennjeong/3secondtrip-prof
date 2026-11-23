@@ -35,3 +35,7 @@ class SharedTripPublic(BaseModel):
     token: str
     data: dict[str, Any]
     version: int
+
+
+class SharedTripCreated(SharedTripPublic):
+    manage_key: str

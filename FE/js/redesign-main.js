@@ -164,6 +164,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (getAccessToken()) {
     try { await refreshCurrentUser(); } catch (_) { /* offline / 401 — proceed as guest */ }
   }
+  // 로그인 상태를 확인한 뒤 — 주소로 바로 들어온 화면(저장한 일정 등)이 다시 그리도록 알린다.
+  document.dispatchEvent(new CustomEvent('redesign:auth-ready'));
 
   // 7) Refresh views on nav
   onNavChange((page) => {

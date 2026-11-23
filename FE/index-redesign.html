@@ -552,21 +552,17 @@
       <div class="page-scroll">
         <div class="page-header schedule-head">
           <div>
-            <h2 class="page-title" id="scheduleTitle">나의 일정</h2>
-            <p class="page-sub" id="scheduleSub">아직 생성된 일정이 없어요</p>
+            <h1 class="page-title" id="scheduleTitle">나의 일정</h1>
+            <p class="page-sub" id="scheduleSub">아직 만든 일정이 없어요</p>
           </div>
-          <div class="schedule-actions">
-            <button type="button" class="icon-btn" id="btnRegen" title="다시 만들기" aria-label="다시 만들기">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            </button>
-            <button type="button" class="icon-btn" id="btnShare" title="공유" aria-label="공유">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            </button>
-            <button type="button" class="icon-btn" id="btnSave" title="저장" aria-label="저장">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            </button>
+          <div class="schedule-actions" id="scheduleActions" hidden>
+            <button type="button" class="action-btn" id="btnSave" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="ab-label">저장</span></button>
+            <button type="button" class="action-btn" id="btnShare" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg><span class="ab-label">공유</span></button>
+            <button type="button" class="action-btn" id="btnRegen"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg><span class="ab-label">다시 만들기</span></button>
           </div>
         </div>
+        <p class="save-status" id="saveStatus" role="status" aria-live="polite" hidden></p>
+        <p class="shared-banner" id="sharedBanner" hidden>공유받은 일정이에요. 여기서 고쳐도 보낸 사람의 일정은 바뀌지 않아요.</p>
 
         <section class="budget-panel" id="budgetPanel" hidden aria-labelledby="budgetPanelH">
           <h3 class="sr-only" id="budgetPanelH">예산과 예상 지출</h3>
@@ -576,13 +572,31 @@
           <div class="budget-alts" id="budgetAlts" hidden></div>
         </section>
 
-        <div class="day-row">
+        <div class="day-row" id="scheduleDayRow" hidden>
           <div class="day-chips" id="dayChips" role="tablist" aria-label="여행일"></div>
-          <button type="button" class="btn-edit" id="btnEditToggle">편집</button>
+          <button type="button" class="btn-edit" id="btnEditToggle" aria-pressed="false">편집</button>
+        </div>
+        <div class="view-toggle" id="viewToggle" role="group" aria-label="보기 방식" hidden>
+          <button type="button" data-view="list" aria-pressed="true">목록</button>
+          <button type="button" data-view="map" aria-pressed="false">지도</button>
+        </div>
+        <section class="day-checks" id="dayChecks" aria-label="이 날 일정 점검" hidden></section>
+
+        <div id="scheduleEmpty" class="empty-state">
+          <svg class="empty-route" viewBox="0 0 120 80" fill="none" aria-hidden="true">
+            <path pathLength="1" d="M10 68 C50 68 86 50 110 12"/>
+            <circle cx="10" cy="68" r="4"/><circle cx="110" cy="12" r="4"/>
+          </svg>
+          <p class="empty-text">새 여행을 만들면 여기에 일정이 나타나요</p>
+          <button type="button" class="btn btn-primary btn-gradient" data-nav-to="create-trip" data-meta-fresh="1">+ 새 여행 만들기</button>
+          <button type="button" class="btn btn-soft" data-nav-to="my-saved">저장한 일정 열기</button>
         </div>
 
+        <div class="schedule-split" id="scheduleSplit" hidden>
+        <div class="schedule-map-col">
+
         <!-- ============ DAY ROUTE MAP (embedded inside schedule) ============ -->
-        <div class="schedule-map-card" id="scheduleMapCard" hidden>
+          <div class="schedule-map-card" id="scheduleMapCard" hidden>
           <div class="smc-canvas-wrap">
             <div id="scheduleMapCanvas" class="smc-canvas" role="img" aria-label="여행일 동선 지도"></div>
             <div class="smc-overlay smc-loading" id="scheduleMapLoading" hidden>지도 불러오는 중…</div>
@@ -605,23 +619,19 @@
               <span class="ri-row"><span class="ri-label">시간</span><strong class="ri-val" id="riDuration">-</strong></span>
               <span class="ri-row"><span class="ri-label">정거장</span><strong class="ri-val" id="riStops">-</strong></span>
             </div>
-            <button type="button" class="btn btn-soft btn-block" id="scheduleMapOpenExt">Google Maps 에서 길찾기</button>
+            <button type="button" class="btn btn-soft btn-block" id="scheduleMapOpenExt">Google 지도에서 길찾기</button>
           </div>
         </div>
-
-        <div id="scheduleEmpty" class="empty-state">
-          <svg class="empty-route" viewBox="0 0 120 80" fill="none" aria-hidden="true">
-            <path pathLength="1" d="M10 68 C50 68 86 50 110 12"/>
-            <circle cx="10" cy="68" r="4"/><circle cx="110" cy="12" r="4"/>
-          </svg>
-          <p class="empty-text">새 여행을 만들면 여기에 일정이 나타나요</p>
-          <button type="button" class="btn btn-primary btn-gradient" data-nav-to="create-trip">+ 새 여행 만들기</button>
+        <div class="map-pick" id="mapPick" role="status" hidden></div>
         </div>
 
-        <div class="timeline" id="scheduleTimeline" hidden></div>
+        <div class="schedule-list-col">
+          <div class="timeline" id="scheduleTimeline" hidden></div>
+        </div>
+        </div>
 
         <section class="cost-summary" id="costSummary" hidden aria-labelledby="costSummaryH">
-          <h3 class="cost-summary-title" id="costSummaryH">비용 자세히 보기</h3>
+          <h2 class="cost-summary-title" id="costSummaryH">비용 자세히 보기</h2>
           <dl class="money-rows" id="costRows"></dl>
           <p class="cs-disclaimer" id="costNote"></p>
         </section>
@@ -632,7 +642,7 @@
         <div class="booking-cta" id="bookingCta" hidden>
           <div>
             <p class="bcta-title">예약 준비하기</p>
-            <p class="bcta-sub">항공·숙박·맛집을 한 번에</p>
+            <p class="bcta-sub">외부 예약 사이트 링크와 참고 가격을 모아 봐요</p>
           </div>
           <button type="button" class="btn btn-primary" id="openBookingBtn">예약 보기</button>
         </div>
@@ -640,6 +650,7 @@
         <section class="section-block" id="reviewSection" hidden>
           <h3 class="section-title">여행 후기</h3>
           <form class="review-form" id="reviewForm">
+            <p class="sr-only" id="starValue" aria-live="polite"></p>
             <div class="star-row" id="starRow" role="radiogroup" aria-label="별점">
               <button type="button" class="star" data-star="1" aria-label="1점">★</button>
               <button type="button" class="star" data-star="2" aria-label="2점">★</button>
@@ -647,16 +658,19 @@
               <button type="button" class="star" data-star="4" aria-label="4점">★</button>
               <button type="button" class="star" data-star="5" aria-label="5점">★</button>
             </div>
-            <textarea class="form-input" id="reviewText" placeholder="여행은 어떠셨나요?" rows="3"></textarea>
-            <div class="review-tags" id="reviewTags">
+            <textarea class="form-input" id="reviewText" placeholder="여행은 어떠셨나요?" rows="3" maxlength="2000" aria-label="후기 내용"></textarea>
+            <div class="review-tags" id="reviewTags" role="group" aria-label="여행 스타일 태그 (선택)">
               <button type="button" class="chip-mini" data-rtag="힐링">힐링</button>
               <button type="button" class="chip-mini" data-rtag="가성비">가성비</button>
               <button type="button" class="chip-mini" data-rtag="액티비티">액티비티</button>
               <button type="button" class="chip-mini" data-rtag="프리미엄">프리미엄</button>
             </div>
-            <label class="toggle-row">
-              <input type="checkbox" id="reviewPublic" checked/> 공개 후기로 게시
-            </label>
+            <fieldset class="review-vis">
+              <legend>공개 범위 <span class="form-label-meta">필수</span></legend>
+              <label class="check-row"><input type="radio" name="reviewVisibility" value="public"/> 공개 — 다른 여행자도 볼 수 있어요</label>
+              <label class="check-row"><input type="radio" name="reviewVisibility" value="private"/> 나만 보기</label>
+            </fieldset>
+            <p class="form-error" id="reviewError" role="alert" hidden></p>
             <button type="submit" class="btn btn-primary">후기 등록</button>
           </form>
           <div id="reviewList" class="review-list"></div>
@@ -987,10 +1001,11 @@
     <section id="mySavedPage" class="app-page" data-page="my-saved" aria-label="저장한 일정">
       <div class="page-scroll">
         <div class="page-header">
-          <h2 class="page-title">💾 저장한 일정</h2>
-          <p class="page-sub">하트로 저장해 둔 여행 일정 목록</p>
+          <h1 class="page-title">저장한 일정</h1>
+          <p class="page-sub">일정 화면에서 ‘저장’을 누른 일정이 계정에 모여요</p>
         </div>
         <div id="mySavedList" class="my-list"></div>
+        <div id="mySavedExtra" class="my-list"></div>
         <div id="mySavedEmpty" class="empty-state" hidden>
           <div class="empty-icon" aria-hidden="true">💾</div>
           <p class="empty-text">아직 저장한 일정이 없어요</p>
@@ -1080,7 +1095,7 @@
   <aside class="bottom-sheet" id="bookingSheet" role="dialog" aria-modal="true" aria-labelledby="bookingSheetTitle" hidden>
     <div class="sheet-handle"></div>
     <header class="sheet-head">
-      <h3 id="bookingSheetTitle">예약 준비</h3>
+      <h2 id="bookingSheetTitle">예약 준비</h2>
       <button type="button" class="icon-btn" id="bookingClose" aria-label="닫기">×</button>
     </header>
     <div class="sheet-filters" id="bookingFilters">
@@ -1092,13 +1107,14 @@
       <button type="button" class="chip" data-book-cat="transport">교통</button>
       <button type="button" class="chip" data-book-cat="airport">공항이동</button>
     </div>
+    <p class="book-notice">3초 여행에서는 결제·예약을 하지 않아요. 링크는 외부 사이트로 이동하고, 금액은 참고용이라 실제 가격·판매 여부는 그 사이트에서 확인해 주세요.</p>
     <div class="sheet-body" id="bookingList"></div>
     <footer class="sheet-foot">
       <div class="sheet-total">
-        <span>예상 합계</span>
+        <span>선택 항목 참고 합계</span>
         <strong id="bookingTotal">0원</strong>
       </div>
-      <button type="button" class="btn btn-primary btn-gradient btn-block" id="bookingConfirm">선택 항목 저장하기</button>
+      <button type="button" class="btn btn-primary btn-gradient btn-block" id="bookingConfirm">예약 준비 목록에 저장</button>
     </footer>
   </aside>
 
@@ -1127,16 +1143,31 @@
           <input class="form-input" type="number" id="editCost" min="0"/>
         </div>
       </div>
+      <div class="form-row" id="editDayRow" hidden>
+        <label class="form-label" for="editDay">날짜</label>
+        <select class="form-input" id="editDay"></select>
+      </div>
       <div class="form-row">
-        <label class="form-label" for="editMemo">메모</label>
+        <label class="form-label" for="editMemo">메모 <span class="form-label-meta">공유할 때 포함 여부를 고를 수 있어요</span></label>
         <textarea class="form-input form-textarea" id="editMemo" rows="3"></textarea>
       </div>
     </div>
     <footer class="sheet-foot sheet-foot--split">
-      <button type="button" class="btn btn-ghost" id="editSwap" hidden>다른 곳 추천</button>
+      <button type="button" class="btn btn-ghost" id="editSwap" hidden>비슷한 곳 추천</button>
       <button type="button" class="btn btn-ghost" id="editDelete">삭제</button>
       <button type="button" class="btn btn-primary btn-gradient" id="editSave">저장</button>
     </footer>
+  </aside>
+
+  <!-- ============ SHARE SHEET ============ -->
+  <div class="sheet-backdrop" id="shareBackdrop" hidden></div>
+  <aside class="bottom-sheet" id="shareSheet" role="dialog" aria-modal="true" aria-labelledby="shareSheetTitle" hidden>
+    <div class="sheet-handle"></div>
+    <header class="sheet-head">
+      <h2 id="shareSheetTitle" tabindex="-1">일정 공유</h2>
+      <button type="button" class="icon-btn" id="shareClose" aria-label="닫기">×</button>
+    </header>
+    <div class="sheet-body"></div>
   </aside>
 
   <!-- ============ CALENDAR BOTTOM SHEET ============ -->
