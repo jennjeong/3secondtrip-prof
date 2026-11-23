@@ -250,7 +250,8 @@ function _renderTimeline(g) {
       // 합계는 각 항목의 실제 cost를 쓰므로 영향 없음.
       if (hotelNightly > 0) {
         const _isReal = g.hotelPriceSource === 'serpapi';
-        const _label  = _isReal ? '1박 실시간가 ' : '1박 예상가 ';
+        const _rooms  = g.budgetPlan?.rooms || 1;
+        const _label  = (_isReal ? '1박 실시간가 ' : '1박 예상가 ') + (_rooms > 1 ? `(객실 ${_rooms}개 합계) ` : '');
         const costEl = el('p', { class: 'schedule-place-subinfo schedule-cost' },
           _label + _money(hotelNightly, g));
         // 실시간가는 작은 배지로 신뢰도 표시, 추정가는 '추정' 표기
@@ -519,7 +520,12 @@ function _renderCostSummary(g) {
   if (!rows) return;
   const list = [];
   if (bd.flight) list.push(_row('항공', _money(bd.flight, g), { note: g.people ? `왕복 ${g.people}명` : '왕복' }));
-  if (bd.hotel) list.push(_row('숙소', _money(bd.hotel, g), { note: `1박 ${_money(bd.hotelPerNight, g)} × ${bd.nights}박` }));
+  const rooms = g.budgetPlan?.rooms || 1;
+  if (bd.hotel) list.push(_row('숙소', _money(bd.hotel, g), {
+    note: rooms > 1
+      ? `객실 ${rooms}개 합계 1박 ${_money(bd.hotelPerNight, g)} × ${bd.nights}박`
+      : `1박 ${_money(bd.hotelPerNight, g)} × ${bd.nights}박`,
+  }));
   list.push(_row('식비', _money(bd.food, g)));
   list.push(_row('입장·체험', _money(bd.entry, g)));
   if (bd.shopping) list.push(_row('쇼핑', _money(bd.shopping, g)));

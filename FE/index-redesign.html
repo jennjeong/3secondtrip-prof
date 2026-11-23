@@ -195,15 +195,15 @@
             <label class="form-label" for="tripOrigin" data-i18n="departureCityLabel">출발 도시</label>
             <div class="city-search-wrap">
               <input class="form-input" type="search" id="tripOrigin"
-                     placeholder="예: 서울, 부산, 인천"
-                     data-i18n-placeholder="departureCityPlaceholder"
+                     placeholder="도시·국가·공항 코드 (예: 서울, ICN)"
                      name="departureCity"
-                     autocomplete="address-level2"
-                     aria-autocomplete="list" aria-controls="originSuggestions"/>
-              <button type="button" class="city-clear" id="originClear" aria-label="초기화" hidden>×</button>
-              <div class="city-suggestions" id="originSuggestions" role="listbox" hidden></div>
+                     autocomplete="off" role="combobox" aria-expanded="false"
+                     aria-autocomplete="list" aria-controls="originSuggestions"
+                     aria-describedby="originMessage"/>
+              <button type="button" class="city-clear" id="originClear" aria-label="출발 도시 지우기" hidden>×</button>
+              <div class="city-suggestions" id="originSuggestions" role="listbox" aria-label="출발 도시 검색 결과" hidden></div>
             </div>
-            <p class="form-hint origin-message" id="originMessage" hidden></p>
+            <p class="form-hint origin-message" id="originMessage" aria-live="polite" hidden></p>
           </div>
 
           <!-- 도착 도시 -->
@@ -211,17 +211,19 @@
             <label class="form-label" for="tripCitySearch">도착 도시</label>
             <div class="city-search-wrap">
               <input class="form-input" type="search" id="tripCitySearch"
-                     placeholder="전 세계 도시 검색 (예: 도쿄, Paris, バンコク)" autocomplete="off"
-                     aria-autocomplete="list" aria-controls="citySuggestions"/>
-              <button type="button" class="city-clear" id="cityClear" aria-label="초기화" hidden>×</button>
-              <div class="city-suggestions" id="citySuggestions" role="listbox" hidden></div>
+                     placeholder="도시·국가·공항 코드 (예: 도쿄, Paris, NRT)" autocomplete="off"
+                     role="combobox" aria-expanded="false"
+                     aria-autocomplete="list" aria-controls="citySuggestions"
+                     aria-describedby="citySelectedHint"/>
+              <button type="button" class="city-clear" id="cityClear" aria-label="도착 도시 지우기" hidden>×</button>
+              <div class="city-suggestions" id="citySuggestions" role="listbox" aria-label="도착 도시 검색 결과" hidden></div>
             </div>
-            <p class="form-hint" id="citySelectedHint" hidden></p>
+            <p class="form-hint" id="citySelectedHint" aria-live="polite" hidden></p>
           </div>
-          <h4 class="step-subh">인기 도시</h4>
-          <div class="dest-quick" id="destQuick"></div>
-          <details class="dest-advanced">
-            <summary>국가/도시 직접 선택</summary>
+          <h4 class="step-subh" id="destQuickH">인기 도시 <span class="form-label-meta">누르면 도착 도시로 선택돼요</span></h4>
+          <div class="dest-quick" id="destQuick" role="group" aria-labelledby="destQuickH"></div>
+          <details class="dest-advanced" id="destAdvanced">
+            <summary>찾는 도시가 없나요? 국가·도시 직접 선택</summary>
             <div class="form-row" style="margin-top:10px">
               <label class="form-label" for="tripCountry">국가</label>
               <select class="form-input" id="tripCountry"><option value="">국가 선택</option></select>
@@ -238,46 +240,72 @@
           <h3 class="step-h">언제, 누구와 떠나시나요?</h3>
           <div class="form-row form-row--split">
             <div>
-              <label class="form-label">출발일</label>
-              <button type="button" class="date-trigger" id="tripStartTrigger" data-cal-target="start">
+              <span class="form-label" id="tripStartLbl">출발일</span>
+              <button type="button" class="date-trigger" id="tripStartTrigger" data-cal-target="start"
+                      aria-labelledby="tripStartLbl tripStartLabel" aria-haspopup="dialog">
                 <span class="dt-icon" aria-hidden="true">📅</span>
                 <span class="dt-label" id="tripStartLabel">선택</span>
               </button>
             </div>
             <div>
-              <label class="form-label">도착일</label>
-              <button type="button" class="date-trigger" id="tripEndTrigger" data-cal-target="end">
+              <span class="form-label" id="tripEndLbl">귀국일</span>
+              <button type="button" class="date-trigger" id="tripEndTrigger" data-cal-target="end"
+                      aria-labelledby="tripEndLbl tripEndLabel" aria-haspopup="dialog">
                 <span class="dt-icon" aria-hidden="true">📅</span>
                 <span class="dt-label" id="tripEndLabel">선택</span>
               </button>
             </div>
           </div>
-          <p class="trip-duration" id="tripDuration">기간: -</p>
-          <h4 class="step-subh">동행자</h4>
-          <div class="choice-grid choice-grid--3">
+          <p class="trip-duration" id="tripDuration" aria-live="polite">날짜를 골라 주세요</p>
+          <p class="form-error" id="dateError" role="alert" hidden></p>
+          <p class="form-hint">날짜는 여행지 현지 날짜 기준이에요. 최대 30일까지 만들 수 있어요.</p>
+          <h4 class="step-subh" id="companionH">누구와 가나요?</h4>
+          <div class="choice-grid choice-grid--3" role="group" aria-labelledby="companionH">
             <button type="button" class="choice-card" data-companion="solo"><span class="ch-emoji">🧍</span><span class="ch-label">혼자</span></button>
             <button type="button" class="choice-card" data-companion="friend"><span class="ch-emoji">👯</span><span class="ch-label">친구</span></button>
             <button type="button" class="choice-card" data-companion="couple"><span class="ch-emoji">💑</span><span class="ch-label">커플</span></button>
             <button type="button" class="choice-card" data-companion="family"><span class="ch-emoji">👨‍👩‍👧</span><span class="ch-label">가족</span></button>
             <button type="button" class="choice-card" data-companion="group"><span class="ch-emoji">👥</span><span class="ch-label">단체</span></button>
           </div>
-          <div class="form-row" id="peopleCountRow" hidden style="margin-top:12px">
-            <label class="form-label" for="peopleCount">인원수 (총 몇 명인가요?)</label>
-            <div class="form-inline">
-              <button type="button" class="btn btn-soft" id="peopleMinus" aria-label="인원 감소">−</button>
-              <input class="form-input" type="number" id="peopleCount" min="2" max="20" step="1" inputmode="numeric" style="text-align:center" value="4"/>
-              <button type="button" class="btn btn-soft" id="peoplePlus" aria-label="인원 증가">+</button>
+          <div class="people-box" id="peopleBox" role="group" aria-labelledby="peopleBoxH">
+            <h4 class="step-subh" id="peopleBoxH">인원과 객실</h4>
+            <div class="stepper-row">
+              <div class="stepper-text"><span id="adultsLbl">성인</span><small>만 13세 이상</small></div>
+              <div class="stepper">
+                <button type="button" data-people-field="adults" data-delta="-1" aria-label="성인 한 명 줄이기">−</button>
+                <output id="adultsVal" aria-labelledby="adultsLbl" aria-live="polite">2</output>
+                <button type="button" data-people-field="adults" data-delta="1" aria-label="성인 한 명 늘리기">+</button>
+              </div>
             </div>
-            <p class="form-hint" id="peopleCountHint">입력한 인원수에 맞춰 항공·숙소·예산을 추천해 드려요</p>
+            <div class="stepper-row">
+              <div class="stepper-text"><span id="childrenLbl">아동</span><small>만 2~12세</small></div>
+              <div class="stepper">
+                <button type="button" data-people-field="children" data-delta="-1" aria-label="아동 한 명 줄이기">−</button>
+                <output id="childrenVal" aria-labelledby="childrenLbl" aria-live="polite">0</output>
+                <button type="button" data-people-field="children" data-delta="1" aria-label="아동 한 명 늘리기">+</button>
+              </div>
+            </div>
+            <div class="stepper-row">
+              <div class="stepper-text"><span id="roomsLbl">객실</span><small>숙소를 고를 때 쓰여요</small></div>
+              <div class="stepper">
+                <button type="button" data-people-field="rooms" data-delta="-1" aria-label="객실 한 개 줄이기">−</button>
+                <output id="roomsVal" aria-labelledby="roomsLbl" aria-live="polite">1</output>
+                <button type="button" data-people-field="rooms" data-delta="1" aria-label="객실 한 개 늘리기">+</button>
+              </div>
+            </div>
+            <p class="form-hint" id="peopleSummary"></p>
           </div>
         </div>
 
         <!-- Step 3 — Concept / Style -->
         <div class="step-pane" data-step-pane="3" hidden>
           <h3 class="step-h">어떤 여행을 원하시나요?</h3>
-          <div class="concept-grid" id="conceptGrid"></div>
-          <h4 class="step-subh">세부 스타일 (복수 선택 가능)</h4>
-          <div class="chip-row chip-wrap" id="styleChips"></div>
+          <h4 class="step-subh" id="conceptH">여행 스타일 <span class="form-label-meta">1개 선택 · 필수</span></h4>
+          <div class="concept-grid" id="conceptGrid" role="group" aria-labelledby="conceptH"></div>
+          <p class="form-error" id="conceptError" role="alert" hidden></p>
+          <h4 class="step-subh" id="styleH">세부 스타일 <span class="form-label-meta">선택 · 여러 개 가능</span></h4>
+          <div class="chip-row chip-wrap" id="styleChips" role="group" aria-labelledby="styleH"></div>
+          <p class="form-hint" id="styleHint" aria-live="polite">‘여유로운 일정’과 ‘빽빽한 일정’은 둘 중 하나만 고를 수 있어요.</p>
         </div>
 
         <!-- Step 4 — Budget (direct input + smart suggestion) -->
@@ -361,8 +389,17 @@
               <button type="button" class="chip" data-flight-class="fsc">대형 (FSC)</button>
             </div>
 
-            <label class="form-label">선호 항공사 <span class="form-label-meta">중복 선택 가능 · 50+개</span></label>
-            <div class="chip-row chip-row--wrap" id="airlineChips">
+            <label class="form-label" for="airlineSearch">선호 항공사 <span class="form-label-meta">선택 · 여러 개 가능</span></label>
+            <div class="airline-tools">
+              <input type="search" id="airlineSearch" class="form-input" autocomplete="off"
+                     placeholder="항공사 검색 (예: 대한, JAL, 저가)" aria-controls="airlineChips"/>
+              <div class="airline-meta">
+                <span id="airlineCount" aria-live="polite">선택 안 함 · 모든 항공사를 고려해요</span>
+                <button type="button" class="btn-text" id="airlineReset" hidden>선택 초기화</button>
+              </div>
+              <p class="form-hint" id="airlineEmpty" hidden>찾는 항공사가 없어요. 다른 이름으로 검색해 보세요.</p>
+            </div>
+            <div class="chip-row chip-row--wrap" id="airlineChips" role="group" aria-label="선호 항공사">
               <!-- 한국 FSC -->
               <button type="button" class="chip" data-airline="대한항공"     data-airline-type="fsc">대한항공</button>
               <button type="button" class="chip" data-airline="아시아나"     data-airline-type="fsc">아시아나</button>
@@ -1103,7 +1140,7 @@
       <span class="cal-w cal-w-sat">토</span>
     </div>
     <div class="cal-grid" id="calGrid" role="grid" aria-label="달력"></div>
-    <div class="cal-summary" id="calSummary">출발일을 선택해 주세요</div>
+    <div class="cal-summary" id="calSummary" aria-live="polite">출발일을 선택해 주세요</div>
     <footer class="sheet-foot sheet-foot--split">
       <button type="button" class="btn btn-ghost" id="calReset">초기화</button>
       <button type="button" class="btn btn-primary btn-gradient" id="calDone">완료</button>

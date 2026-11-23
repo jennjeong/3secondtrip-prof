@@ -2606,3 +2606,62 @@
 .btn-text { min-height: 44px; padding: 0 4px; font-size: 14px; font-weight: 700; color: var(--c-blue); text-decoration: underline; text-underline-offset: 3px; }
 .check-row input { -webkit-appearance: auto; appearance: auto; flex: 0 0 auto; }
 .budget-field .budget-level-badge { text-align: left; font-weight: 500; }
+
+/* ===================== 여행 만들기 (2단계 개선) ===================== */
+/* 이전·다음·만들기 버튼은 화면 아래에 붙어 있고, 하단 메뉴·가운데 + 버튼·안전 영역 위에 놓인다. */
+#createTripPage .step-nav {
+  position: sticky;
+  /* 스크롤 영역 아래 여백(메뉴 높이 + 24px)만큼 내려 스크롤 영역 끝에 딱 붙인다. */
+  bottom: calc(-1 * var(--nav-h) - var(--safe-bottom) - 24px);
+  z-index: 6;
+  margin: 20px calc(-1 * var(--app-side-padding)) 0;
+  padding: 10px var(--app-side-padding) 22px;
+  background: linear-gradient(to bottom, transparent, var(--c-bg) 14px);
+}
+body.is-typing .bottom-tab-nav { display: none; }
+
+.form-row.is-updated .form-input { animation: field-flash 1.2s ease; }
+@keyframes field-flash { 0%, 40% { box-shadow: 0 0 0 3px rgba(58,110,165,.45); } 100% { box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .form-row.is-updated .form-input { animation: none; outline: 2px solid var(--c-primary); } }
+.form-hint.is-error, .origin-message.is-error { color: var(--c-danger, #D93025); font-weight: 600; }
+.form-input[aria-invalid="true"] { border-color: var(--c-danger, #D93025); }
+.step-subh .form-label-meta, .form-label .form-label-meta { margin-left: 6px; font-weight: 500; font-size: 12px; color: var(--c-text-mute); }
+
+.city-sug-item.is-airport .csa-icon { width: 28px; text-align: center; font-size: 16px; }
+.city-sug-item.is-focus, .city-sug-airport.is-focus { background: var(--c-surface-2, #EEF2F6); }
+.city-sug-empty { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; padding: 12px 14px; font-size: 13px; color: var(--c-text-soft); }
+.dest-advanced summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--c-text-soft); padding: 10px 0; }
+
+/* 인원·객실 */
+.people-box { margin-top: 16px; padding: 4px 14px 12px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-md); }
+.people-box .step-subh { margin-top: 12px; }
+.stepper-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; }
+.stepper-row + .stepper-row { border-top: 1px solid var(--c-border); }
+.stepper-text { display: flex; flex-direction: column; font-size: 14.5px; font-weight: 700; }
+.stepper-text small { font-size: 12px; font-weight: 500; color: var(--c-text-mute); }
+.stepper { display: inline-flex; align-items: center; gap: 4px; }
+.stepper button { width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--c-border); background: var(--c-surface); font-size: 20px; line-height: 1; color: var(--c-text); }
+.stepper button:disabled { opacity: .35; cursor: not-allowed; }
+.stepper output { min-width: 32px; text-align: center; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* 여행 스타일 카드 — 같은 높이·왼쪽 정렬 */
+.concept-grid { grid-auto-rows: 1fr; }
+.concept-card { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; height: 100%; min-height: 112px; }
+.concept-card.is-active::after { content: "✓"; position: absolute; top: 10px; right: 12px; font-weight: 800; color: var(--c-primary-strong); }
+#styleChips .chip[aria-pressed="true"]::before { content: "✓ "; }
+
+/* 항공사 검색 */
+.airline-tools { display: grid; gap: 6px; margin: 4px 0 8px; }
+.airline-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px; color: var(--c-text-soft); }
+
+/* 달력: 출발·귀국 표시 */
+.cal-cell.range-start, .cal-cell.range-end { position: relative; }
+.cal-cell.range-start::after, .cal-cell.range-end::after {
+  position: absolute; left: 0; right: 0; bottom: 1px; font-size: 9px; font-weight: 700; line-height: 1; opacity: .9;
+}
+.cal-cell.range-start::after { content: "출발"; }
+.cal-cell.range-end::after { content: "귀국"; }
+.cal-cell.range-start.range-end::after { content: "당일"; }
+.cal-cell:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 1px; }
+.icon-btn:disabled { opacity: .3; cursor: not-allowed; }
+.concept-card.is-active { background: color-mix(in srgb, var(--c-primary) 9%, var(--c-surface)); }

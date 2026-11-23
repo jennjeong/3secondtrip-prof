@@ -21,6 +21,7 @@ const CONCEPTS = [
 ];
 
 const STYLES = ['맛집 중심','쇼핑 중심','자연 중심','사진 명소','로컬 감성','유명 관광지','여유로운 일정','빽빽한 일정'];
+const STYLE_CONFLICT = { '여유로운 일정': '빽빽한 일정', '빽빽한 일정': '여유로운 일정' };
 
 const QUICK_DEST = [
   { name: '도쿄',   emoji: '🗼' },
@@ -33,8 +34,6 @@ const QUICK_DEST = [
 
 let appState = null;
 let step = 1;
-let citySuggFocusIdx = -1;
-let originSuggFocusIdx = -1;
 
 export function initTripFlow(state) {
   appState = state;
@@ -50,8 +49,9 @@ export function initTripFlow(state) {
   _buildConcepts();
   _buildStyles();
   _buildQuickDest();
-  _bindOriginSearch();
-  _bindCitySearch();
+  _bindPlaceSearch('origin');
+  _bindPlaceSearch('dest');
+  _bindAdvancedSelect();
   _bindStepHandlers();
   _bindFormHandlers();
   _bindDateTriggers();
@@ -59,6 +59,14 @@ export function initTripFlow(state) {
   // 폼 안에서 무엇이든 바꾸면 임시 저장
   const page = document.getElementById('createTripPage');
   ['change', 'click'].forEach(ev => page?.addEventListener(ev, () => setTimeout(_saveDraft, 0)));
+  // 휴대폰에서 글자를 입력하는 동안에는 아래 메뉴를 숨겨 키보드·버튼과 겹치지 않게 한다.
+  const typing = (on) => document.body.classList.toggle('is-typing', on);
+  page?.addEventListener('focusin', (e) => {
+    if (e.target.matches('input:not([type=checkbox]):not([type=radio]), textarea') && matchMedia('(pointer: coarse)').matches) typing(true);
+  });
+  page?.addEventListener('focusout', () => setTimeout(() => {
+    if (!document.activeElement?.matches?.('input:not([type=checkbox]):not([type=radio]), textarea')) typing(false);
+  }, 60));
 
   document.addEventListener('redesign:trip-prefill', () => {
     _applyState();
@@ -112,7 +120,8 @@ function _buildQuickDest() {
     wrap.appendChild(el('button', {
       type: 'button',
       dataset: { destQuick: d.name },
-      onclick: () => _applyCity(findCity(c => c.name === d.name)),
+      ariaLabel: `${d.name}을(를) 도착 도시로 선택`,
+      onclick: () => _applyCity(findCity(c => c.name === d.name), null, { from: 'quick' }),
     }, [el('span', {}, d.emoji), el('span', {}, d.name)]));
   });
 }
@@ -128,6 +137,7 @@ function _buildConcepts() {
       onclick: () => {
         appState.trip.concept = c.key;
         setActiveByData(grid, 'data-concept-key', c.key);
+        const err = $('#conceptError'); if (err) err.hidden = true;
         _refreshBudget(); // concept doesn't change suggestion but keeps UI fresh
       }
     }, [
@@ -150,269 +160,298 @@ function _buildStyles() {
         const k = e.currentTarget.dataset.styleKey;
         const arr = appState.trip.styles;
         const idx = arr.indexOf(k);
-        if (idx >= 0) arr.splice(idx, 1); else arr.push(k);
+        const hint = $('#styleHint');
+        if (idx >= 0) arr.splice(idx, 1);
+        else {
+          arr.push(k);
+          // 서로 반대인 항목은 하나만 — 새로 고른 쪽을 남긴다.
+          const other = STYLE_CONFLICT[k];
+          const oi = other ? arr.indexOf(other) : -1;
+          if (oi >= 0) {
+            arr.splice(oi, 1);
+            if (hint) hint.textContent = `‘${k}’을(를) 고르면서 ‘${other}’은(는) 해제했어요.`;
+          }
+        }
         setMultiActive(wrap, 'data-style-key', arr);
       }
     }, s));
   });
 }
 
-/* ============ Origin (departure) city autocomplete ============
- * Departure cities — Korean cities ranked first, then all others.
- * Keeps full free-text input so users can type anything not in the list.
+/* ============ 출발·도착 검색 (도시·국가·공항 코드·현지어·한글 별칭) ============
+ * 입력한 글자는 '검색어'일 뿐이고, 목록에서 고르거나 이름이 정확히 하나와 맞을 때만
+ * 도시가 '확정'된다.  확정 전에는 다음 단계로 넘어가지 않는다.
  */
-function _bindOriginSearch() {
-  const input = $('#tripOrigin');
-  const sugg  = $('#originSuggestions');
-  const clear = $('#originClear');
-  if (!input || !sugg) return;
+const _FIELDS = {
+  origin: { input: '#tripOrigin',     sugg: '#originSuggestions', clear: '#originClear', msg: '#originMessage' },
+  dest:   { input: '#tripCitySearch', sugg: '#citySuggestions',   clear: '#cityClear',   msg: '#citySelectedHint' },
+};
+const _suggFocus = { origin: -1, dest: -1 };
 
-  input.addEventListener('input', () => {
-    const q = input.value;
-    appState.trip.originName = q.trim();         // free-text fallback
-    if (clear) clear.hidden = !q;
-    _renderOriginSuggestions(q);
-    _hideOriginMessage();
+let _airportIdx = null;
+function _airportIndex() {
+  if (_airportIdx) return _airportIdx;
+  const idx = [];
+  Object.entries(_CITY_AIRPORTS).forEach(([key, list]) => list.forEach(([iata, ko]) => idx.push({ key, iata, ko })));
+  Object.entries(_CITY_IATA).forEach(([key, iata]) => {
+    if (!_CITY_AIRPORTS[key] && findCity(c => c.key === key)) idx.push({ key, iata, ko: null });
   });
-  input.addEventListener('focus', () => {
-    if (input.value) _renderOriginSuggestions(input.value);
-    else _renderOriginSuggestions('서울');       // surface popular KR cities on focus
-  });
-  input.addEventListener('keydown', (e) => {
-    const items = $$('.city-sug-item', sugg);
-    if (e.key === 'ArrowDown') { e.preventDefault(); originSuggFocusIdx = Math.min(items.length - 1, originSuggFocusIdx + 1); _highlightSuggestion(items, originSuggFocusIdx); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); originSuggFocusIdx = Math.max(0, originSuggFocusIdx - 1); _highlightSuggestion(items, originSuggFocusIdx); }
-    else if (e.key === 'Enter') { if (items[originSuggFocusIdx]) { e.preventDefault(); items[originSuggFocusIdx].click(); } }
-    else if (e.key === 'Escape') { sugg.hidden = true; }
-  });
-  document.addEventListener('click', (e) => {
-    if (!input.contains(e.target) && !sugg.contains(e.target)) sugg.hidden = true;
-  });
-  clear?.addEventListener('click', () => {
-    input.value = ''; clear.hidden = true; sugg.hidden = true;
-    appState.trip.origin = ''; appState.trip.originName = '';
-    appState.trip.departureAirport = ''; appState.trip.departureAirportName = '';
-    _hideOriginMessage();
-  });
+  return (_airportIdx = idx);
 }
 
-function _renderOriginSuggestions(query) {
-  const sugg = $('#originSuggestions');
-  if (!sugg) return;
-  // For origin we prioritize Korea cities, fall back to global.
-  let list = searchCities(query, 8);
-  if (!query || query.trim().length === 0) list = CITIES.filter(c => c.country === '대한민국').slice(0, 6);
-  originSuggFocusIdx = -1;
-  if (list.length === 0) {
-    // free-text mode: leave hidden — user can type any city they want
-    sugg.hidden = true;
+/** 검색 결과 [{ c, airport? }] — 공항 코드나 공항 이름이 맞으면 그 공항을 먼저 보여 준다. */
+function _searchPlaces(query, kind) {
+  const q = (query || '').trim();
+  if (!q) return kind === 'origin' ? CITIES.filter(c => c.country === '대한민국').slice(0, 6).map(c => ({ c })) : [];
+  const lower = q.toLowerCase();
+  const compact = q.replace(/\s/g, '');
+  const out = [];
+  const seen = new Set();
+  _airportIndex().forEach(a => {
+    const c = findCity(x => x.key === a.key);
+    if (!c || seen.has(a.iata)) return;
+    const byCode = a.iata.toLowerCase() === lower;
+    const byName = a.ko && compact.length >= 2 && (a.ko.startsWith(compact) || `${a.ko}공항`.startsWith(compact));
+    if (byCode || byName) { seen.add(a.iata); out.push({ c, airport: { iata: a.iata, ko: a.ko || c.name } }); }
+  });
+  searchCities(q, 8).forEach(c => out.push({ c }));
+  return out.slice(0, 8);
+}
+
+function _openList(kind) {
+  const f = _FIELDS[kind];
+  const s = $(f.sugg); if (s) s.hidden = false;
+  $(f.input)?.setAttribute('aria-expanded', 'true');
+}
+function _closeList(kind) {
+  const f = _FIELDS[kind];
+  const s = $(f.sugg); if (s) s.hidden = true;
+  const i = $(f.input);
+  i?.setAttribute('aria-expanded', 'false');
+  i?.removeAttribute('aria-activedescendant');
+}
+
+function _renderPlaceList(kind, query) {
+  const f = _FIELDS[kind];
+  const sugg = $(f.sugg); const input = $(f.input);
+  if (!sugg || !input) return;
+  const results = _searchPlaces(query, kind);
+  _suggFocus[kind] = -1;
+  input.removeAttribute('aria-activedescendant');
+  sugg.innerHTML = '';
+  if (!results.length) {
+    if (!String(query || '').trim()) { _closeList(kind); return; }
+    const empty = el('div', { class: 'city-sug-empty', role: 'status' }, [
+      el('span', {}, `‘${String(query).trim()}’에 맞는 도시나 공항이 없어요. `),
+    ]);
+    if (kind === 'dest') {
+      empty.append(el('button', {
+        type: 'button', class: 'btn-text',
+        onclick: () => { const d = $('#destAdvanced'); if (d) d.open = true; _closeList(kind); $('#tripCountry')?.focus(); },
+      }, '국가·도시 직접 선택'));
+    } else {
+      empty.append(el('span', {}, '영문 이름이나 공항 코드로 찾아보세요.'));
+    }
+    sugg.append(empty);
+    _openList(kind);
     return;
   }
-  sugg.hidden = false;
-  sugg.innerHTML = '';
-  list.forEach(c => {
-    const btn = el('button', {
-      type: 'button',
-      class: 'city-sug-item',
-      role: 'option',
-      onclick: () => _applyOrigin(c),
-    }, [
-      el('span', { class: 'csi-flag' }, c.flag),
+  const nameCount = {};
+  results.forEach(r => { if (!r.airport) nameCount[r.c.name] = (nameCount[r.c.name] || 0) + 1; });
+  let n = 0;
+  const option = (cls, children, onPick) => el('button', {
+    type: 'button', class: cls, role: 'option', id: `${kind}-opt-${n++}`,
+    ariaSelected: 'false', tabIndex: -1, onclick: onPick,
+  }, children);
+  results.forEach(({ c, airport }) => {
+    const pick = (ap) => () => (kind === 'origin' ? _applyOrigin(c, ap) : _applyCity(c, ap));
+    if (airport) {
+      sugg.append(option('city-sug-item is-airport', [
+        el('span', { class: 'csa-icon', ariaHidden: 'true' }, '✈'),
+        el('div', { class: 'csi-text' }, [
+          el('span', { class: 'csi-name' }, `${airport.ko} 공항 (${airport.iata})`),
+          el('span', { class: 'csi-country' }, `공항 · ${c.name}, ${c.country}`),
+        ]),
+      ], pick(airport)));
+      return;
+    }
+    sugg.append(option('city-sug-item', [
+      el('span', { class: 'csi-flag', ariaHidden: 'true' }, c.flag),
       el('div', { class: 'csi-text' }, [
         el('span', { class: 'csi-name' }, c.name),
-        el('span', { class: 'csi-country' }, c.country),
+        el('span', { class: 'csi-country' }, `도시 · ${c.country}${nameCount[c.name] > 1 ? ` · ${c.region}` : ''}`),
       ]),
       el('span', { class: 'csi-region' }, c.region),
-    ]);
-    sugg.appendChild(btn);
-
-    // 공항이 여러 개인 출발 도시는 공항 선택지 노출 (예: 서울 → 인천 · 김포)
-    const airports = _CITY_AIRPORTS[c.key];
-    if (airports) {
-      airports.forEach(([iata, ko]) => {
-        sugg.appendChild(el('button', {
-          type: 'button',
-          class: 'city-sug-airport',
-          role: 'option',
-          onclick: () => _applyOrigin(c, { iata, ko }),
-        }, [
-          el('span', { class: 'csa-icon' }, '✈'),
-          el('span', { class: 'csa-name' }, `${ko} 공항`),
-          el('span', { class: 'csa-code' }, iata),
-        ]));
-      });
-    }
+    ], pick(null)));
+    // 공항이 여러 개인 도시는 공항도 고를 수 있게 (예: 서울 → 인천 · 김포)
+    (_CITY_AIRPORTS[c.key] || []).forEach(([iata, ko]) => {
+      sugg.append(option('city-sug-airport', [
+        el('span', { class: 'csa-icon', ariaHidden: 'true' }, '✈'),
+        el('span', { class: 'csa-name' }, `${ko} 공항`),
+        el('span', { class: 'csa-code' }, iata),
+      ], pick({ iata, ko })));
+    });
   });
+  _openList(kind);
 }
 
-function _applyOrigin(c, airport) {
-  appState.trip.origin = c.key;
-  appState.trip.originName = c.name;
-  appState.trip.originCountry = c.country;
-  if (airport) {
-    appState.trip.departureAirport = airport.iata;
-    appState.trip.departureAirportName = airport.ko;
-    $('#tripOrigin').value = `${c.name} · ${airport.ko}(${airport.iata})`;
-  } else {
-    appState.trip.departureAirport = '';
-    appState.trip.departureAirportName = '';
-    $('#tripOrigin').value = c.name;
-  }
-  $('#originClear').hidden = false;
-  $('#originSuggestions').hidden = true;
-  _hideOriginMessage();
-}
-
-function _showOriginMessage(text, kind) {
-  const m = $('#originMessage');
-  if (!m) return;
-  m.hidden = false;
-  m.textContent = text;
-  m.style.color = kind === 'error' ? 'var(--c-danger)' : 'var(--c-text-soft)';
-}
-function _hideOriginMessage() {
-  const m = $('#originMessage');
-  if (m) { m.hidden = true; m.textContent = ''; }
-}
-
-/* ============ City autocomplete ============ */
-function _bindCitySearch() {
-  const input = $('#tripCitySearch');
-  const sugg  = $('#citySuggestions');
-  const clear = $('#cityClear');
+function _bindPlaceSearch(kind) {
+  const f = _FIELDS[kind];
+  const input = $(f.input); const sugg = $(f.sugg); const clear = $(f.clear);
   if (!input || !sugg) return;
 
   input.addEventListener('input', () => {
     const q = input.value;
-    clear.hidden = !q;
-    _renderSuggestions(q);
+    if (clear) clear.hidden = !q;
+    _unconfirm(kind, q);
+    _renderPlaceList(kind, q);
   });
   input.addEventListener('focus', () => {
-    if (input.value) _renderSuggestions(input.value);
+    if (input.value || kind === 'origin') _renderPlaceList(kind, input.value);
   });
   input.addEventListener('keydown', (e) => {
-    const items = $$('.city-sug-item', sugg);
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      citySuggFocusIdx = Math.min(items.length - 1, citySuggFocusIdx + 1);
-      _highlightSuggestion(items);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      citySuggFocusIdx = Math.max(0, citySuggFocusIdx - 1);
-      _highlightSuggestion(items);
+      if (sugg.hidden) _renderPlaceList(kind, input.value);
+      const items = $$('[role=option]', sugg);
+      if (!items.length) return;
+      _suggFocus[kind] = Math.max(0, Math.min(items.length - 1, _suggFocus[kind] + (e.key === 'ArrowDown' ? 1 : -1)));
+      items.forEach((it, i) => {
+        const on = i === _suggFocus[kind];
+        it.classList.toggle('is-focus', on);
+        it.setAttribute('aria-selected', String(on));
+        if (on) { input.setAttribute('aria-activedescendant', it.id); it.scrollIntoView({ block: 'nearest' }); }
+      });
     } else if (e.key === 'Enter') {
-      if (items[citySuggFocusIdx]) { e.preventDefault(); items[citySuggFocusIdx].click(); }
+      const items = $$('[role=option]', sugg);
+      const target = items[_suggFocus[kind]] || (items.length === 1 ? items[0] : null);
+      if (target && !sugg.hidden) { e.preventDefault(); target.click(); }
     } else if (e.key === 'Escape') {
-      sugg.hidden = true;
+      _closeList(kind);
     }
   });
+  input.addEventListener('blur', () => setTimeout(() => _autoConfirm(kind), 180));
   document.addEventListener('click', (e) => {
-    if (!input.contains(e.target) && !sugg.contains(e.target)) sugg.hidden = true;
+    if (!input.contains(e.target) && !sugg.contains(e.target)) _closeList(kind);
   });
   clear?.addEventListener('click', () => {
-    input.value = ''; clear.hidden = true; sugg.hidden = true;
-    appState.trip.cityName = ''; appState.trip.city = ''; appState.trip.country = '';
-    appState.trip.arrivalAirport = ''; appState.trip.arrivalAirportName = '';
-    _updateSelectedHint(null);
+    input.value = ''; clear.hidden = true;
+    _closeList(kind);
+    _unconfirm(kind, '');
+    input.focus();
   });
+}
 
-  // Country/city advanced selects
-  $('#tripCountry')?.addEventListener('change', (e) => {
-    _buildCities(e.target.value);
-  });
+function _bindAdvancedSelect() {
+  $('#tripCountry')?.addEventListener('change', (e) => _buildCities(e.target.value));
   $('#tripCity')?.addEventListener('change', (e) => {
-    const key = e.target.value;
-    const c = findCity(x => x.key === key);
+    const c = findCity(x => x.key === e.target.value);
     if (c) _applyCity(c);
   });
 }
 
-function _renderSuggestions(query) {
-  const sugg = $('#citySuggestions');
-  if (!sugg) return;
-  const list = searchCities(query, 8);
-  citySuggFocusIdx = -1;
-  if (list.length === 0) {
-    sugg.hidden = false;
-    sugg.innerHTML = '';
-    sugg.appendChild(el('div', { class: 'city-sug-empty' }, '검색 결과가 없어요'));
-    return;
-  }
-  sugg.hidden = false;
-  sugg.innerHTML = '';
-  list.forEach((c, i) => {
-    const btn = el('button', {
-      type: 'button',
-      class: 'city-sug-item',
-      role: 'option',
-      onclick: () => _applyCity(c),
-    }, [
-      el('span', { class: 'csi-flag' }, c.flag),
-      el('div', { class: 'csi-text' }, [
-        el('span', { class: 'csi-name' }, c.name),
-        el('span', { class: 'csi-country' }, c.country),
-      ]),
-      el('span', { class: 'csi-region' }, c.region),
-    ]);
-    sugg.appendChild(btn);
-
-    // 공항이 여러 개인 도시는 바로 아래에 공항 선택지 노출 (예: 서울 → 인천 · 김포)
-    const airports = _CITY_AIRPORTS[c.key];
-    if (airports) {
-      airports.forEach(([iata, ko]) => {
-        sugg.appendChild(el('button', {
-          type: 'button',
-          class: 'city-sug-airport',
-          role: 'option',
-          onclick: () => _applyCity(c, { iata, ko }),
-        }, [
-          el('span', { class: 'csa-icon' }, '✈'),
-          el('span', { class: 'csa-name' }, `${ko} 공항`),
-          el('span', { class: 'csa-code' }, iata),
-        ]));
-      });
-    }
-  });
-}
-function _highlightSuggestion(items, idx) {
-  const focusIdx = (idx == null) ? citySuggFocusIdx : idx;
-  items.forEach((it, i) => it.classList.toggle('is-focus', i === focusIdx));
+function _isConfirmed(kind) {
+  const t = appState.trip;
+  return kind === 'origin' ? !!t.origin : !!t.city;
 }
 
-function _applyCity(c, airport) {
-  if (!c) return;
-  appState.trip.cityName = c.name;
-  appState.trip.city = c.key;
-  appState.trip.country = c.country;
-  appState.trip.cityTier = c.tier;
-  appState.trip.cityFlag = c.flag;
-  if (airport) {
-    appState.trip.arrivalAirport = airport.iata;
-    appState.trip.arrivalAirportName = airport.ko;
-    $('#tripCitySearch').value = `${c.name} · ${airport.ko}(${airport.iata})`;
+/** 글자를 고치면 확정을 풀고 '검색 중' 상태로 돌린다. */
+function _unconfirm(kind, typed) {
+  const t = appState.trip;
+  if (kind === 'origin') {
+    t.origin = ''; t.originName = ''; t.originCountry = undefined;
+    t.departureAirport = ''; t.departureAirportName = '';
+    t._originText = typed;
+    _setFieldMsg('origin', typed ? '목록에서 골라야 출발 도시가 정해져요.' : '', 'hint');
   } else {
-    appState.trip.arrivalAirport = '';
-    appState.trip.arrivalAirportName = '';
-    $('#tripCitySearch').value = c.name;
+    t.city = ''; t.cityName = ''; t.country = ''; t.cityTier = undefined; t.cityFlag = undefined;
+    t.arrivalAirport = ''; t.arrivalAirportName = '';
+    t._cityText = typed;
+    setActiveByData($('#destQuick'), 'data-dest-quick', '');
+    _setFieldMsg('dest', typed ? '목록에서 골라야 도착 도시가 정해져요.' : '', 'hint');
   }
-  $('#cityClear').hidden = false;
-  $('#citySuggestions').hidden = true;
-  // Sync advanced selects too
+  $(_FIELDS[kind].input)?.removeAttribute('aria-invalid');
+  _refreshBudget();
+}
+
+/** 입력한 이름이 도시 하나와 정확히 같으면 목록을 고르지 않아도 확정한다. */
+function _autoConfirm(kind) {
+  if (_isConfirmed(kind)) return;
+  const q = ($(_FIELDS[kind].input)?.value || '').trim().toLowerCase();
+  if (!q) return;
+  const exact = _searchPlaces(q, kind).filter(r => !r.airport &&
+    [r.c.name, ...(r.c.aliases || [])].some(nm => nm.toLowerCase() === q));
+  if (exact.length === 1) (kind === 'origin' ? _applyOrigin(exact[0].c) : _applyCity(exact[0].c));
+}
+
+function _setFieldMsg(kind, text, type) {
+  const m = $(_FIELDS[kind].msg);
+  if (!m) return;
+  m.hidden = !text;
+  m.textContent = text || '';
+  m.classList.toggle('is-error', type === 'error');
+  m.classList.toggle('city-selected-hint', type === 'ok');
+}
+
+/** 다음으로 갈 수 없는 이유를 입력 바로 아래에 쓰고 그 칸으로 초점을 옮긴다. */
+function _fieldError(kind, text) {
+  _setFieldMsg(kind, text, 'error');
+  const input = $(_FIELDS[kind].input);
+  input?.setAttribute('aria-invalid', 'true');
+  input?.focus();
+}
+
+function _applyOrigin(c, airport) {
+  if (!c) return;
+  const t = appState.trip;
+  t.origin = c.key; t.originName = c.name; t.originCountry = c.country; t._originText = '';
+  t.departureAirport = airport?.iata || ''; t.departureAirportName = airport?.ko || '';
+  const input = $('#tripOrigin');
+  if (input) { input.value = airport ? `${c.name} · ${airport.ko}(${airport.iata})` : c.name; input.removeAttribute('aria-invalid'); }
+  const clr = $('#originClear'); if (clr) clr.hidden = false;
+  _closeList('origin');
+  _setFieldMsg('origin', `✓ ${c.flag} ${airport ? `${airport.ko} 공항(${airport.iata}) · ` : ''}${c.name}, ${c.country}에서 출발`, 'ok');
+  _refreshLocalNote();
+  _refreshBudget();
+}
+
+function _applyCity(c, airport, opts = {}) {
+  if (!c) return;
+  const t = appState.trip;
+  t.cityName = c.name; t.city = c.key; t.country = c.country;
+  t.cityTier = c.tier; t.cityFlag = c.flag; t._cityText = '';
+  t.arrivalAirport = airport?.iata || ''; t.arrivalAirportName = airport?.ko || '';
+  const input = $('#tripCitySearch');
+  if (input) { input.value = airport ? `${c.name} · ${airport.ko}(${airport.iata})` : c.name; input.removeAttribute('aria-invalid'); }
+  const clr = $('#cityClear'); if (clr) clr.hidden = false;
+  _closeList('dest');
   const cSel = $('#tripCountry'); const citySel = $('#tripCity');
   if (cSel) { cSel.value = c.country; _buildCities(c.country); }
   if (citySel) citySel.value = c.key;
   setActiveByData($('#destQuick'), 'data-dest-quick', c.name);
-  _updateSelectedHint(c);
+  _updateSelectedHint(c, airport, opts.from);
+  if (opts.from === 'quick') {
+    // 인기 도시를 누르면 도착 도시 칸이 바뀐 것을 바로 보이게 한다.
+    const row = input?.closest('.form-row');
+    if (row) { row.classList.remove('is-updated'); void row.offsetWidth; row.classList.add('is-updated'); }
+  }
   _refreshBudget();
 }
 
-function _updateSelectedHint(c) {
-  const hint = $('#citySelectedHint');
-  if (!hint) return;
-  if (!c) { hint.hidden = true; hint.textContent = ''; return; }
-  hint.hidden = false;
-  hint.textContent = `✓ ${c.flag} ${c.name}, ${c.country} 선택됨`;
-  hint.classList.add('city-selected-hint');
+function _updateSelectedHint(c, airport, from) {
+  if (!c) { _setFieldMsg('dest', '', ''); return; }
+  const t = appState.trip;
+  const where = `${c.flag} ${airport ? `${airport.ko} 공항(${airport.iata}) · ` : ''}${c.name}, ${c.country}`;
+  const local = t.origin && t.origin === c.key ? ' — 출발 도시와 같아서 항공 없이 현지 여행으로 계산해요.' : '';
+  _setFieldMsg('dest', `✓ ${from === 'quick' ? '도착 도시를 바꿨어요: ' : ''}${where}${local}`, 'ok');
+}
+
+/** 출발 도시를 바꾼 뒤 '같은 도시' 안내를 다시 맞춘다. */
+function _refreshLocalNote() {
+  const t = appState.trip;
+  if (!t.city) return;
+  const c = findCity(x => x.key === t.city);
+  if (c) _updateSelectedHint(c, t.arrivalAirport ? { iata: t.arrivalAirport, ko: t.arrivalAirportName } : null);
 }
 
 /* ============ Date triggers + calendar ============ */
@@ -420,25 +459,30 @@ function _bindDateTriggers() {
   $('#tripStartTrigger')?.addEventListener('click', () => _openCal('start'));
   $('#tripEndTrigger')?.addEventListener('click', () => _openCal('end'));
 }
+const MAX_TRIP_DAYS = 30;
 function _openCal(focus) {
   openCalendar({
     start: appState.trip.startDate,
     end:   appState.trip.endDate,
     focus,
+    maxDays: MAX_TRIP_DAYS,
+    returnFocus: focus === 'end' ? $('#tripEndTrigger') : $('#tripStartTrigger'),
     onApply: ({ start, end }) => {
       appState.trip.startDate = start;
       appState.trip.endDate   = end;
+      const err = $('#dateError'); if (err) err.hidden = true;
       _refreshDuration();
       _refreshDateTriggers();
       _refreshBudget();
+      _saveDraft();
     },
   });
 }
 function _refreshDateTriggers() {
   const sBtn = $('#tripStartTrigger'); const eBtn = $('#tripEndTrigger');
   const sLbl = $('#tripStartLabel');   const eLbl = $('#tripEndLabel');
-  if (sLbl) sLbl.textContent = appState.trip.startDate ? _fmt(appState.trip.startDate) : '선택';
-  if (eLbl) eLbl.textContent = appState.trip.endDate   ? _fmt(appState.trip.endDate)   : '선택';
+  if (sLbl) sLbl.textContent = appState.trip.startDate ? _fmt(appState.trip.startDate) : '날짜 선택';
+  if (eLbl) eLbl.textContent = appState.trip.endDate   ? _fmt(appState.trip.endDate)   : '날짜 선택';
   sBtn?.classList.toggle('is-empty', !appState.trip.startDate);
   eBtn?.classList.toggle('is-empty', !appState.trip.endDate);
 }
@@ -452,25 +496,30 @@ function _fmt(iso) {
 function _bindFormHandlers() {
   document.querySelectorAll('[data-companion]').forEach(b => {
     b.addEventListener('click', () => {
-      appState.trip.companion = b.dataset.companion;
-      setActiveByData(b.parentElement, 'data-companion', b.dataset.companion);
-      _syncPeopleRow();          // 가족/단체면 인원 입력칸 표시 + 기본값
+      const t = appState.trip;
+      t.companion = b.dataset.companion;
+      const [adults, children] = _COMPANION_DEFAULT[t.companion] || [2, 0];
+      t.adults = adults; t.children = children;
+      t.rooms = Math.max(1, Math.ceil((adults + children) / 2));
+      t._roomsTouched = false;
+      setActiveByData(b.parentElement, 'data-companion', t.companion);
+      _syncPeopleRow();
       _refreshBudget();
     });
   });
 
-  // 인원수 입력(가족/단체) — 입력/증감 시 항공·숙소·예산 추천 갱신
-  const _applyPeople = (v) => {
-    const n = Math.max(_PEOPLE_MIN, Math.min(_PEOPLE_MAX, Math.round(Number(v) || _PEOPLE_MIN)));
-    appState.trip.people = n;
-    const inp = $('#peopleCount'); if (inp) inp.value = String(n);
+  // 성인·아동·객실 — 동행 유형과 따로 실제 인원을 받는다.
+  $('#peopleBox')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-people-field]');
+    if (!b || b.disabled) return;
+    const t = appState.trip;
+    _ensurePeople(t);
+    const field = b.dataset.peopleField;
+    t[field] = (t[field] || 0) + Number(b.dataset.delta);
+    _clampPeople(t, field);
+    _syncPeopleRow();
     _refreshBudget();
-  };
-  const _curPeople = () => appState.trip.people || _PEOPLE_COUNT[appState.trip.companion] || _PEOPLE_MIN;
-  $('#peopleCount')?.addEventListener('input', (e) => { appState.trip.people = Math.round(Number(e.target.value) || 0) || null; _refreshBudget(); });
-  $('#peopleCount')?.addEventListener('change', (e) => _applyPeople(e.target.value));  // blur 시 범위 보정
-  $('#peopleMinus')?.addEventListener('click', () => _applyPeople(_curPeople() - 1));
-  $('#peoplePlus')?.addEventListener('click',  () => _applyPeople(_curPeople() + 1));
+  });
   $('#tripCurrency')?.addEventListener('change', (e) => {
     appState.trip.currency = e.target.value;
     _refreshSummary();
@@ -504,8 +553,19 @@ function _bindFormHandlers() {
     const idx = arr.indexOf(name);
     if (idx >= 0) arr.splice(idx, 1); else arr.push(name);
     b.classList.toggle('is-active', arr.includes(name));
+    _refreshAirlineMeta();
     _refreshBudget();
     _refreshSummary();
+  });
+  $('#airlineSearch')?.addEventListener('input', (e) => _filterAirlines(e.target.value));
+  $('#airlineReset')?.addEventListener('click', () => {
+    appState.trip.flight.airlines = [];
+    setMultiActive($('#airlineChips'), 'data-airline', []);
+    _refreshAirlineMeta();
+    _filterAirlines($('#airlineSearch')?.value || '');
+    _refreshBudget();
+    _refreshSummary();
+    $('#airlineSearch')?.focus();
   });
 
   // ── 호텔 유형/위치/편의시설 (다중 선택) ──
@@ -539,6 +599,31 @@ function _syncSingleChip(rootSel, attr, value) {
   });
 }
 
+/** 선택한 항공사 수와 이름 요약 — 아무것도 안 고르면 모든 항공사를 고려한다. */
+function _refreshAirlineMeta() {
+  const arr = appState.trip.flight?.airlines || [];
+  const c = $('#airlineCount');
+  if (c) {
+    c.textContent = arr.length
+      ? `${arr.length}개 선택 · ${arr.slice(0, 3).join(', ')}${arr.length > 3 ? ` 외 ${arr.length - 3}곳` : ''}`
+      : '선택 안 함 · 모든 항공사를 고려해요';
+  }
+  const r = $('#airlineReset'); if (r) r.hidden = !arr.length;
+}
+/** 이름·'저가'·'대형'으로 항공사 칩을 거른다. 고른 항공사는 항상 보인다. */
+function _filterAirlines(q) {
+  const query = String(q || '').trim().toLowerCase();
+  const typeWord = /저가|lcc/.test(query) ? 'lcc' : (/대형|fsc/.test(query) ? 'fsc' : null);
+  let matches = 0;
+  $$('#airlineChips [data-airline]').forEach(b => {
+    const hay = `${b.textContent} ${b.dataset.airline}`.toLowerCase();
+    const hit = !query || hay.includes(query) || (typeWord && b.dataset.airlineType === typeWord);
+    if (hit) matches++;
+    b.hidden = !(hit || b.classList.contains('is-active'));
+  });
+  const e = $('#airlineEmpty'); if (e) e.hidden = !query || matches > 0;
+}
+
 /** 항공사 등급 변경 시 LCC/FSC 칩 비활성화·필터 */
 function _refreshAirlineChipFilter() {
   const cls = appState.trip.flight.classType;  // 'any' | 'lcc' | 'fsc'
@@ -553,6 +638,7 @@ function _refreshAirlineChipFilter() {
       if (i >= 0) { arr.splice(i, 1); b.classList.remove('is-active'); }
     }
   });
+  _refreshAirlineMeta();
 }
 
 const _STEP_EVENTS = { 1: 'trip_step_city', 2: 'trip_step_dates', 3: 'trip_step_concept' };
@@ -567,16 +653,8 @@ function _bindStepHandlers() {
   $('#stepGenerate')?.addEventListener('click', async () => {
     if (!_validateStep()) return;
     trackEvent('trip_step_budget');
-    try {
-      await _generateSchedule();
-      trackEvent('trip_created');
-    } catch (e) {
-      console.error('[trip-flow] 일정 생성 실패:', e);
-      showToast('일정 생성 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.');
-    } finally {
-      _hideGenLoading();
-      const b = $('#stepGenerate'); if (b) { b.disabled = false; b.textContent = '일정 생성하기 ✨'; }
-    }
+    // 실패하면 _generateSchedule 이 '다시 시도' 화면을 띄운다.
+    if (await _generateSchedule()) trackEvent('trip_created');
   });
 }
 
@@ -743,8 +821,9 @@ function _bindBudgetHandlers() {
 function _saveDraft() {
   const t = appState.trip;
   if (!t) return;
-  t._draft = !!(t.cityName || t.originName || t.startDate || t.concept || t.budget);
+  t._draft = !!(t.cityName || t.originName || t._originText || t._cityText || t.startDate || t.concept || t.budget);
   t._draftStep = step;
+  _syncPressed();
   document.dispatchEvent(new CustomEvent('redesign:trip-changed'));
 }
 
@@ -766,7 +845,8 @@ function _showDraftBanner(show) {
 
 /* ============ Duration / Summary / Steps ============ */
 function _refreshDuration() {
-  const d = diffDays(appState.trip.startDate, appState.trip.endDate);
+  const { startDate: s0, endDate: e0 } = appState.trip;
+  const d = (s0 && e0 && e0 >= s0) ? diffDays(s0, e0) : 0;
   appState.trip.days = d;
   const t = $('#tripDuration');
   if (t) t.textContent = d ? `${_durationLabel(d)} (${appState.trip.startDate} → ${appState.trip.endDate})` : '날짜를 골라 주세요';
@@ -837,20 +917,34 @@ function _showStep() {
 function _validateStep() {
   const t = appState.trip;
   if (step === 1) {
-    if (!t.originName) {
-      showToast('출발 도시를 입력해주세요.');
-      _showOriginMessage('출발 도시를 입력해주세요.', 'error');
-      $('#tripOrigin')?.focus();
+    _autoConfirm('origin'); _autoConfirm('dest');
+    if (!t.origin) {
+      _fieldError('origin', $('#tripOrigin')?.value.trim()
+        ? '목록에서 출발 도시를 골라 주세요. 도시·국가·공항 코드로 찾을 수 있어요.'
+        : '출발 도시를 입력해 주세요.');
       return false;
     }
-    if (!t.cityName) { showToast('도착 도시를 선택해 주세요'); return false; }
+    if (!t.city) {
+      _fieldError('dest', $('#tripCitySearch')?.value.trim()
+        ? '목록에서 도착 도시를 골라 주세요. 없으면 아래 ‘국가·도시 직접 선택’을 써 보세요.'
+        : '도착 도시를 입력하거나 인기 도시를 골라 주세요.');
+      return false;
+    }
   }
   if (step === 2) {
-    if (!t.startDate || !t.endDate) { showToast('출발/도착일을 선택해 주세요'); return false; }
-    if (t.days < 1) { showToast('날짜 순서를 확인해 주세요'); return false; }
+    const err = _dateError(t);
+    if (err) {
+      const e = $('#dateError'); if (e) { e.hidden = false; e.textContent = err; }
+      (t.startDate && !/출발일/.test(err) ? $('#tripEndTrigger') : $('#tripStartTrigger'))?.focus();
+      return false;
+    }
   }
   if (step === 3) {
-    if (!t.concept) { showToast('컨셉을 한 가지 선택해 주세요'); return false; }
+    if (!t.concept) {
+      const e = $('#conceptError'); if (e) { e.hidden = false; e.textContent = '여행 스타일을 한 가지 골라 주세요.'; }
+      $('#conceptGrid .concept-card')?.focus();
+      return false;
+    }
   }
   if (step === 4) {
     const inp = $('#tripBudgetInput');
@@ -866,6 +960,16 @@ function _validateStep() {
   return true;
 }
 
+/** 날짜 순서·지난 날짜·최대 기간을 검사한다. 문제가 없으면 빈 문자열. */
+function _dateError(t) {
+  if (!t.startDate) return '출발일을 골라 주세요.';
+  if (!t.endDate) return '귀국일을 골라 주세요. 당일치기라면 출발일과 같은 날을 고르면 돼요.';
+  if (t.endDate < t.startDate) return '귀국일이 출발일보다 빨라요. 날짜를 다시 골라 주세요.';
+  if (t.startDate < _isoLocal(new Date())) return '출발일이 이미 지났어요. 오늘 이후 날짜로 다시 골라 주세요.';
+  if (diffDays(t.startDate, t.endDate) > MAX_TRIP_DAYS) return `여행 기간은 최대 ${MAX_TRIP_DAYS}일까지 만들 수 있어요.`;
+  return '';
+}
+
 function _resetTripState() {
   // 트립 상태 초기화 — 홈에서 "새 여행 만들기" 진입 시 깨끗한 폼을 보장.
   if (!appState?.trip) return;
@@ -877,6 +981,8 @@ function _resetTripState() {
   t.departureAirport = ''; t.departureAirportName = '';
   t.startDate = null; t.endDate = null; t.days = 0;
   t.companion = 'couple';
+  t.adults = 2; t.children = 0; t.rooms = 1; t._roomsTouched = false;
+  t._originText = ''; t._cityText = '';
   t.concept = '';
   t.styles = [];
   t.budget = 0;
@@ -898,10 +1004,16 @@ function _resetTripState() {
   reset('#tripBudgetInput');
   const oc = $('#originClear'); if (oc) oc.hidden = true;
   const cc = $('#cityClear');   if (cc) cc.hidden = true;
-  const hint = $('#citySelectedHint'); if (hint) { hint.hidden = true; hint.textContent = ''; }
-  const sLbl = $('#tripStartLabel'); if (sLbl) sLbl.textContent = '선택';
-  const eLbl = $('#tripEndLabel');   if (eLbl) eLbl.textContent = '선택';
-  const dur  = $('#tripDuration');   if (dur)  dur.textContent = '기간: -';
+  _setFieldMsg('origin', '', ''); _setFieldMsg('dest', '', '');
+  ['#tripOrigin', '#tripCitySearch', '#tripBudgetInput'].forEach(sel => $(sel)?.removeAttribute('aria-invalid'));
+  ['#dateError', '#conceptError', '#budgetError'].forEach(sel => { const e = $(sel); if (e) e.hidden = true; });
+  const sh = $('#styleHint'); if (sh) sh.textContent = '‘여유로운 일정’과 ‘빽빽한 일정’은 둘 중 하나만 고를 수 있어요.';
+  const as = $('#airlineSearch'); if (as) as.value = '';
+  _filterAirlines('');
+  _refreshAirlineMeta();
+  const sLbl = $('#tripStartLabel'); if (sLbl) sLbl.textContent = '날짜 선택';
+  const eLbl = $('#tripEndLabel');   if (eLbl) eLbl.textContent = '날짜 선택';
+  const dur  = $('#tripDuration');   if (dur)  dur.textContent = '날짜를 골라 주세요';
   const sBtn = $('#tripStartTrigger'); if (sBtn) sBtn.classList.add('is-empty');
   const eBtn = $('#tripEndTrigger');   if (eBtn) eBtn.classList.add('is-empty');
 
@@ -919,15 +1031,18 @@ function _resetTripState() {
 
 function _applyState() {
   const t = appState.trip;
-  // restore origin from state
-  if (t.originName) {
-    const oi = $('#tripOrigin'); if (oi) oi.value = t.originName;
-    const oc = $('#originClear'); if (oc) oc.hidden = false;
+  // 출발·도착 — 확정된 도시(공항 포함)를 되살리고, 검색 중이던 글자는 글자대로 둔다.
+  const oc0 = t.origin ? findCity(x => x.key === t.origin) : (t.originName ? findCity(x => x.name === t.originName) : null);
+  if (oc0) _applyOrigin(oc0, t.departureAirport ? { iata: t.departureAirport, ko: t.departureAirportName } : null);
+  else if (t._originText || t.originName) {
+    const oi = $('#tripOrigin'); if (oi) oi.value = t._originText || t.originName;
+    const ocl = $('#originClear'); if (ocl) ocl.hidden = false;
   }
-  if (t.cityName) {
-    const c = findCity(x => x.name === t.cityName || x.key === t.city);
-    if (c) _applyCity(c);
-    else $('#tripCitySearch').value = t.cityName;
+  const cc0 = (t.city || t.cityName) ? findCity(x => x.key === t.city || x.name === t.cityName) : null;
+  if (cc0) _applyCity(cc0, t.arrivalAirport ? { iata: t.arrivalAirport, ko: t.arrivalAirportName } : null);
+  else if (t._cityText || t.cityName) {
+    const ci = $('#tripCitySearch'); if (ci) ci.value = t._cityText || t.cityName;
+    const ccl = $('#cityClear'); if (ccl) ccl.hidden = false;
   }
   _refreshDateTriggers();
   _refreshDuration();
@@ -953,6 +1068,14 @@ function _applyState() {
   _refreshBudget();
   const fi = $('#includeFlight'); if (fi) fi.checked = t.includeFlight !== false;
   const hi = $('#includeHotel');  if (hi) hi.checked = t.includeHotel !== false;
+  _refreshAirlineMeta();
+  _syncPressed();
+}
+
+/** 눌린 상태를 스크린 리더에도 알린다 (카드·칩·인기 도시). */
+function _syncPressed() {
+  $$('#createTripPage .chip, #createTripPage .concept-card, #createTripPage .choice-card, #destQuick button')
+    .forEach(b => b.setAttribute('aria-pressed', String(b.classList.contains('is-active'))));
 }
 
 /* ============ Generation ============
@@ -1058,33 +1181,58 @@ function _cityTierKeyForFlight(t) {
 const _PEOPLE_COUNT = {
   solo: 1, friend: 2, couple: 2, family: 4, group: 6,
 };
-const _PEOPLE_MIN = 2;
 const _PEOPLE_MAX = 20;
 
-/** 실제 인원수 — 가족/단체면 사용자가 입력한 t.people 우선, 아니면 동행 기본값. */
-function _peopleCount(t) {
-  if ((t.companion === 'family' || t.companion === 'group') && t.people) {
-    return Math.max(_PEOPLE_MIN, Math.min(_PEOPLE_MAX, t.people));
-  }
-  return _PEOPLE_COUNT[t.companion] || 1;
+const _COMPANION_DEFAULT = { solo: [1, 0], couple: [2, 0], friend: [2, 0], family: [2, 2], group: [6, 0] };
+
+/** 예전 형식(동행 유형 + 가족/단체 인원)으로 저장된 여행도 성인·아동·객실로 맞춘다. */
+function _ensurePeople(t) {
+  if (Number.isFinite(t.adults)) return;
+  const legacy = ((t.companion === 'family' || t.companion === 'group') && t.people)
+    ? t.people : (_PEOPLE_COUNT[t.companion] || 1);
+  t.adults = Math.max(1, Math.min(_PEOPLE_MAX, legacy));
+  t.children = 0;
+  t.rooms = Math.max(1, Math.ceil(t.adults / 2));
 }
-/** 객실 수 — 2인 1실 기준. */
-function _roomCount(t) {
-  return Math.max(1, Math.ceil(_peopleCount(t) / 2));
+function _clampPeople(t, changed) {
+  t.adults = Math.max(1, Math.min(_PEOPLE_MAX, t.adults || 1));
+  t.children = Math.max(0, Math.min(_PEOPLE_MAX - t.adults, t.children || 0));
+  const total = t.adults + t.children;
+  if (changed === 'rooms') t._roomsTouched = true;
+  else if (!t._roomsTouched) t.rooms = Math.ceil(total / 2);
+  t.rooms = Math.max(1, Math.min(total, t.rooms || 1));
 }
 
-/** 가족/단체면 인원 입력칸을 보여주고 기본값을 세팅, 그 외엔 숨기고 입력을 비운다. */
+/** 실제 인원수 = 성인 + 아동. */
+function _peopleCount(t) {
+  _ensurePeople(t);
+  return Math.max(1, (t.adults || 0) + (t.children || 0));
+}
+/** 객실 수 — 직접 고르지 않았으면 2인 1실. */
+function _roomCount(t) {
+  _ensurePeople(t);
+  return Math.max(1, Math.min(_peopleCount(t), t.rooms || Math.ceil(_peopleCount(t) / 2)));
+}
+
+/** 인원·객실 숫자와 버튼 상태, 계산 기준 안내를 화면에 맞춘다. */
 function _syncPeopleRow() {
   const t = appState.trip;
-  const row = document.getElementById('peopleCountRow');
-  const isMulti = (t.companion === 'family' || t.companion === 'group');
-  if (row) row.hidden = !isMulti;
-  if (isMulti) {
-    if (!t.people) t.people = _PEOPLE_COUNT[t.companion] || _PEOPLE_MIN;   // 가족 4 / 단체 6 기본
-    const inp = document.getElementById('peopleCount');
-    if (inp) { inp.min = String(_PEOPLE_MIN); inp.max = String(_PEOPLE_MAX); inp.value = String(t.people); }
-  } else {
-    t.people = null;   // 고정 인원으로 복귀
+  _ensurePeople(t);
+  _clampPeople(t, null);
+  t.people = t.adults + t.children;
+  const total = t.people;
+  const put = (id, v) => { const o = document.getElementById(id); if (o) o.textContent = String(v); };
+  put('adultsVal', t.adults); put('childrenVal', t.children); put('roomsVal', t.rooms);
+  $$('#peopleBox [data-people-field]').forEach(b => {
+    const f = b.dataset.peopleField; const down = Number(b.dataset.delta) < 0; const v = t[f] || 0;
+    b.disabled = f === 'rooms' ? (down ? v <= 1 : v >= total)
+      : (down ? v <= (f === 'adults' ? 1 : 0) : total >= _PEOPLE_MAX);
+  });
+  const s = document.getElementById('peopleSummary');
+  if (s) {
+    s.textContent = `총 ${total}명${t.children ? ` (성인 ${t.adults} · 아동 ${t.children})` : ''} · 객실 ${t.rooms}개. `
+      + '항공·식비·입장료는 인원수로, 숙소는 객실 수로 계산해요.'
+      + (t.children ? ' 아동 요금은 성인과 같게 어림해요.' : '');
   }
 }
 
@@ -1717,7 +1865,7 @@ function _withTimeout(promise, ms, label) {
 let _generating = false;
 
 async function _generateSchedule() {
-  if (_generating) return;              // 중복 요청 막기
+  if (_generating) return false;        // 중복 요청 막기
   _generating = true;
   const t = appState.trip;
   const btn = $('#stepGenerate');
@@ -1728,10 +1876,12 @@ async function _generateSchedule() {
   try {
     await _generateScheduleInner(t, btn, startedAt);
     trackEvent('trip_generate_done');
+    return true;
   } catch (e) {
     console.error('[trip-flow] 일정 생성 실패:', e);
     trackEvent('trip_generate_fail');
     _showGenFailure('연결이 불안정하거나 서버가 응답하지 않았어요. 입력한 내용은 그대로 남아 있어요.');
+    return false;
   } finally {
     _generating = false;
     if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.textContent = '일정 만들기'; }
