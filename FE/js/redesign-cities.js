@@ -599,19 +599,103 @@ export function findCity(predicate) {
   return CITIES.find(predicate);
 }
 
-/** Search by name/aliases/country.  Case + diacritic-insensitive prefix-first match. */
+// 나라 이름 영문 — 'japan', 'france' 로 찾아도 그 나라 도시가 나오게.
+const COUNTRY_EN = {
+  '대한민국': ['korea', 'south korea'], '일본': ['japan'], '미국': ['usa', 'united states', 'america'], '중국': ['china'],
+  '이탈리아': ['italy'], '인도': ['india'], '태국': ['thailand'], '베트남': ['vietnam'], '독일': ['germany'], '프랑스': ['france'],
+  '캐나다': ['canada'], '영국': ['uk', 'united kingdom', 'england'], '스페인': ['spain'], '호주': ['australia'],
+  '인도네시아': ['indonesia'], '멕시코': ['mexico'], '그리스': ['greece'], '필리핀': ['philippines'], '스위스': ['switzerland'],
+  '포르투갈': ['portugal'], '오스트리아': ['austria'], '뉴질랜드': ['new zealand'], '말레이시아': ['malaysia'],
+  '대만': ['taiwan'], '홍콩': ['hong kong'], '싱가포르': ['singapore'], '튀르키예': ['turkey', 'türkiye'], '체코': ['czech'],
+  '네덜란드': ['netherlands', 'holland'], '마카오': ['macau'], '괌': ['guam'], 'UAE': ['uae', 'emirates'],
+};
+// 일본 주요 도시의 가나 표기 — 'とうきょう' 로도 찾게.
+const KANA = { tokyo: 'とうきょう', osaka: 'おおさか', kyoto: 'きょうと', fukuoka: 'ふくおか', sapporo: 'さっぽろ',
+  okinawa: 'おきなわ', nagoya: 'なごや', yokohama: 'よこはま', kobe: 'こうべ', nara: 'なら', hiroshima: 'ひろしま' };
+
+/** 도시 검색 — 한글·영문·현지어 별칭·가나, 나라 이름(한글·영문)까지.  같으면 100, 앞이 같으면 60, 들어 있으면 30.
+ *  나라 이름으로만 맞은 도시는 점수를 낮춰 도시 이름이 맞은 결과가 먼저 오게 한다. */
 export function searchCities(query, limit = 8) {
   const q = (query || '').trim().toLowerCase();
   if (!q) return [];
   const matches = [];
   for (const c of CITIES) {
-    const hay = [c.name, c.country, ...(c.aliases || [])].map(s => s.toLowerCase());
+    const names = [c.name, ...(c.aliases || []), KANA[c.key]].filter(Boolean).map(s => s.toLowerCase());
+    const countries = [c.country, ...(COUNTRY_EN[c.country] || [])].map(s => s.toLowerCase());
     let score = 0;
-    if (hay.some(h => h === q)) score = 100;
-    else if (hay.some(h => h.startsWith(q))) score = 60;
-    else if (hay.some(h => h.includes(q))) score = 30;
-    if (score) matches.push({ c, score });
+    if (names.some(h => h === q)) score = 100;
+    else if (names.some(h => h.startsWith(q))) score = 60;
+    else if (names.some(h => h.includes(q))) score = 30;
+    else if (countries.some(h => h === q || (q.length >= 2 && h.startsWith(q)))) score = 20;
+    if (score) matches.push({ c, score, byCountry: score === 20 });
   }
   matches.sort((a, b) => b.score - a.score);
   return matches.slice(0, limit).map(m => m.c);
+}
+
+/* ============ 현지 시간대 ============
+ * 일정의 시각은 모두 '여행지 현지 시각'이다.  나라에 시간대가 하나면 나라 기준,
+ * 여러 개인 나라(미국·캐나다·호주·브라질·멕시코·인도네시아·러시아)는 도시 기준. */
+const TZ_BY_CITY = {
+  nyc: 'America/New_York', boston: 'America/New_York', miami: 'America/New_York', orlando: 'America/New_York',
+  washington: 'America/New_York', philadelphia: 'America/New_York', keywest: 'America/New_York',
+  chicago: 'America/Chicago', austin: 'America/Chicago', neworleans: 'America/Chicago', nashville: 'America/Chicago',
+  denver: 'America/Denver', la: 'America/Los_Angeles', sf: 'America/Los_Angeles', lasvegas: 'America/Los_Angeles',
+  seattle: 'America/Los_Angeles', sandiego: 'America/Los_Angeles', portland: 'America/Los_Angeles',
+  honolulu: 'Pacific/Honolulu', maui: 'Pacific/Honolulu',
+  toronto: 'America/Toronto', montreal: 'America/Toronto', quebec: 'America/Toronto', vancouver: 'America/Vancouver',
+  sydney: 'Australia/Sydney', melbourne: 'Australia/Melbourne', brisbane: 'Australia/Brisbane', goldcoast: 'Australia/Brisbane',
+  rio: 'America/Sao_Paulo', saopaulo: 'America/Sao_Paulo', mexicocity: 'America/Mexico_City', cancun: 'America/Cancun',
+  bali: 'Asia/Makassar', lombok: 'Asia/Makassar', jakarta: 'Asia/Jakarta', yogyakarta: 'Asia/Jakarta', batam: 'Asia/Jakarta',
+};
+const TZ_BY_COUNTRY = {
+  '대한민국': 'Asia/Seoul', '일본': 'Asia/Tokyo', '중국': 'Asia/Shanghai', '대만': 'Asia/Taipei', '홍콩': 'Asia/Hong_Kong',
+  '마카오': 'Asia/Macau', '태국': 'Asia/Bangkok', '베트남': 'Asia/Ho_Chi_Minh', '싱가포르': 'Asia/Singapore',
+  '말레이시아': 'Asia/Kuala_Lumpur', '필리핀': 'Asia/Manila', '캄보디아': 'Asia/Phnom_Penh', '라오스': 'Asia/Vientiane',
+  '미얀마': 'Asia/Yangon', '인도': 'Asia/Kolkata', '네팔': 'Asia/Kathmandu', '스리랑카': 'Asia/Colombo', '몽골': 'Asia/Ulaanbaatar',
+  '괌': 'Pacific/Guam', '북마리아나': 'Pacific/Saipan', '팔라우': 'Pacific/Palau', '피지': 'Pacific/Fiji', '뉴질랜드': 'Pacific/Auckland',
+  '영국': 'Europe/London', '아일랜드': 'Europe/Dublin', '포르투갈': 'Europe/Lisbon', '아이슬란드': 'Atlantic/Reykjavik',
+  '프랑스': 'Europe/Paris', '독일': 'Europe/Berlin', '이탈리아': 'Europe/Rome', '스페인': 'Europe/Madrid', '스위스': 'Europe/Zurich',
+  '오스트리아': 'Europe/Vienna', '네덜란드': 'Europe/Amsterdam', '벨기에': 'Europe/Brussels', '체코': 'Europe/Prague',
+  '헝가리': 'Europe/Budapest', '폴란드': 'Europe/Warsaw', '크로아티아': 'Europe/Zagreb', '덴마크': 'Europe/Copenhagen',
+  '스웨덴': 'Europe/Stockholm', '노르웨이': 'Europe/Oslo', '핀란드': 'Europe/Helsinki', '그리스': 'Europe/Athens',
+  '튀르키예': 'Europe/Istanbul', 'UAE': 'Asia/Dubai', '카타르': 'Asia/Qatar', '이집트': 'Africa/Cairo', '모로코': 'Africa/Casablanca',
+  '러시아': 'Europe/Moscow', '이스라엘': 'Asia/Jerusalem', '요르단': 'Asia/Amman', '몰디브': 'Indian/Maldives',
+  '미국': 'America/New_York', '캐나다': 'America/Toronto', '호주': 'Australia/Sydney', '브라질': 'America/Sao_Paulo',
+  '멕시코': 'America/Mexico_City', '인도네시아': 'Asia/Jakarta',
+};
+
+/** 도시(이름 또는 key)·나라로 IANA 시간대. 모르면 null. */
+export function timeZoneFor(city, country) {
+  const c = CITIES.find(x => x.key === city || x.name === city);
+  return (c && TZ_BY_CITY[c.key]) || TZ_BY_COUNTRY[c?.country || country] || null;
+}
+
+/** 그 날짜 정오 기준 UTC 와의 차이(분).  시간대를 모르면 null. */
+export function utcOffsetMin(tz, isoDate) {
+  if (!tz) return null;
+  try {
+    const d = new Date(`${isoDate || new Date().toISOString().slice(0, 10)}T12:00:00Z`);
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(d).map(p => [p.type, p.value]));
+    const local = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute);
+    return Math.round((local - d.getTime()) / 60000);
+  } catch (_) { return null; }
+}
+
+/** 'UTC+9', 'UTC-4:30' */
+export function utcLabel(offsetMin) {
+  if (offsetMin == null) return '';
+  const sign = offsetMin >= 0 ? '+' : '-';
+  const a = Math.abs(offsetMin);
+  return `UTC${sign}${Math.floor(a / 60)}${a % 60 ? ':' + String(a % 60).padStart(2, '0') : ''}`;
+}
+
+/** 지금 그 시간대의 날짜(YYYY-MM-DD)와 분. */
+export function nowIn(tz) {
+  const d = new Date();
+  if (!tz) return { iso: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, min: d.getHours() * 60 + d.getMinutes(), hhmm: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` };
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit',
+    day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(d).map(x => [x.type, x.value]));
+  return { iso: `${p.year}-${p.month}-${p.day}`, min: (+p.hour) * 60 + (+p.minute), hhmm: `${p.hour}:${p.minute}` };
 }

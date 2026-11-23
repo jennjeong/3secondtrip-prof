@@ -10,6 +10,7 @@
  */
 
 import { navigate } from './redesign-navigation.js';
+import { timeZoneFor, utcOffsetMin, utcLabel, nowIn } from './redesign-cities.js';
 import { setPendingIntent, peekPendingIntent, clearPendingIntent } from './redesign-auth.js';
 import { api, trackEvent } from './redesign-api-adapter.js';
 import {
@@ -247,7 +248,8 @@ function _renderDayChips(g) {
   // 고른 날의 예상 비용은 탭 아래 줄에 — 탭은 날짜만 보여 줘서 좁은 화면에서도 잘리지 않는다.
   const d = g.days[activeDay];
   const line = $('#dayCostLine');
-  if (line) line.textContent = d ? `${activeDay + 1}일차 · ${g.hideCost ? '비용 숨김' : '예상 ' + _shortMoney(_dayTotal(d, activeDay), g)}` : '';
+  const utc = utcLabel(utcOffsetMin(_tripTz(g), d?.date));
+  if (line) line.textContent = d ? `${activeDay + 1}일차 · ${g.hideCost ? '비용 숨김' : '예상 ' + _shortMoney(_dayTotal(d, activeDay), g)}${utc ? ` · 현지 시각 ${utc}` : ''}` : '';
   // 긴 여행에서도 고른 날짜가 보이도록
   requestAnimationFrame(() => row.querySelector('.day-chip.is-active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
 }
@@ -329,6 +331,10 @@ function _checkDay(g, di) {
     const travel = _travelMinutes(prev, acts[dep]);
     if (leave + travel > depMin - _AIRPORT_BEFORE) {
       items[dep].push({ lvl: 'warn', text: '공항 이동 시간 빠듯함' });
+      // 출국 전 마지막 장소(숙소 제외)를 빼는 방법을 함께 제안한다.
+      let last = -1;
+      for (let k = dep - 1; k >= 0; k--) if (!_isFlight(acts[k]) && acts[k].category !== '숙박') { last = k; break; }
+      if (last >= 0) list.push({ lvl: 'warn', ai: last, fix: 'drop', text: `출국 준비 시간이 모자라요. ${_josa(_short(acts[last].name), '을', '를')} 빼면 여유가 생겨요.` });
       list.push({ lvl: 'warn', ai: dep - 1, text: `출국 2시간 전 공항 도착 기준으로 ${_short(prev.name)}에서 늦어도 ${_minToTime(depMin - _AIRPORT_BEFORE - travel)}에는 출발해야 해요.` });
     }
   }
@@ -351,7 +357,13 @@ function _checkDay(g, di) {
   if (acts.some((a, ai) => items[ai].some(x => x.text.startsWith('중복')))) {
     list.push({ lvl: 'warn', text: '같은 장소가 두 번 이상 들어 있어요. 한 곳을 바꿔 보세요.' });
   }
-  // 6) 늦은 시간
+  // 6) 자정 넘김 · 늦은 시간
+  acts.forEach((a, ai) => {
+    if (a.pastMidnight && !_isFlight(a)) {
+      items[ai].push({ lvl: 'warn', text: '자정을 넘겨요' });
+      list.push({ lvl: 'warn', ai, fix: 'drop', text: `${_short(a.name)} — 앞 일정을 지키면 자정을 넘겨 다음 날이 돼요. 빼거나 다른 날로 옮겨 주세요.` });
+    }
+  });
   acts.forEach((a, ai) => {
     if (_timeToMin(a.time) >= 23 * 60 && !_isFlight(a) && a.category !== '숙박') items[ai].push({ lvl: 'check', text: '늦은 시간 — 영업 여부 확인' });
   });
@@ -370,6 +382,14 @@ function _checkDay(g, di) {
     list.push({ lvl: 'check', text: '위치를 모르는 장소는 이동 시간을 20분으로 가정했어요. 이동 시간은 직선거리 기준 추정이에요.' });
   }
   return { items, list };
+}
+
+/** 받침에 맞는 조사 — _josa('아키하바라', '을', '를') → '아키하바라를' */
+function _josa(word, withBatchim, without) {
+  const w = String(word || '');
+  const c = w.charCodeAt(w.length - 1);
+  if (c >= 0xAC00 && c <= 0xD7A3) return w + (((c - 0xAC00) % 28) ? withBatchim : without);
+  return w + without;   // 한글이 아니면 받침 없는 쪽(을/를 → 를)
 }
 
 function _short(name) {
@@ -400,7 +420,8 @@ function _renderDayChecks(g, check) {
   if (!warn.length && !need.length) parts.push(el('ul', { class: 'dc-list' }, [el('li', { class: 'dc-ok' }, '시간 순서와 이동 시간에 문제가 없어요.')]));
   if (warn.length) {
     parts.push(el('p', { class: 'dc-group dc-group--warn' }, `해결 필요 ${warn.length}`));
-    parts.push(el('ul', { class: 'dc-list' }, warn.map(x => el('li', { class: 'dc-warn' }, jump(x)))));
+    parts.push(el('ul', { class: 'dc-list' }, warn.map(x => el('li', { class: 'dc-warn' }, [jump(x),
+      x.fix === 'drop' ? el('button', { type: 'button', class: 'btn btn-soft dc-drop', onclick: () => _dropForDeparture(activeDay, x.ai) }, '이 장소 빼기') : null]))));
     if (warn.some(x => x.fix === 'time')) {
       parts.push(el('button', { type: 'button', class: 'btn btn-soft dc-fix', onclick: () => _fixDayTimes(activeDay) }, '시간 다시 맞추기'));
     }
@@ -418,6 +439,18 @@ function _renderDayChecks(g, check) {
     btn.classList.toggle('is-warn', warn.length > 0);
     btn.setAttribute('aria-expanded', String(checksOpen));
   }
+}
+
+/** 출국 준비 시간을 위해 장소 하나를 뺀다 — 고정한 장소면 한 번 더 묻는다. */
+function _dropForDeparture(di, ai) {
+  const day = appState.generated?.days?.[di];
+  const a = day?.activities?.[ai];
+  if (!a) return;
+  if (!confirm(`${_josa(a.name, '을', '를')} 이 날 일정에서 뺄까요?${a.pinned ? '\n고정한 장소예요.' : ''}`)) return;
+  day.activities.splice(ai, 1);
+  _persist();
+  renderSchedule();
+  showToast(`${_josa(_short(a.name), '을', '를')} 뺐어요 · 점검 결과를 다시 확인해 주세요`);
 }
 
 /** 점검에서 찾은 시간 문제를 고친다 — 항공편은 그대로, 다른 장소는 순서를 지키며 뒤로만 민다. */
@@ -593,15 +626,20 @@ function _toggleVisited(di, ai) {
   showToast(a.visited ? `‘${_short(a.name)}’ 다녀왔어요` : '다녀옴 표시를 지웠어요');
 }
 
+/** 일정의 현지 시간대 — 예전 일정은 도시로 찾는다. */
+function _tripTz(g) { return g.timeZone || timeZoneFor(g.city, g.country); }
+
 function _renderNowNext(g) {
   const box = $('#nowNext');
   if (!box) return;
-  const today = _todayIso();
-  const di = g.days.findIndex(d => d.date === today);
-  if (di < 0 || g.sharedView) { box.hidden = true; return; }
+  // '지금'은 여행지 현지 시각으로 판단한다(휴대폰이 한국 시간이어도).
+  const tz = _tripTz(g);
+  const now = nowIn(tz);
+  const di = g.days.findIndex(d => d.date === now.iso);
+  if (di < 0 || g.sharedView) { box.hidden = true; box.replaceChildren(); return; }
   const acts = g.days[di].activities;
-  const nowD = new Date();
-  const nowMin = nowD.getHours() * 60 + nowD.getMinutes();
+  if (!acts?.length) { box.hidden = true; box.replaceChildren(); return; }
+  const nowMin = now.min;
   let cur = -1;
   acts.forEach((a, i) => { if (_timeToMin(a.time) <= nowMin) cur = i; });
   const next = acts.findIndex((a, i) => i > cur && !a.visited);
@@ -620,7 +658,7 @@ function _renderNowNext(g) {
   if (activeDay !== di) actions.push(el('button', { type: 'button', class: 'btn-text', onclick: () => { activeDay = di; renderSchedule(); } }, `${di + 1}일차 일정 보기`));
   const done = acts.filter(a => a.visited).length;
   box.replaceChildren(
-    el('p', { class: 'nn-head' }, [el('strong', {}, `여행 중 · ${di + 1}일차`), ` · 다녀온 곳 ${done}/${acts.length} · ${String(nowD.getHours()).padStart(2, '0')}:${String(nowD.getMinutes()).padStart(2, '0')} 기준`]),
+    el('p', { class: 'nn-head' }, [el('strong', {}, `여행 중 · ${di + 1}일차`), ` · 다녀온 곳 ${done}/${acts.length} · 현지 ${now.hhmm} 기준`]),
     ...rows,
     actions.length ? el('div', { class: 'nn-actions' }, actions) : null,
   );
@@ -1260,8 +1298,10 @@ function _recomputeDayTimes(day, { keepLater = false } = {}) {
     if (!prev) need = own;
     else if (isArr(prev)) need = _flightArrMin(prev) + (a.category === '숙박' ? _ARRIVE_TO_HOTEL : _ARRIVE_TO_CITY);
     else need = _timeToMin(prev.time) + _stayMinutes(prev) + _travelMinutes(prev, a);
-    const t = keepLater ? Math.max(own, need) : (prev ? need : own);
-    a.time = _minToTime(up5(t));
+    const t = up5(keepLater ? Math.max(own, need) : (prev ? need : own));
+    // 시각은 하루 안(00:00~23:59)으로만 적는다 — 넘어가면 표시해 두고 점검에서 알린다.
+    if (t >= 24 * 60) a.pastMidnight = true; else delete a.pastMidnight;
+    a.time = _minToTime(t);
     prev = a;
   }
 }

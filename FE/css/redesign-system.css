@@ -601,3 +601,12 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus, h3[tabindex="-1"]:focus, .page
 .day-row .day-chip { flex: 0 0 auto; min-height: 44px; }
 .day-sub { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
 .day-sub-cost { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--c-text-soft); font-variant-numeric: tabular-nums; }
+
+/* 모션 감소: 도시 목록은 흐르지 않고 줄바꿈 — 복제 묶음은 숨긴다 */
+@media (prefers-reduced-motion: reduce) {
+  .city-marquee-track { animation: none !important; transform: none !important; flex-wrap: wrap; width: auto !important; gap: 8px; }
+  .city-marquee-group[aria-hidden="true"] { display: none !important; }
+  .city-marquee-group { flex-wrap: wrap; }
+  .city-marquee { mask-image: none !important; -webkit-mask-image: none !important; }
+}
+.dc-drop { margin: 2px 0 6px; min-height: 44px; }

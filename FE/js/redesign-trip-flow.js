@@ -7,7 +7,7 @@
 
 import { navigate } from './redesign-navigation.js';
 import { el, $, $$, setActiveByData, setMultiActive, diffDays, showToast, formatCurrency, escapeHtml } from './redesign-ui.js';
-import { CITIES, listCountries, citiesIn, searchCities, findCity } from './redesign-cities.js';
+import { CITIES, listCountries, citiesIn, searchCities, findCity, timeZoneFor, utcOffsetMin } from './redesign-cities.js';
 import { openCalendar } from './redesign-calendar.js';
 import { api, trackEvent } from './redesign-api-adapter.js';
 
@@ -139,7 +139,7 @@ function _buildQuickDest() {
     wrap.appendChild(el('button', {
       type: 'button',
       dataset: { destQuick: d.name },
-      ariaLabel: `${d.name}을(를) 도착 도시로 선택`,
+      ariaLabel: `도착 도시로 ${d.name} 선택`,
       onclick: () => _applyCity(findCity(c => c.name === d.name), null, { from: 'quick' }),
     }, d.name));
   });
@@ -189,7 +189,7 @@ function _buildStyles() {
           const oi = other ? arr.indexOf(other) : -1;
           if (oi >= 0) {
             arr.splice(oi, 1);
-            if (hint) hint.textContent = `‘${k}’을(를) 고르면서 ‘${other}’은(는) 해제했어요.`;
+            if (hint) hint.textContent = `‘${k}’와 ‘${other}’는 함께 고를 수 없어서 ‘${other}’ 선택을 풀었어요.`;
           }
         }
         setMultiActive(wrap, 'data-style-key', arr);
@@ -209,6 +209,12 @@ const _FIELDS = {
 const _suggFocus = { origin: -1, dest: -1 };
 
 let _airportIdx = null;
+// 주요 공항 영문 이름 — 'narita', 'incheon' 으로도 찾게.
+const _AIRPORT_EN = { NRT: 'narita', HND: 'haneda', KIX: 'kansai', ITM: 'itami', ICN: 'incheon', GMP: 'gimpo', PUS: 'gimhae',
+  CJU: 'jeju', CDG: 'charles de gaulle', ORY: 'orly', LHR: 'heathrow', LGW: 'gatwick', JFK: 'john f kennedy', LGA: 'laguardia',
+  EWR: 'newark', FCO: 'fiumicino', BKK: 'suvarnabhumi', DMK: 'don mueang', TPE: 'taoyuan', TSA: 'songshan', FUK: 'fukuoka',
+  CTS: 'new chitose', OKA: 'naha', NGO: 'chubu', DPS: 'ngurah rai', SIN: 'changi', HKG: 'chek lap kok', LAX: 'los angeles' };
+
 function _airportIndex() {
   if (_airportIdx) return _airportIdx;
   const idx = [];
@@ -231,7 +237,9 @@ function _searchPlaces(query, kind) {
     const c = findCity(x => x.key === a.key);
     if (!c || seen.has(a.iata)) return;
     const byCode = a.iata.toLowerCase() === lower;
-    const byName = a.ko && compact.length >= 2 && (a.ko.startsWith(compact) || `${a.ko}공항`.startsWith(compact));
+    const en = _AIRPORT_EN[a.iata];
+    const byName = compact.length >= 2 && ((a.ko && (a.ko.startsWith(compact) || `${a.ko}공항`.startsWith(compact)))
+      || (en && lower.length >= 3 && en.startsWith(lower)));
     if (byCode || byName) { seen.add(a.iata); out.push({ c, airport: { iata: a.iata, ko: a.ko || c.name } }); }
   });
   searchCities(q, 8).forEach(c => out.push({ c }));
@@ -1543,8 +1551,14 @@ function _generateFlightInfo(t, isArrival, time) {
   const totalMin = duration + (f.route === 'transit' ? 120 : 0);
   const toMin = (hhmm) => { const [h, m] = (hhmm || '09:00').split(':').map(Number); return h * 60 + m; };
   const fmt = (m) => { m = ((m % 1440) + 1440) % 1440; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
-  const depMin = isArrival ? toMin(time) - totalMin : toMin(time);
-  const arrMin = depMin + totalMin;
+  // 출발 시각은 출발지 현지, 도착 시각은 도착지 현지 — 두 곳의 시차를 반영한다.
+  const destTz = timeZoneFor(t.cityName, t.country);
+  const originTz = timeZoneFor(t.originName || '서울', t.originCountry || '대한민국');
+  const off = (utcOffsetMin(destTz, t.startDate) ?? 0) - (utcOffsetMin(originTz, t.startDate) ?? 0);   // 도착지 - 출발지
+  // 가는 편: 도착지 기준 time 에 도착 → 출발지 기준 출발 시각.  오는 편: 도착지 기준 time 에 출발 → 출발지 기준 도착 시각.
+  const depMin = isArrival ? toMin(time) - totalMin - off : toMin(time);
+  const arrMin = isArrival ? toMin(time) : depMin + totalMin - off;
+  const dayNote = (m) => m < 0 ? ' (전날)' : m >= 1440 ? ' (다음 날)' : '';
   const hours = Math.floor(totalMin / 60);
   const mins = totalMin % 60;
   const durationStr = `${hours}시간${mins ? ' ' + mins + '분' : ''}`;
@@ -1552,7 +1566,7 @@ function _generateFlightInfo(t, isArrival, time) {
   // 앞 두 칸(표시 이름·항공사)은 실시간 항공편이 있으면 교체된다.
   const parts = ['예시 항공편', airline];
   if (routeStr) parts.push(routeStr);
-  parts.push(`출발 ${fmt(depMin)} → 도착 ${fmt(arrMin)} (예상)`);
+  parts.push(`출발 ${fmt(depMin)}${dayNote(depMin)} → 도착 ${fmt(arrMin)}${dayNote(arrMin)} (예상, 각 현지 시각)`);
   parts.push(durationStr);
   return parts.join(' · ');
 }
@@ -2646,6 +2660,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
     budget: (t.budget || 0) * 10000,
     currency,
     fx,
+    timeZone: timeZoneFor(t.cityName, t.country),   // 일정의 모든 시각은 이 시간대의 현지 시각
     people: plan.people,
     startDate: t.startDate,
     endDate: t.endDate,

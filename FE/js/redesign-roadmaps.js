@@ -302,7 +302,8 @@ function _matches(r, q) {
 }
 
 function _byPopular(a, b) {
-  return (b.likes - a.likes) || (b.createdAt || '').localeCompare(a.createdAt || '') || a.title.localeCompare(b.title, 'ko');
+  const lk = (m) => m.isSample ? 0 : (Number(m.likes) || 0);   // 예시 코스의 좋아요는 실제 수가 아니다
+  return (lk(b) - lk(a)) || (b.createdAt || '').localeCompare(a.createdAt || '') || a.title.localeCompare(b.title, 'ko');
 }
 
 function _filterAndSort(list) {
@@ -337,10 +338,11 @@ function _cardEl(m, opts = {}) {
       el('div', { class: 'rc-title' }, m.title),
       el('div', { class: 'rc-info' }, [el('span', { class: 'nowrap' }, _daysLabel(m.days)), ' · ', el('span', { class: 'nowrap' }, m.concept)]),
       opts.reason ? el('div', { class: 'rc-reason-line' }, `추천 이유 · ${opts.reason}`) : null,
-      el('div', { class: 'rc-likes' }, [
+      // 예시 코스의 좋아요 수는 실제 기록이 아니라 보여 주지 않는다(서버에 올라온 코스만 실제 수).
+      m.isSample ? null : el('div', { class: 'rc-likes' }, [
         el('span', { 'aria-hidden': 'true' }, '♥ '),
         el('span', { class: 'sr-only' }, '좋아요 '),
-        m.likes.toLocaleString('ko-KR'),
+        (Number(m.likes) || 0).toLocaleString('ko-KR'),
       ]),
     ]),
   ]);
