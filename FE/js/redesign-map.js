@@ -563,7 +563,7 @@ export function drawDayPolyline(mapInst, decodedPath) {
   if (!decodedPath?.length) return;
   polyline = new google.maps.Polyline({
     path: decodedPath,
-    strokeColor: '#FF8E5C',
+    strokeColor: '#3A6EA5',
     strokeOpacity: 0.95,
     strokeWeight: 5,
     map: mapInst,
@@ -579,7 +579,7 @@ export function drawStraightFallback(mapInst, places) {
   if (!places || places.length < 2) return;
   polyline = new google.maps.Polyline({
     path: places.map(p => ({ lat: p.lat, lng: p.lng })),
-    strokeColor: '#A78BFA',
+    strokeColor: '#8FA9C6',
     strokeOpacity: 0,                                  // outline invisible
     strokeWeight: 2,
     map: mapInst,

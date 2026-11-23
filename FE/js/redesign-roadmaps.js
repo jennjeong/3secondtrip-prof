@@ -181,7 +181,7 @@ export function initRoadmaps(state) {
   });
 }
 
-const DEFAULT_GRADIENT = 'linear-gradient(135deg, #4f6d8a 0%, #2b3440 100%)';
+const DEFAULT_GRADIENT = 'linear-gradient(135deg, #3A4652 0%, #111418 100%)';
 // 사용자가 만든 공개 로드맵의 값이 그대로 CSS 로 들어가므로 단색 그라데이션만 허용.
 const SAFE_GRADIENT = /^linear-gradient\([\w\s#%.,-]+\)$/;
 

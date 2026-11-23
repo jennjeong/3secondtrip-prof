@@ -32,12 +32,14 @@ PAGE = """<!DOCTYPE html>
 <meta property="og:title" content="{city} 여행 일정 {days}일 추천 · 3초 여행"/>
 <meta property="og:description" content="{tagline}"/>
 <meta property="og:image" content="{site}/assets/og-image.png"/>
-<link rel="icon" type="image/png" href="/assets/favicon.png"/>
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=09d"/>
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=09d"/>
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=09d"/>
 <style>
 body{{margin:0;background:#F2F4F7;color:#1D1D1F;font:16px/1.7 -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif}}
 main{{max-width:560px;margin:0 auto;padding:48px 20px}}
 h1{{font-size:28px;line-height:1.3;margin:0 0 12px}}
-a.cta{{display:block;background:#2B3440;color:#fff;text-align:center;text-decoration:none;font-weight:700;padding:14px;border-radius:14px;margin:24px 0}}
+a.cta{{display:block;background:#111418;color:#fff;text-align:center;text-decoration:none;font-weight:700;padding:14px;border-radius:14px;margin:24px 0}}
 ul{{padding-left:20px}}
 </style>
 </head>

@@ -245,7 +245,7 @@ function _renderTimeline(g) {
         costEl.appendChild(el('span', {
           class: 'schedule-price-tag',
           style: 'margin-left:6px;font-size:11px;font-weight:600;'
-               + (_isReal ? 'color:#2dbdb6;' : 'color:#929aa5;'),
+               + (_isReal ? 'color:#3A6EA5;' : 'color:#929aa5;'),
         }, _isReal ? '· 실시간' : '· 추정'));
         subEls.push(costEl);
       }
@@ -257,7 +257,7 @@ function _renderTimeline(g) {
       costEl.appendChild(el('span', {
         class: 'schedule-price-tag',
         style: 'margin-left:6px;font-size:11px;font-weight:600;'
-             + (_isReal ? 'color:#2dbdb6;' : 'color:#929aa5;'),
+             + (_isReal ? 'color:#3A6EA5;' : 'color:#929aa5;'),
       }, _isReal ? '· 실시간' : '· 추정'));
       subEls.push(costEl);
     } else if (costNumeric != null && costNumeric > 0) {
@@ -968,7 +968,7 @@ function _renderAiSummary(g) {
     style: 'margin:0 0 12px;padding:16px;background:#fafafa;border:1px solid #eaecef;border-radius:12px;',
   });
   card.appendChild(el('div', {
-    style: 'font-size:13px;font-weight:700;color:#2dbdb6;margin-bottom:8px;',
+    style: 'font-size:13px;font-weight:700;color:#3A6EA5;margin-bottom:8px;',
   }, '✨ AI 코스 요약'));
   if (g.aiSummary) {
     card.appendChild(el('p', {
@@ -986,7 +986,7 @@ function _renderAiSummary(g) {
   } else if (_aiFailed) {
     card.appendChild(el('button', {
       type: 'button', class: 'ai-sum-btn',
-      style: 'font-size:14px;font-weight:600;color:#fff;background:#2B3440;border:none;border-radius:12px;padding:10px 16px;cursor:pointer;',
+      style: 'font-size:14px;font-weight:600;color:#fff;background:#111418;border:none;border-radius:12px;padding:10px 16px;cursor:pointer;',
       onclick: _genAiSummary,
     }, '✨ AI 요약 다시 시도'));
   } else {

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<defs>
+  <radialGradient id="x-t" cx=".88" cy=".1" r=".85"><stop offset="0" stop-color="#3A6EA5" stop-opacity=".95"/><stop offset=".55" stop-color="#3A6EA5" stop-opacity=".25"/><stop offset="1" stop-color="#3A6EA5" stop-opacity="0"/></radialGradient>
+  <radialGradient id="x-b" cx=".12" cy=".95" r=".75"><stop offset="0" stop-color="#1F2A36" stop-opacity=".85"/><stop offset=".6" stop-color="#1F2A36" stop-opacity=".15"/><stop offset="1" stop-color="#1F2A36" stop-opacity="0"/></radialGradient>
+  <linearGradient id="x-r" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#DCE8F5" stop-opacity=".35"/><stop offset="1" stop-color="#DCE8F5" stop-opacity=".9"/></linearGradient>
+</defs>
+<rect width="64" height="64" rx="15" fill="#111418"/>
+<rect width="64" height="64" rx="15" fill="url(#x-b)"/>
+<rect width="64" height="64" rx="15" fill="url(#x-t)"/>
+<rect x=".75" y=".75" width="62.5" height="62.5" rx="14.25" fill="none" stroke="#FFFFFF" stroke-opacity=".08" stroke-width="1.5"/>
+<path d="M15 49C31 49 44 38 49 15" fill="none" stroke="url(#x-r)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="0.5 5.5"/>
+<circle cx="15" cy="49" r="4" fill="none" stroke="#DCE8F5" stroke-width="2.4"/>
+<circle cx="49" cy="15" r="4.2" fill="#DCE8F5"/>
+<circle cx="37.6" cy="35.2" r="8.5" fill="#DCE8F5" fill-opacity=".14"/>
+<circle cx="37.6" cy="35.2" r="5.2" fill="#DCE8F5"/>
+</svg>

@@ -99,13 +99,13 @@ img, svg, video { max-width: 100%; height: auto; }
 /* ===== DARK MODE OPT-IN (set via Settings sheet) ===== */
 @media (prefers-color-scheme: dark) {
   :root.allow-dark {
-    --c-bg:           #14181E;
-    --c-surface:      #1C2128;
-    --c-surface-2:    #242A32;
-    --c-border:       #313842;
-    --c-divider:      #2A3039;
-    --c-text:         #F3F5F8;
-    --c-text-soft:    #AEB5BF;
-    --c-text-mute:    #7D8590;
+    --c-bg:           #111418;
+    --c-surface:      #1A1E24;
+    --c-surface-2:    #22272E;
+    --c-border:       #2E343C;
+    --c-divider:      #262B32;
+    --c-text:         #EEF2F6;
+    --c-text-soft:    #A9B1BB;
+    --c-text-mute:    #7A828C;
   }
 }

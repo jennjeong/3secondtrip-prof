@@ -119,7 +119,7 @@ function _roadmapCard(r) {
   return el('button', {
     type: 'button',
     class: 'roadmap-card',
-    style: { background: r.gradient || 'linear-gradient(135deg,#a18cd1 0%,#fbc2eb 100%)' },
+    style: { background: r.gradient || 'linear-gradient(135deg,#3A4652 0%,#111418 100%)' },
     dataset: { roadmapId: r.id },
   }, [
     el('div', { class: 'rc-top' }, [

@@ -5,7 +5,7 @@
  * 움직임 원칙 — 난잡해지지 않게 지킨다.
  *  1. 계속 움직이는 것은 홈 대표 영역과 도시 이름 띠, 만드는 중 화면뿐이다.
  *  2. 나머지는 화면이 열리거나 누르거나 스크롤할 때 한 번만 움직인다.
- *  3. 강조색은 파랑 하나만 쓴다.  (혼잡도 같은 상태 표시는 예외)
+ *  3. 강조색은 흑연색 위 하늘빛(--c-blue) 하나만 쓴다.  (혼잡도 같은 상태 표시는 예외)
  *  4. 움직임을 줄이는 기기 설정에서는 모두 멈춘다.
  */
 
@@ -19,15 +19,15 @@
 .hero-aurora.a1 {
   width: 320px; height: 320px;
   right: -90px; top: -120px;
-  background: #2f7fd6;
-  opacity: .72;
+  background: #3A6EA5;
+  opacity: .62;
   animation: aurora-a 14s ease-in-out infinite alternate;
 }
 .hero-aurora.a2 {
   width: 280px; height: 280px;
   right: 60px; bottom: -170px;
-  background: #1fa59a;
-  opacity: .55;
+  background: #2A3A4D;
+  opacity: .7;
   animation: aurora-b 18s ease-in-out infinite alternate;
 }
 @keyframes aurora-a { to { transform: translate3d(-70px, 46px, 0) scale(1.14); } }
@@ -36,14 +36,15 @@
 /* ===== 히어로: 비행 경로 ===== */
 .hero-route { position: absolute; right: 0; bottom: 0; width: 150px; height: 210px; }
 .hero-route-line {
-  stroke: rgba(255,255,255,.34);
+  stroke: rgba(220,232,245,.4);
   stroke-width: 1.5;
   stroke-dasharray: 3 7;
   stroke-linecap: round;
 }
-.hero-route-pin { fill: rgba(255,255,255,.7); }
+.hero-route-pin { fill: #DCE8F5; }
+.hero-route-start { fill: none; stroke: #DCE8F5; stroke-width: 1.8; }
 .hero-route-dot {
-  fill: #fff;
+  fill: #DCE8F5;
   offset-path: path("M10 188 C80 188 136 130 124 16");
   animation: route-fly 7s cubic-bezier(.45, 0, .55, 1) infinite;
 }
@@ -78,7 +79,7 @@
   position: absolute;
   top: 0; bottom: 0; left: -60%;
   width: 40%;
-  background: linear-gradient(100deg, transparent, rgba(59,130,246,.28), transparent);
+  background: linear-gradient(100deg, transparent, rgba(58,110,165,.24), transparent);
   transform: skewX(-16deg);
   animation: cta-shine 1.2s .9s ease-in-out both;
 }
@@ -266,9 +267,9 @@
   justify-content: center;
   gap: 10px;
   padding: 24px;
-  background: radial-gradient(70% 50% at 70% 20%, rgba(47,127,214,.5), transparent),
-              radial-gradient(60% 45% at 30% 85%, rgba(31,165,154,.38), transparent),
-              #101a24;
+  background: radial-gradient(70% 50% at 70% 20%, rgba(58,110,165,.45), transparent),
+              radial-gradient(60% 45% at 30% 85%, rgba(42,58,77,.6), transparent),
+              #111418;
   color: #fff;
   text-align: center;
 }
@@ -289,7 +290,7 @@
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -.02em;
-  background: linear-gradient(100deg, #fff 40%, #8fc0ff 50%, #fff 60%) 0 0 / 220% 100%;
+  background: linear-gradient(100deg, #fff 40%, #A9C4E2 50%, #fff 60%) 0 0 / 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

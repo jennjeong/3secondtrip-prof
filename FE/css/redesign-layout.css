@@ -4,42 +4,42 @@
  */
 
 :root {
-  /* Brand — 슬레이트(무채색) 미니멀: 사진이 주인공, 버튼·강조는 짙은 차콜 */
-  --c-primary:        #2B3440;
-  --c-primary-strong: #1B2330;
-  --c-accent:         #3E4A5A;
-  --c-mint:           #6EE7B7;
-  --c-sky:            #93C5FD;
-  --c-blue:           #3B82F6;   /* 로고의 숫자 3 색 — 강조에만 쓴다 */
+  /* Brand — 그래파이트: 흑연색 바탕에 은은한 하늘빛 한 줄기 (앱 아이콘 09D) */
+  --c-primary:        #1F242B;
+  --c-primary-strong: #111418;
+  --c-accent:         #3A4652;
+  --c-mint:           #A9C4E2;
+  --c-sky:            #DCE8F5;
+  --c-blue:           #3A6EA5;   /* 로고의 숫자 3 색 — 강조에만 쓴다 */
 
   /* Surface — 쿨 뉴트럴(사진의 청록과 어우러지게, 따뜻한 크림 캐스트 제거) */
-  --c-bg:             #F7F8FB;
+  --c-bg:             #F5F6F8;
   --c-surface:        #FFFFFF;
-  --c-surface-2:      #F2F3F7;
-  --c-border:         #E4E6EC;
-  --c-divider:        #ECEEF2;
+  --c-surface-2:      #EFF1F4;
+  --c-border:         #E2E5EA;
+  --c-divider:        #EAEDF1;
 
   /* Text */
-  --c-text:           #1D1D1F;
-  --c-text-soft:      #6B6B70;
-  --c-text-mute:      #8A8F98;
+  --c-text:           #15181D;
+  --c-text-soft:      #5F6670;
+  --c-text-mute:      #8B929B;
 
   /* States */
-  --c-focus:          #2B3440;
+  --c-focus:          #3A6EA5;
   --c-danger:         #EF4444;
   --c-success:        #10B981;
 
   /* Gradients */
-  /* 사진 로딩 전 플레이스홀더 — 세련된 딥 쿨톤(여행 무드, 붉은톤 배제) */
-  --g-hero:    linear-gradient(135deg, #1b3a4b 0%, #2c6e7f 100%);
-  --g-tokyo:   linear-gradient(135deg, #3a6073 0%, #16222a 100%);
-  --g-paris:   linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-  --g-jeju:    linear-gradient(135deg, #43c6ac 0%, #1a7f6b 100%);
-  --g-osaka:   linear-gradient(135deg, #2c7a7b 0%, #1a4a4a 100%);
-  --g-bangkok: linear-gradient(135deg, #1c92d2 0%, #1f5f8b 100%);
-  --g-seoul:   linear-gradient(135deg, #5b6a9a 0%, #2b2f57 100%);
-  --g-newyork: linear-gradient(135deg, #3e5151 0%, #1b2a3a 100%);
-  --g-sydney:  linear-gradient(135deg, #2193b0 0%, #135b73 100%);
+  /* 사진 로딩 전 플레이스홀더 — 흑연색 위에 도시마다 살짝 다른 빛 (채도를 낮춰 아이콘과 맞춤) */
+  --g-hero:    linear-gradient(135deg, #111418 0%, #1F2A36 100%);
+  --g-tokyo:   linear-gradient(135deg, #3B4A57 0%, #14181D 100%);
+  --g-paris:   linear-gradient(135deg, #46597A 0%, #151A24 100%);
+  --g-jeju:    linear-gradient(135deg, #3F6A67 0%, #131D1D 100%);
+  --g-osaka:   linear-gradient(135deg, #3E5C61 0%, #141B1D 100%);
+  --g-bangkok: linear-gradient(135deg, #3A6383 0%, #141C25 100%);
+  --g-seoul:   linear-gradient(135deg, #4D5573 0%, #171A26 100%);
+  --g-newyork: linear-gradient(135deg, #434C52 0%, #121518 100%);
+  --g-sydney:  linear-gradient(135deg, #3A6779 0%, #121B21 100%);
 
   /* Sizes */
   --topbar-h: 50px;   /* base (mobile); grows per breakpoint in redesign-responsive.css */
@@ -281,7 +281,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 20px rgba(20,30,45,.20), 0 0 0 4px var(--c-bg);
+  box-shadow: 0 8px 20px rgba(17,20,24,.22), 0 0 0 4px var(--c-bg);
   transition: transform .18s ease;
 }
 .tab-fab-button:active { transform: scale(.94); }
