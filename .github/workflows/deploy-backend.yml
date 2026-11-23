@@ -1,0 +1,38 @@
+# main 에 백엔드(BE/) 변경이 올라오면 Render 에 배포를 요청한다.
+# Render 대시보드 → 서비스 → Settings → Deploy Hook 의 URL 을
+# GitHub 저장소 Settings → Secrets → Actions 에 RENDER_DEPLOY_HOOK 으로 넣어 두어야 한다.
+name: Deploy backend to Render
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "BE/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: render-backend-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Trigger Render deploy
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK secret is not set. Add it under Settings → Secrets → Actions."
+            exit 1
+          fi
+          # 커밋을 지정해 이 푸시의 코드가 배포되게 한다. URL 은 로그에 남기지 않는다.
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${HOOK}&ref=${GITHUB_SHA}")
+          echo "Render responded with HTTP $code"
+          [ "$code" -ge 200 ] && [ "$code" -lt 300 ]
+
