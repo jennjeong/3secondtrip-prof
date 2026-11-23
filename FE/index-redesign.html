@@ -1392,6 +1392,48 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <p class="setting-note">한국어 · 다른 언어는 아직 번역이 없어 준비 중이에요.</p>
         </div>
 
+        <div id="accountSettings" hidden>
+          <button type="button" class="setting-row" id="settingPw" aria-expanded="false" aria-controls="pwPanel">
+            <span>비밀번호 변경</span><span class="setting-arrow">›</span>
+          </button>
+          <form class="reset-panel" id="pwPanel" hidden novalidate>
+            <p class="reset-lead">비밀번호를 바꾸면 다른 기기에서는 모두 로그아웃돼요. 이 기기는 로그인 상태가 유지돼요.</p>
+            <div class="form-row">
+              <label class="form-label" for="pwCurrent">현재 비밀번호</label>
+              <input class="form-input" type="password" id="pwCurrent" autocomplete="current-password"/>
+            </div>
+            <div class="form-row">
+              <label class="form-label" for="pwNew">새 비밀번호</label>
+              <input class="form-input" type="password" id="pwNew" autocomplete="new-password" placeholder="영문·숫자 포함 8자 이상"/>
+            </div>
+            <div class="form-row">
+              <label class="form-label" for="pwNew2">새 비밀번호 확인</label>
+              <input class="form-input" type="password" id="pwNew2" autocomplete="new-password"/>
+            </div>
+            <p class="form-hint" id="pwMsg" role="status" aria-live="polite"></p>
+            <div class="reset-actions">
+              <button type="button" class="btn btn-ghost" id="pwCancel">취소</button>
+              <button type="submit" class="btn btn-primary" id="pwSave">변경</button>
+            </div>
+          </form>
+          <p class="setting-note setting-row" id="pwSocialNote" hidden>소셜 로그인 계정이라 비밀번호가 없어요. 가입한 서비스에서 관리해 주세요.</p>
+          <button type="button" class="setting-row" id="settingLogoutAll" aria-expanded="false" aria-controls="logoutAllPanel">
+            <span>모든 기기에서 로그아웃</span><span class="setting-arrow">›</span>
+          </button>
+          <div class="reset-panel" id="logoutAllPanel" hidden>
+            <p class="reset-lead">이 기기를 포함해 이 계정으로 로그인한 모든 기기에서 로그아웃해요.</p>
+            <ul class="reset-list">
+              <li>계정에 저장한 일정·후기는 그대로 남아요.</li>
+              <li>이 기기에서 만들던 일정도 그대로 있어요.</li>
+              <li>다시 쓰려면 각 기기에서 다시 로그인해야 해요.</li>
+            </ul>
+            <p class="form-hint" id="logoutAllMsg" role="status" aria-live="polite"></p>
+            <div class="reset-actions">
+              <button type="button" class="btn btn-ghost" id="logoutAllCancel">취소</button>
+              <button type="button" class="btn btn-danger" id="logoutAllConfirm">모두 로그아웃</button>
+            </div>
+          </div>
+        </div>
         <button type="button" class="setting-row" data-my-nav="feedback">
           <span>피드백 보내기</span><span class="setting-arrow">›</span>
         </button>

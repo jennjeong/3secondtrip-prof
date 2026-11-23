@@ -2,14 +2,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.password import verify_password
+from app.core.password import hash_password, verify_password
 from app.core.rate_limit import RateLimiter
 from app.core.security import create_access_token
 from app.db.database import get_db
 from app.models.user import User
 from app.routers.dependencies import get_current_user
 from app.schemas.user_schema import (
-    PasswordResetConfirm, PasswordResetRequest,
+    PasswordChangeRequest, PasswordResetConfirm, PasswordResetRequest,
     PasswordSignupRequest, PasswordLoginRequest,
     SignupResponse, CheckDuplicateResponse, UserPublic, UserUpdateRequest,
 )
@@ -65,6 +65,34 @@ def password_reset_request(payload: PasswordResetRequest, db: Session = Depends(
 def password_reset_confirm(payload: PasswordResetConfirm, db: Session = Depends(get_db)):
     if not password_reset_service.confirm_reset(db, payload.token, payload.password):
         raise HTTPException(status_code=400, detail="링크가 만료되었거나 이미 사용되었어요. 다시 요청해 주세요.")
+    return {"ok": True}
+
+
+_change_limit = RateLimiter(per_ip=5, total=200, window_seconds=600)
+
+
+@router.post("/me/password", dependencies=[Depends(_change_limit)])
+def change_password(payload: PasswordChangeRequest, current: User = Depends(get_current_user),
+                    db: Session = Depends(get_db)):
+    """로그인한 상태에서 비밀번호 변경.  다른 기기의 로그인은 모두 끊고,
+    지금 기기는 새 토큰으로 로그인 상태를 유지한다."""
+    if current.provider != "local" or not current.password_hash:
+        raise HTTPException(status_code=400, detail="소셜 로그인 계정은 비밀번호가 없어요. 가입한 서비스에서 관리해 주세요.")
+    if not verify_password(payload.current_password, current.password_hash):
+        raise HTTPException(status_code=400, detail="현재 비밀번호가 올바르지 않아요.")
+    if verify_password(payload.new_password, current.password_hash):
+        raise HTTPException(status_code=400, detail="지금 쓰는 비밀번호와 다른 비밀번호를 정해 주세요.")
+    current.password_hash = hash_password(payload.new_password)
+    current.token_version = int(current.token_version or 0) + 1
+    db.commit()
+    return {"ok": True, "access_token": create_access_token(user_id=current.id, token_version=current.token_version)}
+
+
+@router.post("/me/logout-all")
+def logout_all(current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """이 기기를 포함해 모든 기기의 로그인을 끊는다."""
+    current.token_version = int(current.token_version or 0) + 1
+    db.commit()
     return {"ok": True}
 
 

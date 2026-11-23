@@ -6,6 +6,8 @@
  */
 
 import { $, $$, el, showToast } from './redesign-ui.js';
+import { api, setAccessToken } from './redesign-api-adapter.js';
+import { signOutLocally } from './redesign-auth.js';
 
 const THEME_KEY = 'tst_theme_v1';
 const OLD_DARK_KEY = 'tst_dark_v1';
@@ -115,6 +117,71 @@ function _doReset() {
   } catch (e) { showToast('지우지 못했어요. 브라우저 설정에서 사이트 데이터를 지워 주세요'); }
 }
 
+/* ============ 계정: 비밀번호 변경 · 모든 기기에서 로그아웃 ============ */
+function _paintAccount() {
+  const me = appState?.currentUser;
+  const box = $('#accountSettings');
+  if (!box) return;
+  box.hidden = !me;
+  if (!me) return;
+  const local = me.provider === 'local';
+  $('#settingPw').hidden = !local;
+  $('#pwSocialNote').hidden = local;
+  _togglePanel('pwPanel', 'settingPw', false);
+  _togglePanel('logoutAllPanel', 'settingLogoutAll', false);
+}
+
+function _togglePanel(panelId, btnId, open) {
+  const panel = $('#' + panelId), btn = $('#' + btnId);
+  if (!panel) return;
+  panel.hidden = !open;
+  btn?.setAttribute('aria-expanded', String(open));
+}
+
+function _errText(e, fallback) {
+  const d = e?.body?.detail;
+  if (Array.isArray(d) && d[0]?.msg) return d[0].msg.replace(/^Value error,\s*/, '');
+  if (typeof d === 'string' && d !== 'token_revoked') return d;
+  if (e?.status === 429) return '시도가 너무 많아요. 10분 뒤 다시 해 주세요.';
+  if (e?.status === 401) return '로그인이 만료됐어요. 다시 로그인해 주세요.';
+  return fallback;
+}
+
+async function _changePassword(ev) {
+  ev?.preventDefault();
+  const msg = $('#pwMsg');
+  const cur = $('#pwCurrent').value, nw = $('#pwNew').value, nw2 = $('#pwNew2').value;
+  if (!cur) { msg.textContent = '현재 비밀번호를 입력해 주세요.'; $('#pwCurrent').focus(); return; }
+  if (nw.length < 8 || !/(?=.*[A-Za-z])(?=.*\d)/.test(nw)) { msg.textContent = '새 비밀번호는 영문과 숫자를 모두 넣어 8자 이상으로 정해 주세요.'; $('#pwNew').focus(); return; }
+  if (nw !== nw2) { msg.textContent = '새 비밀번호 두 칸이 달라요.'; $('#pwNew2').focus(); return; }
+  const btn = $('#pwSave'); btn.disabled = true;
+  try {
+    const res = await api.changePassword(cur, nw);
+    if (res?.access_token) setAccessToken(res.access_token);   // 이 기기는 로그인 유지
+    ['#pwCurrent', '#pwNew', '#pwNew2'].forEach(s => { $(s).value = ''; });
+    msg.textContent = '';
+    _togglePanel('pwPanel', 'settingPw', false);
+    $('#settingPw')?.focus();
+    showToast('비밀번호를 바꿨어요 · 다른 기기에서는 모두 로그아웃됐어요', 3600);
+  } catch (e) {
+    msg.textContent = _errText(e, '비밀번호를 바꾸지 못했어요. 잠시 뒤 다시 시도해 주세요.');
+    if (e?.status === 400 && /현재 비밀번호/.test(msg.textContent)) $('#pwCurrent').focus();
+  } finally { btn.disabled = false; }
+}
+
+async function _logoutAll() {
+  const msg = $('#logoutAllMsg');
+  const btn = $('#logoutAllConfirm'); btn.disabled = true;
+  try {
+    await api.logoutAll();
+    _togglePanel('logoutAllPanel', 'settingLogoutAll', false);
+    closeSettings();
+    signOutLocally('모든 기기에서 로그아웃했어요. 이 기기에서 만들던 일정은 그대로 있어요');
+  } catch (e) {
+    msg.textContent = _errText(e, '로그아웃하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.');
+  } finally { btn.disabled = false; }
+}
+
 /* ============ 시트 ============ */
 export function initSettings(state) {
   appState = state || appState;
@@ -141,12 +208,29 @@ export function initSettings(state) {
   $('#settingReset')?.addEventListener('click', () => ($('#resetPanel')?.hidden ? _openReset() : _closeReset()));
   $('#resetCancel')?.addEventListener('click', _closeReset);
   $('#resetConfirm')?.addEventListener('click', _doReset);
+
+  $('#settingPw')?.addEventListener('click', () => {
+    const open = $('#pwPanel').hidden;
+    _togglePanel('pwPanel', 'settingPw', open);
+    if (open) { $('#pwMsg').textContent = ''; $('#pwCurrent')?.focus(); }
+  });
+  $('#pwCancel')?.addEventListener('click', () => { _togglePanel('pwPanel', 'settingPw', false); $('#settingPw')?.focus(); });
+  $('#pwPanel')?.addEventListener('submit', _changePassword);
+  $('#settingLogoutAll')?.addEventListener('click', () => {
+    const open = $('#logoutAllPanel').hidden;
+    _togglePanel('logoutAllPanel', 'settingLogoutAll', open);
+    if (open) { $('#logoutAllMsg').textContent = ''; $('#logoutAllCancel')?.focus(); }
+  });
+  $('#logoutAllCancel')?.addEventListener('click', () => { _togglePanel('logoutAllPanel', 'settingLogoutAll', false); $('#settingLogoutAll')?.focus(); });
+  $('#logoutAllConfirm')?.addEventListener('click', _logoutAll);
+  document.addEventListener('redesign:auth-ready', _paintAccount);
 }
 
 export function openSettings() {
   const bd = $('#settingsBackdrop'); const sh = $('#settingsSheet');
   if (!bd || !sh) return;
   _paintNoti();
+  _paintAccount();
   applyTheme();
   const panel = $('#resetPanel'); if (panel) panel.hidden = true;
   bd.hidden = false; sh.hidden = false;

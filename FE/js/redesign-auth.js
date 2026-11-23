@@ -162,6 +162,15 @@ export async function refreshCurrentUser() {
   }
 }
 
+/** 서버 호출 없이 이 기기의 로그인 상태만 지운다(모든 기기 로그아웃 뒤 등). */
+export function signOutLocally(message) {
+  clearAccessToken();
+  appState.currentUser = null;
+  _renderProfile();
+  document.dispatchEvent(new CustomEvent('redesign:auth-ready'));
+  if (message) showToast(message, 3600);
+}
+
 async function _logout() {
   try { await api.logout(); } catch (_) {}
   clearAccessToken();

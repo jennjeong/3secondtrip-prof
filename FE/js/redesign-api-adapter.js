@@ -221,6 +221,9 @@ export const api = {
     .then(f => ({ liveFlights: !!f.live_flights, liveHotels: !!f.live_hotels, ai: !!f.ai_summary,
                   passwordReset: !!f.password_reset, oauth: f.oauth || null, checkedAt: new Date().toISOString() }))
     .catch(() => ({ liveFlights: true, liveHotels: true, ai: true, passwordReset: false, checkedAt: null }))),
+  // 로그인한 상태에서 비밀번호 변경(다른 기기는 로그아웃) · 모든 기기에서 로그아웃
+  changePassword: (current_password, new_password) => apiRequest('/users/me/password', { method: 'POST', body: JSON.stringify({ current_password, new_password }) }),
+  logoutAll: () => apiRequest('/users/me/logout-all', { method: 'POST' }),
   // 비밀번호 재설정 — 가입 여부와 상관없이 같은 응답(202)
   requestPasswordReset: (email) => apiRequest('/users/password-reset/request', { method: 'POST', body: JSON.stringify({ email }) }),
   confirmPasswordReset: (token, password) => apiRequest('/users/password-reset/confirm', { method: 'POST', body: JSON.stringify({ token, password }) }),
