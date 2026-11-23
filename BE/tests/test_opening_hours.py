@@ -26,3 +26,11 @@ def test_closes_exactly_midnight():
 def test_open_24h():
     h = {"periods": [{"open": {"day": 0, "hour": 0, "minute": 0}}]}
     assert map_opening_periods(h) == [{"d": 0, "o": 0, "c": 1440}]
+
+
+def test_search_maps_step_free(monkeypatch):
+    """accessibilityOptions.wheelchairAccessibleEntrance → step_free (없으면 None)."""
+    import app.services.google_maps_service as g
+    src = open(g.__file__, encoding="utf-8").read()
+    assert "places.accessibilityOptions.wheelchairAccessibleEntrance" in src
+    assert '"step_free": (p.get("accessibilityOptions") or {}).get("wheelchairAccessibleEntrance")' in src

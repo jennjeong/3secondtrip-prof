@@ -6,7 +6,7 @@
  */
 
 import { $, $$, el, showToast } from './redesign-ui.js';
-import { api, setAccessToken } from './redesign-api-adapter.js';
+import { api, setAccessToken, trackEvent } from './redesign-api-adapter.js';
 import { signOutLocally } from './redesign-auth.js';
 
 const THEME_KEY = 'tst_theme_v1';
@@ -129,6 +129,8 @@ function _paintAccount() {
   $('#pwSocialNote').hidden = local;
   _togglePanel('pwPanel', 'settingPw', false);
   _togglePanel('logoutAllPanel', 'settingLogoutAll', false);
+  _togglePanel('deletePanel', 'settingDelete', false);
+  ['#delPwLabel', '#delPassword'].forEach(s => { const e = $(s); if (e) e.hidden = !local; });
 }
 
 function _togglePanel(panelId, btnId, open) {
@@ -182,6 +184,27 @@ async function _logoutAll() {
   } finally { btn.disabled = false; }
 }
 
+async function _deleteAccount(ev) {
+  ev?.preventDefault();
+  const msg = $('#deleteMsg');
+  const local = appState?.currentUser?.provider === 'local';
+  const pw = $('#delPassword').value, cf = $('#delConfirm').value.trim();
+  if (local && !pw) { msg.textContent = '비밀번호를 입력해 주세요.'; $('#delPassword').focus(); return; }
+  if (cf !== '계정 삭제') { msg.textContent = '‘계정 삭제’라고 그대로 입력해 주세요.'; $('#delConfirm').focus(); return; }
+  const btn = $('#deleteConfirm'); btn.disabled = true;
+  try {
+    await api.deleteAccount(cf, local ? pw : null);
+    $('#delPassword').value = ''; $('#delConfirm').value = '';
+    _togglePanel('deletePanel', 'settingDelete', false);
+    trackEvent('account_deleted');
+    closeSettings();
+    signOutLocally('계정을 삭제했어요. 그동안 이용해 주셔서 고마워요');
+  } catch (e) {
+    msg.textContent = _errText(e, '계정을 삭제하지 못했어요. 잠시 뒤 다시 시도해 주세요.');
+    if (/비밀번호/.test(msg.textContent)) $('#delPassword').focus();
+  } finally { btn.disabled = false; }
+}
+
 /* ============ 시트 ============ */
 export function initSettings(state) {
   appState = state || appState;
@@ -223,6 +246,13 @@ export function initSettings(state) {
   });
   $('#logoutAllCancel')?.addEventListener('click', () => { _togglePanel('logoutAllPanel', 'settingLogoutAll', false); $('#settingLogoutAll')?.focus(); });
   $('#logoutAllConfirm')?.addEventListener('click', _logoutAll);
+  $('#settingDelete')?.addEventListener('click', () => {
+    const open = $('#deletePanel').hidden;
+    _togglePanel('deletePanel', 'settingDelete', open);
+    if (open) { $('#deleteMsg').textContent = ''; ($('#delPassword').hidden ? $('#delConfirm') : $('#delPassword'))?.focus(); }
+  });
+  $('#deleteCancel')?.addEventListener('click', () => { _togglePanel('deletePanel', 'settingDelete', false); $('#settingDelete')?.focus(); });
+  $('#deletePanel')?.addEventListener('submit', _deleteAccount);
   document.addEventListener('redesign:auth-ready', _paintAccount);
 }
 

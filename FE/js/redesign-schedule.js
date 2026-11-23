@@ -384,6 +384,18 @@ function _checkDay(g, di) {
   });
   if (unknownHours) list.push({ lvl: 'check', ai: acts.findIndex(a => _OPEN_CHECK_CATS.has(a.category) && openState(a.openingPeriods, date, a.time) === 'unknown'),
     text: `${unknownHours}곳은 영업시간 정보가 없어요(문을 닫았다는 뜻은 아니에요). 가기 전에 확인해 주세요.` });
+  // 8) 계단 피하기·휠체어를 골랐을 때 — 출입구 정보
+  if ((g.needs || []).includes('stepFree')) {
+    let unknownAccess = 0;
+    acts.forEach((a, ai) => {
+      if (!_OPEN_CHECK_CATS.has(a.category)) return;
+      if (a.stepFree === false) {
+        items[ai].push({ lvl: 'warn', text: '휠체어 출입구 없음(장소 정보 기준)' });
+        list.push({ lvl: 'warn', ai, fix: 'drop', text: `${_short(a.name)} — 장소 정보에 휠체어로 들어갈 수 있는 출입구가 없다고 나와요. 다른 장소로 바꿔 주세요.` });
+      } else if (a.stepFree == null) { items[ai].push({ lvl: 'check', text: '접근성 확인 필요' }); unknownAccess++; }
+    });
+    if (unknownAccess) list.push({ lvl: 'check', text: `${unknownAccess}곳은 출입구 접근성 정보가 없어요. 가기 전에 확인해 주세요.` });
+  }
   if (acts.some(a => !_isFlight(a) && _kmBetween(a, a) == null && a.category !== '숙박')) {
     list.push({ lvl: 'check', text: '위치를 모르는 장소는 이동 시간을 20분으로 가정했어요. 이동 시간은 직선거리 기준 추정이에요.' });
   }

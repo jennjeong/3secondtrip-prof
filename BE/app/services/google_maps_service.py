@@ -133,7 +133,7 @@ async def search_places(*, query: str, language: Optional[str] = "ko",
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
         # 영업시간(regularOpeningHours)은 평점·가격대와 같은 요금 등급이라 호출 단가가 바뀌지 않는다.
-        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.rating,places.userRatingCount,places.priceLevel,places.regularOpeningHours.periods",
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.rating,places.userRatingCount,places.priceLevel,places.regularOpeningHours.periods,places.accessibilityOptions.wheelchairAccessibleEntrance",
     }
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
@@ -172,6 +172,8 @@ async def search_places(*, query: str, language: Optional[str] = "ko",
             "price_level": p.get("priceLevel"),
             # 주간 영업시간 — 없으면 None(‘모름’이지 ‘닫음’이 아니다)
             "opening_periods": map_opening_periods(p.get("regularOpeningHours")),
+            # 휠체어로 들어갈 수 있는 출입구 — True/False, 모르면 None
+            "step_free": (p.get("accessibilityOptions") or {}).get("wheelchairAccessibleEntrance"),
         })
     return out
 

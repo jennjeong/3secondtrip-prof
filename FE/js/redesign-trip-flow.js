@@ -210,8 +210,71 @@ function _initNeeds() {
     b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on));
     _saveDraft();
   });
-  $('#mustVisit')?.addEventListener('input', (e) => { appState.trip.mustVisit = e.target.value; _saveDraft(); });
+  $('#mustVisit')?.addEventListener('input', (e) => {
+    const t = appState.trip;
+    t.mustVisit = e.target.value;
+    // 목록에서 빠진 이름의 확인 결과는 버린다
+    if (t.mustResolved) { const keep = new Set(_mustList(t)); Object.keys(t.mustResolved).forEach(k => { if (!keep.has(k)) delete t.mustResolved[k]; }); }
+    const box = $('#mustList'); if (box && box.childElementCount) box.textContent = '';
+    _saveDraft();
+  });
+  $('#mustResolve')?.addEventListener('click', () => { _resolveMust().finally(() => { const b = $('#mustResolve'); if (b) b.disabled = false; }); });
 }
+/** 꼭 갈 장소를 실제 장소로 찾아 고르게 한다 — 이름마다 후보 3개 + '이름만 넣기'. */
+async function _resolveMust() {
+  const t = appState.trip;
+  const box = $('#mustList');
+  const names = _mustList(t);
+  if (!box) return;
+  box.textContent = '';
+  if (!names.length) { box.textContent = '먼저 장소 이름을 적어 주세요.'; return; }
+  if (!t.cityName) { box.textContent = '1단계에서 여행지를 먼저 골라 주세요.'; return; }
+  let feats = null;
+  try { feats = await api.features(); } catch (_) { feats = null; }
+  if (feats && feats.places === false) { box.textContent = '지금은 장소 검색을 쓸 수 없어요. 이름만 넣어 일정을 만들어요.'; return; }
+  const btn = $('#mustResolve'); if (btn) btn.disabled = true;
+  box.textContent = '찾는 중…';
+  t.mustResolved = t.mustResolved && typeof t.mustResolved === 'object' ? t.mustResolved : {};
+  const rows = [];
+  for (const name of names) {
+    let cands = [];
+    try {
+      const res = await api.searchPlaces({ query: `${t.cityName} ${name}`, language_code: 'ko', language: 'ko', region: _guessRegion(t.country), max_results: 3 });
+      cands = (res?.places || []).filter(p => Number.isFinite(p.latitude)).slice(0, 3);
+    } catch (_) { cands = []; }
+    rows.push({ name, cands });
+  }
+  box.textContent = '';
+  let found = 0;
+  rows.forEach(({ name, cands }, i) => {
+    const id = `mustSel${i}`;
+    const prev = t.mustResolved[name]?.place_id;
+    if (!cands.length) {
+      delete t.mustResolved[name];
+      box.appendChild(el('p', { class: 'must-row is-miss' }, `‘${name}’ — 찾지 못했어요. 이름만 넣을게요.`));
+      return;
+    }
+    found++;
+    const sel = el('select', { id, class: 'form-input' }, [
+      ...cands.map(c => el('option', { value: c.place_id }, `${c.name}${c.address ? ' · ' + c.address.slice(0, 40) : ''}`)),
+      el('option', { value: '' }, '이름만 넣기'),
+    ]);
+    sel.value = cands.some(c => c.place_id === prev) ? prev : cands[0].place_id;
+    const apply = () => {
+      const c = cands.find(x => x.place_id === sel.value);
+      if (c) t.mustResolved[name] = { name: c.name, place_id: c.place_id, latitude: c.latitude, longitude: c.longitude, address: c.address || '', opening_periods: c.opening_periods || null, step_free: c.step_free ?? null };
+      else delete t.mustResolved[name];
+      _saveDraft();
+    };
+    sel.addEventListener('change', apply);
+    apply();
+    box.appendChild(el('div', { class: 'must-row' }, [el('label', { for: id }, `‘${name}’`), sel]));
+  });
+  trackEvent('must_visit_resolved');
+  if (btn) btn.disabled = false;
+  if (!found) showToast('찾은 장소가 없어요. 이름만 넣어 일정을 만들어요');
+}
+
 function _mustList(t) {
   return [...new Set(String(t.mustVisit || '').split(/[,，\n]/).map(s => s.trim()).filter(Boolean))].slice(0, 5);
 }
@@ -1132,6 +1195,7 @@ function _resetTripState() {
   t.concept = '';
   t.styles = [];
   t.mustVisit = '';
+  t.mustResolved = {};
   t.needs = [];
   t.budget = 0;
   t.budgetLevel = '보통';
@@ -2008,7 +2072,9 @@ function _pickUnused(candidates, usedIds, isoDate, hhmm) {
   const fresh = candidates.filter(c => !usedIds.has(c.place_id));
   const pool = fresh.length ? fresh : candidates;
   if (!isoDate) return pool[0] || null;
-  const rank = (c) => ({ open: 0, unknown: 1, closedNow: 2, closedDay: 3 })[openState(c.opening_periods, isoDate, hhmm)];
+  const stepFree = (appState?.trip?.needs || []).includes('stepFree');
+  const rank = (c) => ({ open: 0, unknown: 1, closedNow: 2, closedDay: 3 })[openState(c.opening_periods, isoDate, hhmm)] * 3
+    + (stepFree ? (c.step_free === true ? 0 : c.step_free === false ? 2 : 1) : 0);
   return [...pool].sort((a, b) => rank(a) - rank(b))[0] || null;
 }
 
@@ -2641,6 +2707,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
           address: pick.address || '',
           googleMapsQuery: pick.name,
           openingPeriods: pick.opening_periods || null,
+          stepFree: pick.step_free ?? null,
         });
       } else {
         _fallbackSlots++;
@@ -2681,8 +2748,8 @@ async function _generateScheduleInner(t, btn, startedAt) {
     trackEvent('must_visit_used');
     for (let mi = 0; mi < must.length; mi++) {
       const name = must[mi];
-      let found = null;
-      try {
+      let found = t.mustResolved?.[name] || null;
+      if (!found) try {
         const res = await _sp({ query: `${t.cityName} ${name}`, language_code: 'ko', language: 'ko', region: _guessRegion(t.country), max_results: 3, center_lat: cityCenter?.lat, center_lng: cityCenter?.lng });
         found = (res?.places || []).find(p => Number.isFinite(p.latitude)) || null;
       } catch (_) { found = null; }
@@ -2696,6 +2763,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
         latitude: found?.latitude, longitude: found?.longitude, address: found?.address || '',
         googleMapsQuery: found?.name || `${name} ${t.cityName}`,
         openingPeriods: found?.opening_periods || null,
+        stepFree: found?.step_free ?? null,
         pinned: true, mustVisit: true, sample: !found,
       };
       if (slotIdx >= 0) day.activities.splice(slotIdx, 1, item);
@@ -2760,6 +2828,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
     createdAt: new Date().toISOString(),
     companion: t.companion,
     styles: [...t.styles],
+    needs: [...(t.needs || [])],
     flight: t.flight ? { ...t.flight, airlines: [...(t.flight.airlines || [])] } : null,
     hotelPref: t.hotelP ? {
       types: [...(t.hotelP.types || [])],

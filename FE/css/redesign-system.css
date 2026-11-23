@@ -634,3 +634,17 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus, h3[tabindex="-1"]:focus, .page
 .rain-offer { display: grid; gap: 8px; margin-top: 10px; }
 .rain-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13.5px; font-weight: 600; }
 .rain-row .btn { min-height: 44px; }
+
+/* 계정 삭제 */
+.setting-danger > span:first-child { color: #B42318; font-weight: 600; }
+:root[data-theme="dark"] .setting-danger > span:first-child { color: #FDA29B; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .setting-danger > span:first-child { color: #FDA29B; } }
+#deletePanel .form-label { display: block; margin: 12px 0 6px; font-size: 14px; }
+#deletePanel .form-input { width: 100%; min-height: 44px; }
+
+/* 꼭 갈 장소 확인 */
+#mustResolve { margin-top: 8px; min-height: 44px; }
+.must-list { display: grid; gap: 10px; margin-top: 10px; font-size: 14px; }
+.must-row { display: grid; gap: 4px; min-width: 0; }
+.must-row select { width: 100%; min-height: 44px; text-overflow: ellipsis; }
+.must-row.is-miss { color: var(--text-secondary, #555); margin: 0; }

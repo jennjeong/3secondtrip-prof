@@ -96,3 +96,10 @@ class SignupResponse(BaseModel):
 class CheckDuplicateResponse(BaseModel):
     available: bool
     reason: Optional[str] = None
+
+
+class AccountDeleteRequest(BaseModel):
+    """계정 삭제 — 실수로 지우지 않게 확인 문구를 그대로 적어야 한다.
+    이메일 가입 계정은 비밀번호도 확인한다(소셜 계정은 비밀번호가 없다)."""
+    confirm: str = Field(min_length=1, max_length=20)
+    password: Optional[str] = Field(default=None, max_length=128)

@@ -416,7 +416,9 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <p class="form-hint" id="styleHint" aria-live="polite">‘여유로운 일정’과 ‘빽빽한 일정’은 둘 중 하나만 고를 수 있어요.</p>
           <h4 class="step-subh" id="mustH">꼭 갈 장소 <span class="form-label-meta">선택 · 쉼표로 구분, 최대 5곳</span></h4>
           <input class="form-input" type="text" id="mustVisit" maxlength="200" placeholder="예: 시부야 스카이, 츠키지 시장" aria-labelledby="mustH" aria-describedby="mustHint"/>
-          <p class="form-hint" id="mustHint">일정을 만들 때 먼저 넣고 고정해 둬요. 장소를 찾지 못하면 이름만 넣어요.</p>
+          <p class="form-hint" id="mustHint">일정을 만들 때 먼저 넣고 고정해 둬요. ‘장소 확인’으로 실제 장소를 골라 둘 수 있어요(안 해도 돼요).</p>
+          <button type="button" class="btn btn-soft btn-sm" id="mustResolve">장소 확인</button>
+          <div class="must-list" id="mustList" aria-live="polite"></div>
           <h4 class="step-subh" id="needsH">이동·식사 조건 <span class="form-label-meta">선택 · 여러 개 가능</span></h4>
           <div class="chip-row chip-wrap" id="needsChips" role="group" aria-labelledby="needsH">
             <button type="button" class="chip" data-need="lessWalk" aria-pressed="false">걷기 적게</button>
@@ -1454,6 +1456,27 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
               <button type="button" class="btn btn-danger" id="logoutAllConfirm">모두 로그아웃</button>
             </div>
           </div>
+          <button type="button" class="setting-row setting-danger" id="settingDelete" aria-expanded="false" aria-controls="deletePanel">
+            <span>계정 삭제</span><span class="setting-arrow">›</span>
+          </button>
+          <form class="reset-panel" id="deletePanel" hidden novalidate>
+            <p class="reset-lead">계정과 계정에 저장한 내용을 지워요. 되돌릴 수 없어요.</p>
+            <ul class="reset-list">
+              <li>지워지는 것: 저장한 일정·여행, 예약 후보, 후기, 블로그, 공개한 코스, 취향 분석</li>
+              <li>보낸 피드백은 이름 없이 남아요.</li>
+              <li>이 기기에서 만들던 일정은 남아 있어요. ‘이 기기 데이터 지우기’로 따로 지울 수 있어요.</li>
+              <li>같은 이메일로 다시 가입할 수 있어요.</li>
+            </ul>
+            <label class="form-label" for="delPassword" id="delPwLabel">비밀번호</label>
+            <input class="form-input" type="password" id="delPassword" autocomplete="current-password" maxlength="128"/>
+            <label class="form-label" for="delConfirm">확인을 위해 <strong>계정 삭제</strong>라고 입력해 주세요</label>
+            <input class="form-input" type="text" id="delConfirm" autocomplete="off" maxlength="20"/>
+            <p class="form-hint" id="deleteMsg" role="status" aria-live="polite"></p>
+            <div class="reset-actions">
+              <button type="button" class="btn btn-ghost" id="deleteCancel">취소</button>
+              <button type="submit" class="btn btn-danger" id="deleteConfirm">계정 삭제</button>
+            </div>
+          </form>
         </div>
         <button type="button" class="setting-row" data-my-nav="feedback">
           <span>피드백 보내기</span><span class="setting-arrow">›</span>

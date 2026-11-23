@@ -9,11 +9,11 @@ from app.db.database import get_db
 from app.models.user import User
 from app.routers.dependencies import get_current_user
 from app.schemas.user_schema import (
-    PasswordChangeRequest, PasswordResetConfirm, PasswordResetRequest,
+    AccountDeleteRequest, PasswordChangeRequest, PasswordResetConfirm, PasswordResetRequest,
     PasswordSignupRequest, PasswordLoginRequest,
     SignupResponse, CheckDuplicateResponse, UserPublic, UserUpdateRequest,
 )
-from app.services import password_reset_service, user_service
+from app.services import account_service, password_reset_service, user_service
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -94,6 +94,21 @@ def logout_all(current: User = Depends(get_current_user), db: Session = Depends(
     current.token_version = int(current.token_version or 0) + 1
     db.commit()
     return {"ok": True}
+
+
+@router.post("/me/delete", dependencies=[Depends(_change_limit)])
+def delete_me(payload: AccountDeleteRequest, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """계정을 지운다.  확인 문구('계정 삭제')를 그대로 적어야 하고, 이메일 가입 계정은 비밀번호도 맞아야 한다.
+    지운 뒤에는 이 계정으로 발급된 모든 로그인 토큰이 거절된다(사용자가 없으므로)."""
+    if payload.confirm.strip() != account_service.CONFIRM_TEXT:
+        raise HTTPException(status_code=400, detail=f"확인 문구 '{account_service.CONFIRM_TEXT}'를 그대로 입력해 주세요.")
+    if current.provider == "local" and current.password_hash:
+        if not payload.password or not verify_password(payload.password, current.password_hash):
+            raise HTTPException(status_code=400, detail="비밀번호가 올바르지 않아요.")
+    if current.is_admin:
+        raise HTTPException(status_code=400, detail="관리자 계정은 여기서 삭제할 수 없어요. 관리자 권한을 먼저 넘겨 주세요.")
+    counts = account_service.delete_account(db, current)
+    return {"ok": True, "deleted": counts}
 
 
 @router.get("/me", response_model=UserPublic)
