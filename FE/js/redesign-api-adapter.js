@@ -41,15 +41,61 @@ export function setAccessToken(token) {
 }
 export function clearAccessToken() { setAccessToken(null); }
 
+/* ============ 서버 깨우기 안내 ============
+ * 서버(Render 무료)는 한동안 접속이 없으면 잠들고, 첫 요청이 30~60초 걸린다.
+ *  - 요청이 3초를 넘기면 화면 위에 '서버를 깨우는 중' 안내를 띄운다.
+ *  - 읽기(GET 등)는 연결 실패·502/503/504 때 최대 약 1분 동안 다시 시도한다.
+ *  - 쓰기(POST 등)는 게이트웨이가 502/503/504 로 답했을 때만 다시 시도한다
+ *    (요청이 앱까지 가지 않았다는 뜻이라 두 번 저장될 걱정이 없다).
+ */
+const SLOW_MS = 3000;
+const RETRY_DELAYS = [2000, 3000, 5000, 8000, 10000, 12000, 15000];   // 합계 약 55초
+let slowCount = 0;
+let bannerTimer = null;
+
+function _banner() {
+  let b = document.getElementById('wakeBanner');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'wakeBanner';
+    b.className = 'wake-banner';
+    b.setAttribute('role', 'status');
+    b.setAttribute('aria-live', 'polite');
+    b.hidden = true;
+    document.body.appendChild(b);
+  }
+  return b;
+}
+function _showWaking() {
+  const b = _banner();
+  clearTimeout(bannerTimer);
+  b.classList.remove('is-error');
+  b.innerHTML = '<span class="wake-spin" aria-hidden="true"></span><span>서버를 깨우는 중이에요 · 처음 열면 최대 1분 걸릴 수 있어요</span>';
+  b.hidden = false;
+}
+function _hideWaking() {
+  if (slowCount > 0) return;
+  const b = document.getElementById('wakeBanner');
+  if (b && !b.classList.contains('is-error')) b.hidden = true;
+}
+function _showWakeFailed() {
+  const b = _banner();
+  b.classList.add('is-error');
+  b.textContent = '서버에 연결하지 못했어요. 인터넷 연결을 확인하고 잠시 뒤 다시 시도해 주세요.';
+  b.hidden = false;
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => { b.hidden = true; b.classList.remove('is-error'); }, 6000);
+}
+const _sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+/** 앱을 열자마자 조용히 서버를 깨운다(안내는 띄우지 않음). */
+export function wakeServer() {
+  if (!API_BASE_URL) return;
+  fetch(API_BASE_URL + '/health', { cache: 'no-store' }).catch(() => {});
+}
+
 /* ============ Request wrapper ============ */
-export async function apiRequest(path, opts = {}) {
-  const token = getAccessToken();
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(opts.headers || {}),
-  };
-  const url = path.startsWith('http') ? path : API_BASE_URL + path;
+async function _once(url, opts, headers) {
   let res;
   try {
     res = await fetch(url, { ...opts, headers });
@@ -68,6 +114,43 @@ export async function apiRequest(path, opts = {}) {
     throw err;
   }
   return data;
+}
+
+export async function apiRequest(path, opts = {}) {
+  const token = getAccessToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(opts.headers || {}),
+  };
+  const url = path.startsWith('http') ? path : API_BASE_URL + path;
+  const method = (opts.method || 'GET').toUpperCase();
+  const safe = method === 'GET' || method === 'HEAD';
+  const gateway = (e) => e?.status === 502 || e?.status === 503 || e?.status === 504;
+
+  let slow = false;
+  const markSlow = () => { if (slow) return; slow = true; slowCount++; _showWaking(); };   // 한 요청은 한 번만 센다
+  const slowTimer = setTimeout(markSlow, SLOW_MS);
+  try {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await _once(url, opts, headers);
+      } catch (e) {
+        // 기기 자체가 오프라인이면 기다리지 않는다(오프라인 화면·기본 코스를 바로 보여 준다).
+        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+        const retryable = !offline && (gateway(e) || (safe && e?.message === 'NETWORK_ERROR'));
+        if (!retryable || attempt >= RETRY_DELAYS.length) {
+          if (retryable || slow) _showWakeFailed();
+          throw e;
+        }
+        markSlow();
+        await _sleep(RETRY_DELAYS[attempt]);
+      }
+    }
+  } finally {
+    clearTimeout(slowTimer);
+    if (slow) { slowCount = Math.max(0, slowCount - 1); _hideWaking(); }
+  }
 }
 
 /* ============ Auth helpers ============

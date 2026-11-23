@@ -556,3 +556,14 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus, h3[tabindex="-1"]:focus, .page
 :root.allow-dark .star-row .star { color: #7A828C; }
 :root.allow-dark .star-row .star.is-on, :root.allow-dark .star-row .star.hov { color: #E8B54A; }
 }
+
+/* ===== 서버 깨우기 안내 ===== */
+.wake-banner { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-h, 64px) + env(safe-area-inset-bottom, 0px) + 24px); z-index: 9000;
+  display: flex; align-items: center; gap: 10px; max-width: min(92vw, 480px); padding: 10px 16px; border-radius: 999px;
+  background: var(--c-primary); color: var(--c-on-ink); font-size: 13.5px; font-weight: 600; line-height: 1.4; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.wake-banner[hidden] { display: none; }
+@media (min-width: 1024px) { .wake-banner { bottom: 24px; } }   /* 데스크톱은 하단 메뉴가 없다 */
+.wake-banner.is-error { background: #B42318; color: #fff; border-radius: 14px; }
+.wake-spin { flex: 0 0 auto; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: wakeSpin .8s linear infinite; }
+@keyframes wakeSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .wake-spin { animation: none; border-right-color: currentColor; opacity: .6; } }

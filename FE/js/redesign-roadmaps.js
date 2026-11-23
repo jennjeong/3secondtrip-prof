@@ -253,9 +253,26 @@ function _parseDays(data) {
 
 /** Fetch public roadmaps.  실패하거나 비어 있으면 기본 목록을 유지한다. */
 let listState = 'loading';   // loading | ok | fallback — 탐색 화면 안내에 쓴다
+function _attachSamples() {
+  roadmaps.forEach(m => {
+    if (m.plan === undefined) {           // 기본 목록(서버 연결 실패) — 예시 일정 연결
+      const s = sampleCourseFor(m.city);
+      m.plan = s?.days || null; m.cost = s?.cost || null;
+    }
+  });
+}
+
 export async function loadRoadmaps() {
   listState = 'loading';
   _paintListState();
+  // 서버가 잠들어 있으면 응답이 늦다 — 3초가 지나면 예시 코스를 먼저 보여 주고, 오면 바꾼다.
+  const early = setTimeout(() => {
+    if (listState !== 'loading') return;
+    listState = 'waking';
+    _attachSamples();
+    _paintListState();
+    renderExplore();
+  }, 3000);
   try {
     const rows = await api.getRoadmaps({ limit: 100 });
     const list = (rows || []).filter(r => r.city).map(_fromApi);
@@ -264,14 +281,11 @@ export async function loadRoadmaps() {
   } catch (e) {
     console.warn('[roadmaps] 서버 목록을 불러오지 못해 기본 목록을 표시합니다:', e?.message);
     listState = 'fallback';
+  } finally {
+    clearTimeout(early);
   }
   _paintListState();
-  roadmaps.forEach(m => {
-    if (m.plan === undefined) {           // 기본 목록(서버 연결 실패) — 예시 일정 연결
-      const s = sampleCourseFor(m.city);
-      m.plan = s?.days || null; m.cost = s?.cost || null;
-    }
-  });
+  _attachSamples();
   return roadmaps;
 }
 
@@ -429,6 +443,7 @@ function _paintListState() {
     bar.after(note);
   }
   if (listState === 'loading') { note.hidden = false; note.replaceChildren('여행 코스를 불러오는 중이에요…'); }
+  else if (listState === 'waking') { note.hidden = false; note.replaceChildren('서버를 깨우는 중이라 예시 코스를 먼저 보여 드려요. 최신 코스가 오면 바뀌어요.'); }
   else if (listState === 'fallback') {
     note.hidden = false;
     note.replaceChildren('최신 코스를 불러오지 못해 기본 예시 코스를 보여 드려요. ',

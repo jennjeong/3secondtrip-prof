@@ -1,6 +1,6 @@
 /* 3초 여행 — Redesign Main bootstrap */
 
-import { handleOAuthCallbackToken, getAccessToken } from './redesign-api-adapter.js';
+import { handleOAuthCallbackToken, getAccessToken, wakeServer } from './redesign-api-adapter.js';
 import { initNavigation, navigate, onNavChange, getCurrent } from './redesign-navigation.js';
 import { initAuth, refreshCurrentUser, handleAuthReturn, captureAuthHash } from './redesign-auth.js';
 import { initRoadmaps, renderHomeRoadmaps, renderExplore } from './redesign-roadmaps.js';
@@ -145,6 +145,7 @@ function updateDeviceClass() {
 document.addEventListener('DOMContentLoaded', async () => {
   // 1) OAuth callback — capture token before anything else
   handleOAuthCallbackToken();
+  wakeServer();        // 잠든 서버(Render 무료)를 미리 깨운다
   captureAuthHash();   // #login_error / #reset_token — 첫 화면 이동 전에 꺼내 둔다
 
   // 1.5) Device-class hint for optional behavior (CSS still owns layout)
