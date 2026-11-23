@@ -31,7 +31,7 @@ function _attachLandmarkImage(el, city, gradient) {
   const img = new Image();
   img.onload = () => {
     LANDMARK_OK.add(city);
-    const grad = gradient || 'linear-gradient(135deg, rgba(255,154,158,.85), rgba(250,208,196,.85))';
+    const grad = gradient || DEFAULT_GRADIENT;
     el.style.backgroundImage =
       `linear-gradient(to top, rgba(0,0,0,.55) 0%, rgba(0,0,0,.15) 45%, rgba(0,0,0,0) 75%), url("${url}")`;
     el.style.backgroundSize = 'cover';
@@ -183,7 +183,6 @@ export function initRoadmaps(state) {
 
 const DEFAULT_GRADIENT = 'linear-gradient(135deg, #3A4652 0%, #111418 100%)';
 // 사용자가 만든 공개 로드맵의 값이 그대로 CSS 로 들어가므로 단색 그라데이션만 허용.
-const SAFE_GRADIENT = /^linear-gradient\([\w\s#%.,-]+\)$/;
 
 /** Map an API roadmap to the card shape.  기본 목록에만 있는 tagline 은 도시로 찾아 채운다. */
 function _fromApi(r) {
@@ -197,7 +196,8 @@ function _fromApi(r) {
     days: r.days || 1,
     likes: r.likes || 0,
     tagline: known?.tagline || r.title,
-    gradient: SAFE_GRADIENT.test(r.gradient || '') ? r.gradient : DEFAULT_GRADIENT,
+    // 서버에 저장된 색 대신 사이트 팔레트(도시별 그래파이트 색)를 쓴다.
+    gradient: known?.gradient || DEFAULT_GRADIENT,
     createdAt: r.created_at || '',
   };
 }
