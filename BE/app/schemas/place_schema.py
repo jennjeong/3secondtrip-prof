@@ -24,6 +24,7 @@ class PlaceResult(BaseModel):
     user_rating_count: Optional[int] = None
     types: list[str] = Field(default_factory=list)
     price_level: Optional[str] = None     # Google Places 가격대 ($~$$$$)
+    opening_periods: Optional[list[dict]] = None   # [{d:0~6(일~토), o:분, c:분}] — 없으면 영업시간 모름
 
 
 class PlaceSearchResponse(BaseModel):

@@ -10,6 +10,7 @@ import { el, $, $$, setActiveByData, setMultiActive, diffDays, showToast, format
 import { CITIES, listCountries, citiesIn, searchCities, findCity, timeZoneFor, utcOffsetMin } from './redesign-cities.js';
 import { openCalendar } from './redesign-calendar.js';
 import { api, trackEvent } from './redesign-api-adapter.js';
+import { openState } from './redesign-hours.js';
 
 const CONCEPTS = [
   { key: '가성비',   emoji: '💰', desc: '합리적인 가격으로 알차게' },
@@ -48,6 +49,8 @@ export function initTripFlow(state) {
   _buildCountries();
   _buildConcepts();
   _buildStyles();
+  _initQuickDates();
+  _initNeeds();
   _buildQuickDest();
   _bindPlaceSearch('origin');
   _bindPlaceSearch('dest');
@@ -167,6 +170,52 @@ function _buildConcepts() {
     ]));
   });
 }
+/* ============ 빠른 날짜 · 이동·식사 조건 · 꼭 갈 장소 ============ */
+function _setDates(start, end, label) {
+  const t = appState.trip;
+  t.startDate = _isoLocal(start); t.endDate = _isoLocal(end);
+  t.days = Math.round((end - start) / 86400000) + 1;
+  _refreshDateTriggers(); _refreshDuration(); _saveDraft();
+  const e = $('#dateError'); if (e) e.hidden = true;
+  showToast(`${label}로 골랐어요 · 달력에서 바꿀 수 있어요`);
+}
+function _initQuickDates() {
+  $('#quickDates')?.addEventListener('click', (e) => {
+    const b = e.target.closest?.('[data-quick]');
+    if (!b) return;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const dow = today.getDay();                       // 0=일 ... 6=토
+    const sat = new Date(today); sat.setDate(today.getDate() + ((6 - dow + 7) % 7));
+    if (dow === 0) sat.setDate(today.getDate() + 6);   // 일요일이면 다음 토요일
+    if (b.dataset.quick === 'weekend') { const sun = new Date(sat); sun.setDate(sat.getDate() + 1); _setDates(sat, sun, '이번 주말(1박 2일)'); }
+    if (b.dataset.quick === 'nextweekend') { const s2 = new Date(sat); s2.setDate(sat.getDate() + 7); const e2 = new Date(s2); e2.setDate(s2.getDate() + 1); _setDates(s2, e2, '다음 주말(1박 2일)'); }
+    if (b.dataset.quick === 'nextmonth') {
+      const first = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      const fri = new Date(first); fri.setDate(1 + ((5 - first.getDay() + 7) % 7));
+      const sun = new Date(fri); sun.setDate(fri.getDate() + 2);
+      _setDates(fri, sun, '다음 달 첫 금~일(2박 3일)');
+    }
+  });
+}
+function _initNeeds() {
+  $('#needsChips')?.addEventListener('click', (e) => {
+    const b = e.target.closest?.('[data-need]');
+    if (!b) return;
+    const t = appState.trip;
+    t.needs = Array.isArray(t.needs) ? t.needs : [];
+    const k = b.dataset.need;
+    const i = t.needs.indexOf(k);
+    if (i >= 0) t.needs.splice(i, 1); else t.needs.push(k);
+    const on = t.needs.includes(k);
+    b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on));
+    _saveDraft();
+  });
+  $('#mustVisit')?.addEventListener('input', (e) => { appState.trip.mustVisit = e.target.value; _saveDraft(); });
+}
+function _mustList(t) {
+  return [...new Set(String(t.mustVisit || '').split(/[,，\n]/).map(s => s.trim()).filter(Boolean))].slice(0, 5);
+}
+
 function _buildStyles() {
   const wrap = $('#styleChips');
   if (!wrap) return;
@@ -1082,6 +1131,8 @@ function _resetTripState() {
   t._originText = ''; t._cityText = '';
   t.concept = '';
   t.styles = [];
+  t.mustVisit = '';
+  t.needs = [];
   t.budget = 0;
   t.budgetLevel = '보통';
   t._suggested = undefined;
@@ -1149,6 +1200,8 @@ function _applyState() {
   _syncPeopleRow();   // 복원 시 가족/단체면 인원 입력칸 + 값 복원
   if (t.concept) setActiveByData(document.getElementById('conceptGrid'), 'data-concept-key', t.concept);
   setMultiActive(document.getElementById('styleChips'), 'data-style-key', t.styles);
+  const mv = $('#mustVisit'); if (mv) mv.value = t.mustVisit || '';
+  $$('#needsChips [data-need]').forEach(b => { const on = (t.needs || []).includes(b.dataset.need); b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on)); });
   if (t.currency) $('#tripCurrency').value = t.currency;
 
   // 항공·호텔 상태 → UI 복원
@@ -1703,6 +1756,7 @@ const LEVEL_LADDER = [[null, '높음'], [null, '보통'], [null, '낮음']];
 
 function _slotTimesFor(t) {
   const styles = Array.isArray(t.styles) ? t.styles : [];
+  if ((t.needs || []).includes('lessWalk') && !styles.includes('빽빽한 일정')) return RELAXED_SLOTS;   // 걷기 적게 → 하루 장소 수를 줄인다
   if (styles.includes('빽빽한 일정')) return PACKED_SLOTS;
   if (styles.includes('여유로운 일정')) return RELAXED_SLOTS;
   return CONCEPT_SLOTS[t.concept] || SLOT_TIMES_DEFAULT;
@@ -1939,13 +1993,23 @@ function _queryFor(slot, t, level) {
   const base = _pick(SLOT_QUERIES[slot]);
   const conceptHint = CONCEPT_HINT[t.concept] || '';
   const budgetHint  = BUDGET_HINT[level || t.budgetLevel] || '';
-  return [t.cityName, conceptHint, budgetHint, base].filter(Boolean).join(' ').trim();
+  const needs = t.needs || [];
+  const cat = CATEGORY_BY_SLOT[slot];
+  const food = cat === '식사' || cat === '카페';
+  const diet = !food ? '' : needs.includes('veg') ? '채식' : needs.includes('halal') ? '할랄' : needs.includes('gluten') ? '글루텐 프리' : '';
+  const access = needs.includes('stepFree') && !food ? '휠체어 접근 가능' : '';
+  return [t.cityName, diet, access, conceptHint, budgetHint, base].filter(Boolean).join(' ').trim();
 }
 
 /** Pick the next Places result that hasn't been used today. */
-function _pickUnused(candidates, usedIds) {
-  for (const c of candidates) if (!usedIds.has(c.place_id)) return c;
-  return candidates[0] || null;
+/** 아직 안 쓴 후보 중에서, 그날 그 시각에 문을 여는 곳을 먼저 고른다.
+ *  영업시간을 모르는 곳은 그다음, 확실히 닫힌 곳은 마지막(대안이 없을 때만). */
+function _pickUnused(candidates, usedIds, isoDate, hhmm) {
+  const fresh = candidates.filter(c => !usedIds.has(c.place_id));
+  const pool = fresh.length ? fresh : candidates;
+  if (!isoDate) return pool[0] || null;
+  const rank = (c) => ({ open: 0, unknown: 1, closedNow: 2, closedDay: 3 })[openState(c.opening_periods, isoDate, hhmm)];
+  return [...pool].sort((a, b) => rank(a) - rank(b))[0] || null;
 }
 
 /** Map Korean country name → 2-letter region code for Places API regional bias. */
@@ -2560,7 +2624,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
       // 첫날은 항공 도착·짐 맡기기 이후 일정만 넣는다.
       if (isFirstDay && !isSingleDay && !localTrip && time < _addMinutes(FIRST_DAY_ARRIVAL, 90)) continue;
       const candidates = await searchForSlot(slot);
-      const pick = _pickUnused(candidates, usedIds);
+      const pick = _pickUnused(candidates, usedIds, _isoLocal(d), time);
 
       if (pick) {
         _realSlots++;
@@ -2576,6 +2640,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
           longitude: pick.longitude,
           address: pick.address || '',
           googleMapsQuery: pick.name,
+          openingPeriods: pick.opening_periods || null,
         });
       } else {
         _fallbackSlots++;
@@ -2609,6 +2674,33 @@ async function _generateScheduleInner(t, btn, startedAt) {
 
     // 현지 교통비는 장소가 아니라 하루 단위 비용이라 날짜에 따로 둔다(일별·전체 합계에 포함).
     days.push({ date: _isoLocal(d), activities, localTransport: transportPerDay });
+  }
+  // ── 꼭 갈 장소 — 날짜에 고르게 나눠 넣고 고정한다(관광·액티비티 자리를 대신, 없으면 15:00에 추가). ──
+  const must = _mustList(t);
+  if (must.length) {
+    trackEvent('must_visit_used');
+    for (let mi = 0; mi < must.length; mi++) {
+      const name = must[mi];
+      let found = null;
+      try {
+        const res = await _sp({ query: `${t.cityName} ${name}`, language_code: 'ko', language: 'ko', region: _guessRegion(t.country), max_results: 3, center_lat: cityCenter?.lat, center_lng: cityCenter?.lng });
+        found = (res?.places || []).find(p => Number.isFinite(p.latitude)) || null;
+      } catch (_) { found = null; }
+      const day = days[mi % days.length];
+      const slotIdx = day.activities.findIndex(a => (a.category === '관광' || a.category === '액티비티') && !a.mustVisit);
+      const item = {
+        time: slotIdx >= 0 ? day.activities[slotIdx].time : '15:00',
+        name: found?.name || name, category: '관광',
+        cost: slotIdx >= 0 ? day.activities[slotIdx].cost : _costFor('관광', level, t.concept) * people,
+        placeId: found?.place_id || `must-${mi}-${name}`,
+        latitude: found?.latitude, longitude: found?.longitude, address: found?.address || '',
+        googleMapsQuery: found?.name || `${name} ${t.cityName}`,
+        openingPeriods: found?.opening_periods || null,
+        pinned: true, mustVisit: true, sample: !found,
+      };
+      if (slotIdx >= 0) day.activities.splice(slotIdx, 1, item);
+      else { day.activities.push(item); day.activities.sort((a, b) => (a.time || '').localeCompare(b.time || '')); }
+    }
   }
   _genProgress(4, '');
 

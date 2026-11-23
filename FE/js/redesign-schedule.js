@@ -11,6 +11,7 @@
 
 import { navigate } from './redesign-navigation.js';
 import { timeZoneFor, utcOffsetMin, utcLabel, nowIn } from './redesign-cities.js';
+import { openState, hoursText } from './redesign-hours.js';
 import { setPendingIntent, peekPendingIntent, clearPendingIntent } from './redesign-auth.js';
 import { api, trackEvent } from './redesign-api-adapter.js';
 import {
@@ -369,14 +370,19 @@ function _checkDay(g, di) {
   });
   // 7) 영업시간·휴무 — 데이터가 없으면 확인 필요
   let unknownHours = 0;
+  const date = day?.date;
   acts.forEach((a, ai) => {
     if (!_OPEN_CHECK_CATS.has(a.category)) return;
-    if (a.closedOnDay) {   // 장소 정보로 휴무가 확인된 경우(데이터가 있을 때만)
+    const st = openState(a.openingPeriods, date, a.time);
+    if (st === 'closedDay') {
       items[ai].push({ lvl: 'warn', text: '이날 휴무' });
-      list.push({ lvl: 'warn', ai, text: `${_short(a.name)} — 이날 문을 닫아요. 다른 장소로 바꿔 주세요.` });
-    } else if (!a.openingHours) { items[ai].push({ lvl: 'check', text: '영업시간·휴무 확인 필요' }); unknownHours++; }
+      list.push({ lvl: 'warn', ai, fix: 'drop', text: `${_short(a.name)} — 이날은 문을 닫아요(장소 정보 기준). 빼거나 다른 장소로 바꿔 주세요.` });
+    } else if (st === 'closedNow') {
+      items[ai].push({ lvl: 'warn', text: `영업시간 밖 (${hoursText(a.openingPeriods, date)})` });
+      list.push({ lvl: 'warn', ai, fix: 'time', text: `${a.time} ${_short(a.name)} — 이 시각엔 닫혀 있어요. 영업시간 ${hoursText(a.openingPeriods, date)}.` });
+    } else if (st === 'unknown') { items[ai].push({ lvl: 'check', text: '영업시간·휴무 확인 필요' }); unknownHours++; }
   });
-  if (unknownHours) list.push({ lvl: 'check', ai: acts.findIndex(a => _OPEN_CHECK_CATS.has(a.category) && !a.openingHours),
+  if (unknownHours) list.push({ lvl: 'check', ai: acts.findIndex(a => _OPEN_CHECK_CATS.has(a.category) && openState(a.openingPeriods, date, a.time) === 'unknown'),
     text: `${unknownHours}곳은 영업시간 정보가 없어요(문을 닫았다는 뜻은 아니에요). 가기 전에 확인해 주세요.` });
   if (acts.some(a => !_isFlight(a) && _kmBetween(a, a) == null && a.category !== '숙박')) {
     list.push({ lvl: 'check', text: '위치를 모르는 장소는 이동 시간을 20분으로 가정했어요. 이동 시간은 직선거리 기준 추정이에요.' });

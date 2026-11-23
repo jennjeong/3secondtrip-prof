@@ -132,7 +132,8 @@ async def search_places(*, query: str, language: Optional[str] = "ko",
     headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
-        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.rating,places.userRatingCount,places.priceLevel",
+        # 영업시간(regularOpeningHours)은 평점·가격대와 같은 요금 등급이라 호출 단가가 바뀌지 않는다.
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.rating,places.userRatingCount,places.priceLevel,places.regularOpeningHours.periods",
     }
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
@@ -169,5 +170,30 @@ async def search_places(*, query: str, language: Optional[str] = "ko",
             "types": p.get("types") or [],
             # 가격대 — PRICE_LEVEL_INEXPENSIVE ~ PRICE_LEVEL_VERY_EXPENSIVE (없으면 None)
             "price_level": p.get("priceLevel"),
+            # 주간 영업시간 — 없으면 None(‘모름’이지 ‘닫음’이 아니다)
+            "opening_periods": map_opening_periods(p.get("regularOpeningHours")),
         })
     return out
+
+
+def map_opening_periods(hours: Optional[dict]) -> Optional[list[dict]]:
+    """Google regularOpeningHours.periods → [{d, o, c}] (d=요일 0=일요일, o/c=분, c 가 o 보다 작으면 다음 날 닫음).
+    24시간 영업(닫는 시각 없음)은 o=0, c=1440.  데이터가 없으면 None."""
+    periods = (hours or {}).get("periods")
+    if not isinstance(periods, list) or not periods:
+        return None
+    out: list[dict] = []
+    for pr in periods:
+        op = pr.get("open") or {}
+        cl = pr.get("close")
+        if "day" not in op:
+            continue
+        o = int(op.get("hour", 0)) * 60 + int(op.get("minute", 0))
+        if not cl:
+            out.append({"d": int(op["day"]), "o": 0, "c": 1440})
+            continue
+        c = int(cl.get("hour", 0)) * 60 + int(cl.get("minute", 0))
+        if int(cl.get("day", op["day"])) != int(op["day"]) and c == 0:
+            c = 1440
+        out.append({"d": int(op["day"]), "o": o, "c": c})
+    return out or None

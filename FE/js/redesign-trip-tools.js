@@ -4,7 +4,7 @@
  * 경비와 준비물은 기기에만 저장한다(localStorage).
  */
 
-import { trackEvent } from './redesign-api-adapter.js';
+import { api, trackEvent } from './redesign-api-adapter.js';
 import { $, el, formatCurrency, showToast } from './redesign-ui.js';
 import { timeZoneFor, utcOffsetMin, utcLabel } from './redesign-cities.js';
 
@@ -164,6 +164,7 @@ async function _loadWeather(g, key) {
     el('span', {}, `${r.min}° / ${r.max}°`),
     el('span', { class: 'tool-note' }, `비 ${r.rain ?? '-'}%`),
   ])));
+  _rainSwapOffer(g, rows, target);
   target.appendChild(el('p', { class: 'tool-note' }, `출처: Open-Meteo 일기예보 · 여행지 현지 날짜 기준 · ${(fetched[`wt:${key}`] || new Date()).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 조회. 출발이 가까울수록 정확해져요.`));
   _addWeatherItems(g, rows);
 }
@@ -380,6 +381,76 @@ function _paintChecklist(g, box, items) {
 }
 
 /** 예보가 나오면 날씨에 맞는 준비물을 더한다. */
+/* ============ 비 오는 날 실내 위주로 ============
+ * 비 올 확률 60% 이상인 날, 야외 장소(관광·액티비티 중 실내가 아닌 곳)를 실내 장소로 바꾸자고 제안한다.
+ * 고정한 장소·숙소·이동은 건드리지 않고, 시각은 그대로 둔다. */
+const RAIN_LIMIT = 60;
+const INDOOR_RE = /박물관|미술관|갤러리|수족관|아쿠아|쇼핑|몰|백화점|시장|카페|실내|전시|museum|gallery|aquarium|mall|market|theater|극장|공연|스파|온천/i;
+const OUTDOOR_CATS = new Set(['관광', '액티비티']);
+
+function _rainyDayIndexes(g, rows) {
+  const out = [];
+  rows.forEach(r => {
+    if ((r.rain ?? 0) < RAIN_LIMIT) return;
+    const di = g.days.findIndex(d => d.date === r.date);
+    if (di < 0) return;
+    const n = (g.days[di].activities || []).filter(a => OUTDOOR_CATS.has(a.category) && !a.pinned && !INDOOR_RE.test(a.name || '')).length;
+    if (n) out.push({ di, n, rain: r.rain });
+  });
+  return out;
+}
+
+function _rainSwapOffer(g, rows, target) {
+  const days = _rainyDayIndexes(g, rows);
+  if (!days.length) return;
+  target.appendChild(el('div', { class: 'rain-offer' }, days.map(x => el('div', { class: 'rain-row' }, [
+    el('span', {}, `${x.di + 1}일차 비 ${x.rain}% · 야외 일정 ${x.n}곳`),
+    el('button', { type: 'button', class: 'btn btn-soft', onclick: async (e) => { const row = e.currentTarget.closest('.rain-row'); if (await _swapIndoor(x.di) && row) row.hidden = true; } }, '실내 위주로 바꾸기'),
+  ]))));
+}
+
+async function _swapIndoor(di) {
+  const g = appState?.generated;
+  const day = g?.days?.[di];
+  if (!day) return;
+  const targets = day.activities.map((a, i) => ({ a, i })).filter(({ a }) => OUTDOOR_CATS.has(a.category) && !a.pinned && !INDOOR_RE.test(a.name || ''));
+  if (!targets.length) return false;
+  if (!confirm(`${di + 1}일차 야외 일정 ${targets.length}곳을 실내 장소로 바꿀까요?\n고정한 장소와 숙소·이동은 그대로 두고, 시각도 그대로예요.`)) return false;
+  // 실내 후보 — 장소 검색이 되면 실제 장소, 안 되면 예시 장소
+  let cands = [];
+  try {
+    const f = await api.features();
+    if (f.places !== false) {
+      const res = await api.searchPlaces({ query: `${g.city} 실내 박물관 미술관 수족관`, language_code: 'ko', language: 'ko', max_results: 12 });
+      cands = (res?.places || []).filter(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude));
+    }
+  } catch (_) { cands = []; }
+  const used = new Set(g.days.flatMap(d => d.activities.map(a => a.placeId)));
+  const samples = ['시립 박물관', '현대 미술관', '수족관', '대형 쇼핑몰', '실내 전시관'];
+  let si = 0;
+  targets.forEach(({ a }) => {
+    const pick = cands.find(c => !used.has(c.place_id));
+    const before = a.name;
+    if (pick) {
+      used.add(pick.place_id);
+      Object.assign(a, { name: pick.name, placeId: pick.place_id, latitude: pick.latitude, longitude: pick.longitude,
+        address: pick.address || '', googleMapsQuery: pick.name, openingPeriods: pick.opening_periods || null, sample: false });
+    } else {
+      const n = samples[si++ % samples.length];
+      Object.assign(a, { name: `${n} · ${g.city}`, placeId: `${g.city}-indoor-${di}-${si}`, address: '', googleMapsQuery: `${n} ${g.city}`,
+        latitude: undefined, longitude: undefined, openingPeriods: null, sample: true });
+    }
+    a.category = '관광';
+    a.edited = true;
+    a.rainSwap = before;
+  });
+  document.dispatchEvent(new CustomEvent('redesign:trip-changed'));
+  document.dispatchEvent(new CustomEvent('redesign:activities-resolved'));
+  trackEvent('rain_swap_applied');
+  showToast(`${di + 1}일차 야외 일정 ${targets.length}곳을 실내 장소로 바꿨어요${cands.length ? '' : ' · 예시 장소라 실제 장소로 바꿔 주세요'}`, 3600);
+  return true;
+}
+
 function _addWeatherItems(g, rows) {
   const box = $('#toolChecklist');
   if (!box) return;
