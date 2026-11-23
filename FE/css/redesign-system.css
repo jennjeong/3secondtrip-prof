@@ -148,9 +148,9 @@ body { font-size: 15px; line-height: 1.55; }
 .search-card .search-submit, .btn-edit { min-height: var(--touch); }
 .btn-edit { padding-inline: 16px; }
 /* 별점 — 흰 배경에서 그래픽 대비 3:1 이상 */
-.rv-stars, .review-item .rv-stars, .review-preview .rv-stars, .mlc-stars { color: #B7791F !important; }
-.star-row .star { color: #C9CED6; }
-.star-row .star.is-on, .star-row .star.hov { color: #B7791F; }
+.rv-stars, .review-item .rv-stars, .review-preview .rv-stars, .mlc-stars { color: #8A5A00 !important; }   /* 흰 바탕 6:1 */
+.star-row .star { color: #737A84; }   /* 빈 별도 회색 카드 위 3:1 이상 */
+.star-row .star.is-on, .star-row .star.hov { color: #8A5A00; }
 
 /* 확대를 허용했으므로 iPhone 이 입력칸을 누를 때 자동 확대하지 않도록 16px */
 @media (max-width: 767px) { input, select, textarea, .form-input { font-size: 16px !important; } }
@@ -543,4 +543,16 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus, h3[tabindex="-1"]:focus, .page
 @media (prefers-color-scheme: dark) {
 :root.allow-dark .topbar-brand-logo { filter: invert(1) hue-rotate(180deg); }
 :root.allow-dark #homePage .hero-card { box-shadow: inset 0 0 0 1px var(--c-border); }
+}
+
+/* 네이버 버튼: 흰 글자가 읽히도록 브랜드 초록을 어둡게(#03C75A 2.3:1 → #00843D 4.9:1) */
+.social-btn--naver { background: #00843D; }
+/* 별점 — 다크 모드 */
+:root.theme-dark .rv-stars, :root.theme-dark .mlc-stars { color: #E8B54A !important; }
+:root.theme-dark .star-row .star { color: #7A828C; }
+:root.theme-dark .star-row .star.is-on, :root.theme-dark .star-row .star.hov { color: #E8B54A; }
+@media (prefers-color-scheme: dark) {
+:root.allow-dark .rv-stars, :root.allow-dark .mlc-stars { color: #E8B54A !important; }
+:root.allow-dark .star-row .star { color: #7A828C; }
+:root.allow-dark .star-row .star.is-on, :root.allow-dark .star-row .star.hov { color: #E8B54A; }
 }
