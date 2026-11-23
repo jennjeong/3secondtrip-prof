@@ -715,3 +715,21 @@ h1, h2, h3, .rc-title, .schedule-place-name, .mlc-title { word-break: keep-all; 
 #createTripPage:has(.city-suggestions:not([hidden])) .step-nav,
 #createTripPage:has(.place-suggestions:not([hidden])) .step-nav { visibility: hidden; }
 #createTripPage .city-suggestions { max-height: min(50vh, 320px); overflow-y: auto; overscroll-behavior: contain; }
+
+/* 일정 생성 중 화면 — 밝은 바탕(상태바 글자와 대비가 맞게), 진행 단계는 글자와 표식으로 */
+#genLoadingOverlay { background: var(--r-bg) !important; color: var(--r-text) !important; }
+#genLoadingOverlay .gl-msg { background: none !important; -webkit-background-clip: initial; background-clip: initial; color: var(--r-text) !important; animation: none !important; }
+#genLoadingOverlay .gl-route path { stroke: var(--r-brand); }
+#genLoadingOverlay .gl-sub { color: var(--r-text-2) !important; }
+#genLoadingOverlay .gl-steps { color: var(--r-text-3) !important; }
+#genLoadingOverlay .gl-steps li::before { border-color: var(--r-border-strong) !important; }
+#genLoadingOverlay .gl-steps li.is-current { color: var(--r-text) !important; }
+#genLoadingOverlay .gl-steps li.is-current::before { border-color: var(--r-brand) !important; background: var(--r-brand) !important; }
+#genLoadingOverlay .gl-steps li.is-done { color: var(--r-text-2) !important; }
+#genLoadingOverlay .gl-steps li.is-done::before { border-color: var(--r-brand) !important; background: transparent !important; }
+#genLoadingOverlay .gl-actions .gl-close { color: var(--r-text) !important; border-color: var(--r-border-strong) !important; }
+#genLoadingOverlay.is-failed .gl-msg { color: var(--r-text) !important; }
+
+/* 도착 도시 추천 — 고른 버튼에 검은 이중 테두리 대신 옅은 파랑 */
+#destQuick button.is-active { box-shadow: none !important; }
+#destQuick button:focus:not(:focus-visible) { outline: none; }
