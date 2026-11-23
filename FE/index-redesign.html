@@ -664,7 +664,10 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
 
         <div class="day-row" id="scheduleDayRow" hidden>
           <div class="day-chips" id="dayChips" role="tablist" aria-label="여행일"></div>
-          <button type="button" class="checks-btn" id="dayChecksBtn" aria-expanded="false" aria-controls="dayChecks">점검</button>
+          <div class="day-sub">
+            <p class="day-sub-cost" id="dayCostLine" aria-live="polite"></p>
+            <button type="button" class="checks-btn" id="dayChecksBtn" aria-expanded="false" aria-controls="dayChecks">점검</button>
+          </div>
         </div>
         <div class="schedule-toolbar" id="scheduleToolbar" hidden>
           <div class="view-toggle" id="viewToggle" role="group" aria-label="보기 방식">
@@ -1302,7 +1305,8 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
         </div>
         <div>
           <label class="form-label" for="editCost">비용</label>
-          <input class="form-input" type="number" id="editCost" min="0"/>
+          <input class="form-input" type="number" id="editCost" min="0" step="100" inputmode="numeric" placeholder="모르면 비워 두기" aria-describedby="editCostHint"/>
+          <p class="form-hint" id="editCostHint">비워 두면 '비용 미확인'으로 합계에서 빠져요. 무료면 0</p>
         </div>
       </div>
       <div class="form-row" id="editDayRow" hidden>

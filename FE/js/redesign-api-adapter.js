@@ -98,7 +98,8 @@ export function wakeServer() {
 async function _once(url, opts, headers) {
   let res;
   try {
-    res = await fetch(url, { ...opts, headers });
+    const { quiet, ...fetchOpts } = opts;
+    res = await fetch(url, { ...fetchOpts, headers });
   } catch (netErr) {
     const e = new Error('NETWORK_ERROR');
     e.cause = netErr;
@@ -111,6 +112,9 @@ async function _once(url, opts, headers) {
     const err = new Error(msg);
     err.status = res.status;
     err.body = data;
+    // 우리 서버가 직접 답한 오류(JSON detail 있음, 예: '설정되지 않음' 503)인지,
+    // 서버 앞단(Render 게이트웨이)이 대신 답한 것인지 구분한다 — 후자만 '깨우는 중'으로 본다.
+    err.fromApp = !!(data && typeof data === 'object' && 'detail' in data);
     throw err;
   }
   return data;
@@ -126,11 +130,12 @@ export async function apiRequest(path, opts = {}) {
   const url = path.startsWith('http') ? path : API_BASE_URL + path;
   const method = (opts.method || 'GET').toUpperCase();
   const safe = method === 'GET' || method === 'HEAD';
-  const gateway = (e) => e?.status === 502 || e?.status === 503 || e?.status === 504;
+  const gateway = (e) => (e?.status === 502 || e?.status === 503 || e?.status === 504) && !e.fromApp;
 
   let slow = false;
   const markSlow = () => { if (slow) return; slow = true; slowCount++; _showWaking(); };   // 한 요청은 한 번만 센다
-  const slowTimer = setTimeout(markSlow, SLOW_MS);
+  // quiet: 기다리는 동안에도 화면에 볼 내용이 있는 요청(코스 목록·기능 확인·이벤트)은 안내를 띄우지 않는다.
+  const slowTimer = opts.quiet ? null : setTimeout(markSlow, SLOW_MS);
   try {
     for (let attempt = 0; ; attempt++) {
       try {
@@ -140,10 +145,10 @@ export async function apiRequest(path, opts = {}) {
         const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
         const retryable = !offline && (gateway(e) || (safe && e?.message === 'NETWORK_ERROR'));
         if (!retryable || attempt >= RETRY_DELAYS.length) {
-          if (retryable || slow) _showWakeFailed();
+          if (!opts.quiet && (retryable || slow)) _showWakeFailed();
           throw e;
         }
-        markSlow();
+        if (!opts.quiet) markSlow();
         await _sleep(RETRY_DELAYS[attempt]);
       }
     }
@@ -261,7 +266,7 @@ export const api = {
   // ===== Roadmaps (public read, login write) =====
   getRoadmaps:        (filters = {}) => {
     const qs = new URLSearchParams(filters).toString();
-    return apiRequest('/roadmaps' + (qs ? '?' + qs : ''));
+    return apiRequest('/roadmaps' + (qs ? '?' + qs : ''), { quiet: true });   // 예시 코스가 먼저 보이므로 조용히
   },
   getPopularRoadmaps: (limit = 8) => apiRequest(`/roadmaps/popular?limit=${limit}`),
   getRoadmap:         (id) => apiRequest(`/roadmaps/${id}`),
@@ -300,10 +305,11 @@ export const api = {
   openaiChat: (prompt) => apiRequest('/openai/chat', { method: 'POST', body: JSON.stringify({ prompt }) }),
   // 서버에 연결된 외부 기능(실시간 항공·숙소 요금, AI 요약). 결과는 한 번만 받아 둔다.
   // 예전 서버처럼 이 주소가 없으면 모두 켜진 것으로 보고, 실패하면 각 호출의 대체 처리가 맡는다.
-  features: () => (_featuresPromise ||= apiRequest('/api/features')
-    .then(f => ({ liveFlights: !!f.live_flights, liveHotels: !!f.live_hotels, ai: !!f.ai_summary,
+  features: () => (_featuresPromise ||= apiRequest('/api/features', { quiet: true })
+    .then(f => ({ liveFlights: !!f.live_flights, liveHotels: !!f.live_hotels, ai: !!f.ai_summary, places: f.places !== false,
                   passwordReset: !!f.password_reset, oauth: f.oauth || null, checkedAt: new Date().toISOString() }))
-    .catch(() => ({ liveFlights: true, liveHotels: true, ai: true, passwordReset: false, checkedAt: null }))),
+    // 서버 상태를 알 수 없으면 외부 기능은 꺼진 것으로 본다(실패할 호출을 미리 하지 않고 추정치를 쓴다).
+    .catch(() => ({ liveFlights: false, liveHotels: false, ai: false, places: true, passwordReset: false, oauth: null, checkedAt: null, unknown: true }))),
   // 로그인한 상태에서 비밀번호 변경(다른 기기는 로그아웃) · 모든 기기에서 로그아웃
   changePassword: (current_password, new_password) => apiRequest('/users/me/password', { method: 'POST', body: JSON.stringify({ current_password, new_password }) }),
   logoutAll: () => apiRequest('/users/me/logout-all', { method: 'POST' }),
@@ -337,7 +343,7 @@ export const API_URL = API_BASE_URL;
 
 /** 이용 통계 — 실패해도 사용자 동작에 영향을 주지 않는다. */
 export function trackEvent(name) {
-  apiRequest('/api/events', { method: 'POST', body: JSON.stringify({ name }), keepalive: true }).catch(() => {});
+  apiRequest('/api/events', { method: 'POST', body: JSON.stringify({ name }), keepalive: true, quiet: true }).catch(() => {});
 }
 
 /* ============ Bridge to legacy frontend (if mounted side-by-side) ============

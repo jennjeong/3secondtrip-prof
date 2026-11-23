@@ -2,6 +2,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.trip_data_validation import validate_trip_data
+
 MAX_DAYS = 31
 MAX_ACTIVITIES_PER_DAY = 60
 MAX_JSON_CHARS = 200_000
@@ -24,6 +26,7 @@ class SharedTripWrite(BaseModel):
                 raise ValueError("invalid activities")
         if len(json.dumps(v, ensure_ascii=False)) > MAX_JSON_CHARS:
             raise ValueError("trip is too large")
+        validate_trip_data(v)   # 금액·날짜·인원 범위
         return v
 
 

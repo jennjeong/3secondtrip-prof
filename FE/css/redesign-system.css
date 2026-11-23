@@ -567,3 +567,37 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus, h3[tabindex="-1"]:focus, .page
 .wake-spin { flex: 0 0 auto; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: wakeSpin .8s linear infinite; }
 @keyframes wakeSpin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .wake-spin { animation: none; border-right-color: currentColor; opacity: .6; } }
+
+/* ===== 일정 점검: 해결 필요 / 정보 확인 필요, 바로 가기, 시간 다시 맞추기 ===== */
+.dc-group { margin: 10px 0 4px; font-size: 12.5px; font-weight: 800; letter-spacing: .02em; }
+.dc-group--warn { color: #B42318; }
+.dc-group--check { color: var(--c-text-soft); }
+.dc-jump { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 6px 0; min-height: 44px; font: inherit; color: inherit; cursor: pointer; }
+.dc-jump:hover .dc-go, .dc-jump:focus-visible .dc-go { text-decoration: underline; }
+.dc-go { font-weight: 700; color: var(--c-text-soft); }
+.dc-fix { margin: 6px 0 2px; min-height: 44px; }
+.schedule-card.is-flash { outline: 3px solid #F59E0B; outline-offset: 2px; transition: outline-color .3s; }
+:root.theme-dark .dc-group--warn { color: #F97066; }
+@media (prefers-color-scheme: dark) { :root.allow-dark .dc-group--warn { color: #F97066; } }
+
+/* ===== 예산 대안: 조합 · 한도 변경 ===== */
+.budget-alt.is-combo { border-color: var(--c-text); box-shadow: inset 0 0 0 1px var(--c-text); }
+.budget-alt.is-combo .budget-alt-label::before { content: '추천 · '; font-weight: 800; }
+.budget-alt.is-limit { border-style: dashed; }
+.budget-alts-limit { margin-top: 6px; }
+.ai-card { margin: 0 0 12px; padding: 14px 16px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; }
+.ai-card-title { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: var(--c-blue); }
+.ai-card-text { margin: 0; font-size: 14px; line-height: 1.6; color: var(--c-text); white-space: pre-wrap; }
+.ai-card-note { margin: 0; font-size: 13.5px; color: var(--c-text-soft); }
+.ai-card-redo { margin-top: 8px; min-height: 44px; }
+.ai-card-retry { margin-top: 8px; min-height: 44px; }
+.budget-alt.is-combo .budget-alt-detail { display: block !important; font-weight: 600; color: var(--c-text); }
+.budget-alts-none { margin: 0 0 6px; font-size: 13px; color: var(--c-text-soft); }
+
+/* ===== 날짜 탭: 탭은 한 줄 전체, 비용·점검은 아래 줄 ===== */
+.day-row { display: block !important; }
+.day-row .day-chips { display: flex; gap: 8px; overflow-x: auto; scroll-padding-inline: 16px; scrollbar-width: none; padding-bottom: 2px; }
+.day-row .day-chips::-webkit-scrollbar { display: none; }
+.day-row .day-chip { flex: 0 0 auto; min-height: 44px; }
+.day-sub { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.day-sub-cost { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--c-text-soft); font-variant-numeric: tabular-nums; }
