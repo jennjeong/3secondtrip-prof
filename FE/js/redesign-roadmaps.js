@@ -252,14 +252,20 @@ function _parseDays(data) {
 }
 
 /** Fetch public roadmaps.  실패하거나 비어 있으면 기본 목록을 유지한다. */
+let listState = 'loading';   // loading | ok | fallback — 탐색 화면 안내에 쓴다
 export async function loadRoadmaps() {
+  listState = 'loading';
+  _paintListState();
   try {
     const rows = await api.getRoadmaps({ limit: 100 });
     const list = (rows || []).filter(r => r.city).map(_fromApi);
     if (list.length) roadmaps = list;
+    listState = 'ok';
   } catch (e) {
     console.warn('[roadmaps] 서버 목록을 불러오지 못해 기본 목록을 표시합니다:', e?.message);
+    listState = 'fallback';
   }
+  _paintListState();
   roadmaps.forEach(m => {
     if (m.plan === undefined) {           // 기본 목록(서버 연결 실패) — 예시 일정 연결
       const s = sampleCourseFor(m.city);
@@ -304,7 +310,6 @@ function _cardEl(m, opts = {}) {
   const media = el('div', { class: 'rc-media', style: { background: m.gradient }, 'aria-hidden': 'true' }, [
     el('div', { class: 'rc-top' }, [
       m.isSample ? el('span', { class: 'rc-sample' }, '예시') : null,
-      opts.reason ? el('span', { class: 'rc-reason' }, opts.reason) : null,
     ].filter(Boolean)),
   ]);
   const card = el('button', {
@@ -317,6 +322,7 @@ function _cardEl(m, opts = {}) {
       el('div', { class: 'rc-place' }, [m.city, m.country].filter(Boolean).join(' · ')),
       el('div', { class: 'rc-title' }, m.title),
       el('div', { class: 'rc-info' }, [el('span', { class: 'nowrap' }, _daysLabel(m.days)), ' · ', el('span', { class: 'nowrap' }, m.concept)]),
+      opts.reason ? el('div', { class: 'rc-reason-line' }, `추천 이유 · ${opts.reason}`) : null,
       el('div', { class: 'rc-likes' }, [
         el('span', { 'aria-hidden': 'true' }, '♥ '),
         el('span', { class: 'sr-only' }, '좋아요 '),
@@ -413,6 +419,23 @@ function _renderCityMarquee() {
 }
 
 /* ============ 탐색 ============ */
+/** 불러오는 중·불러오지 못함 안내 — 기본 코스를 보여 주는 동안에도 상황을 알린다. */
+function _paintListState() {
+  const bar = document.querySelector('#explorePage .explore-bar');
+  if (!bar) return;
+  let note = document.getElementById('exploreState');
+  if (!note) {
+    note = el('p', { id: 'exploreState', class: 'explore-state', role: 'status' });
+    bar.after(note);
+  }
+  if (listState === 'loading') { note.hidden = false; note.replaceChildren('여행 코스를 불러오는 중이에요…'); }
+  else if (listState === 'fallback') {
+    note.hidden = false;
+    note.replaceChildren('최신 코스를 불러오지 못해 기본 예시 코스를 보여 드려요. ',
+      el('button', { type: 'button', class: 'btn-text', onclick: () => { loaded = loadRoadmaps().then(() => { renderHomeRoadmaps(); renderExplore(); }); } }, '다시 시도'));
+  } else note.hidden = true;
+}
+
 export function renderExplore() {
   const grid = document.getElementById('exploreGrid');
   const empty = document.getElementById('exploreEmpty');

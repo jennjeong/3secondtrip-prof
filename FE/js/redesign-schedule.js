@@ -19,6 +19,7 @@ import { regenerateSchedule, applyBudgetAlternative } from './redesign-trip-flow
 
 let appState = null;
 let activeDay = 0;
+let _dayRestored = false;
 let editMode = false;
 let editing = null; // {di, ai} target for edit modal
 
@@ -28,7 +29,7 @@ export function initSchedule(state) {
   $('#btnEditToggle')?.addEventListener('click', () => {
     editMode = !editMode;
     const b = $('#btnEditToggle');
-    b.textContent = editMode ? '편집 완료' : '편집';
+    b.textContent = editMode ? '편집 완료' : '일정 편집';
     b.classList.toggle('is-active', editMode);
     b.setAttribute('aria-pressed', String(editMode));
     if (editMode) showToast('▲▼ 버튼이나 끌어서 순서를 바꾸고, 각 장소의 편집에서 시간·날짜·메모를 고쳐요', 3200);
@@ -68,6 +69,11 @@ export function initSchedule(state) {
   $('#shareBackdrop')?.addEventListener('click', _closeSheet);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#shareSheet')?.hidden) _closeSheet(); });
   $('#viewToggle')?.addEventListener('click', (e) => { const b = e.target.closest('[data-view]'); if (b) _setView(b.dataset.view); });
+  $('#dayChecksBtn')?.addEventListener('click', () => {
+    checksOpen = !checksOpen;
+    const box = $('#dayChecks'); if (box) box.hidden = !checksOpen;
+    $('#dayChecksBtn')?.setAttribute('aria-expanded', String(checksOpen));
+  });
   document.addEventListener('redesign:map-pick', (e) => {
     if (e.detail?.day !== activeDay) return;
     _pick(e.detail.ai, 'map');
@@ -128,7 +134,7 @@ export function renderSchedule() {
   const sub = $('#scheduleSub');
 
   const hasG = !!g;
-  ['#scheduleActions', '#scheduleDayRow', '#scheduleSplit', '#dayChecks', '#saveStatus', '#viewToggle', '#nowNext'].forEach(sel => { const n = $(sel); if (n) n.hidden = !hasG; });
+  ['#scheduleActions', '#scheduleDayRow', '#scheduleSplit', '#dayChecks', '#saveStatus', '#scheduleToolbar', '#nowNext', '#toolsSection'].forEach(sel => { const n = $(sel); if (n) n.hidden = !hasG; });
   if (!g) {
     const panel = $('#budgetPanel'); if (panel) panel.hidden = true;
     const sb = $('#sharedBanner'); if (sb) sb.hidden = true;
@@ -145,7 +151,16 @@ export function renderSchedule() {
   }
 
   _migrateExpenses(g);
+  // 새로고침해도 보던 날짜로 — 같은 일정일 때만(이 탭에서만 기억)
+  if (!_dayRestored) {
+    _dayRestored = true;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('tst_active_day') || 'null');
+      if (saved && saved.key === g.createdAt && saved.day < g.days.length) activeDay = saved.day;
+    } catch (_) {}
+  }
   if (activeDay >= g.days.length) activeDay = 0;
+  try { sessionStorage.setItem('tst_active_day', JSON.stringify({ key: g.createdAt, day: activeDay })); } catch (_) {}
   if (empty) empty.hidden = true;
   if (timeline) timeline.hidden = false;
   if (cost) cost.hidden = !!g.hideCost;
@@ -222,7 +237,7 @@ function _renderDayChips(g) {
       onclick: () => { activeDay = idx; focusedAi = null; renderSchedule(); },
     }, [
       el('span', { class: 'day-chip-label' }, `${idx + 1}일차 · ${Number(d.date.slice(5, 7))}/${Number(d.date.slice(8, 10))}`),
-      el('span', { class: 'day-chip-cost' }, costLabel),
+      costLabel ? el('span', { class: 'day-chip-cost' }, `예상 ${costLabel}`) : null,
     ]);
     row.appendChild(chip);
   });
@@ -335,6 +350,7 @@ function _short(name) {
 }
 function _norm(s) { return String(s || '').toLowerCase().replace(/\s+/g, ''); }
 
+let checksOpen = false;
 function _renderDayChecks(g, check) {
   const box = $('#dayChecks');
   if (!box) return;
@@ -351,7 +367,14 @@ function _renderDayChecks(g, check) {
   warn.forEach(x => rows.push(el('li', { class: 'dc-warn' }, x.text)));
   need.forEach(x => rows.push(el('li', { class: 'dc-check' }, x.text)));
   box.replaceChildren(head, el('ul', { class: 'dc-list' }, rows));
-  box.hidden = false;
+  box.hidden = !checksOpen;
+  const btn = $('#dayChecksBtn');
+  if (btn) {
+    btn.textContent = warn.length ? `⚠ ${warn.length}건` : need.length ? `확인 ${need.length}` : '✓ 점검';
+    btn.setAttribute('aria-label', warn.length ? `일정 점검 — 고칠 점 ${warn.length}건` : need.length ? `일정 점검 — 확인 필요 ${need.length}건` : '일정 점검 — 이상 없음');
+    btn.classList.toggle('is-warn', warn.length > 0);
+    btn.setAttribute('aria-expanded', String(checksOpen));
+  }
 }
 
 /* ============ 타임라인 ============
@@ -396,11 +419,11 @@ function _renderTimeline(g) {
     else if (n.category === '숙박') {
       if (hotelNightly > 0) {
         const rooms = g.budgetPlan?.rooms || 1;
-        costText = `1박 ${_money(hotelNightly, g)}${rooms > 1 ? ` (객실 ${rooms}개 합계)` : ''}`;
+        costText = `1박 예상 ${_shortMoney(hotelNightly, g)}${rooms > 1 ? ` (객실 ${rooms}개 합계)` : ''}`;
         costTag = g.hotelPriceSource === 'serpapi' ? '실시간' : '추정';
       }
     } else if (c > 0) {
-      costText = _money(c, g);
+      costText = '예상 ' + _shortMoney(c, g);
       costTag = n.category === '이동' ? (g.flightPriceSource === 'serpapi' ? '실시간' : '추정') : '추정';
     }
 
@@ -637,11 +660,28 @@ function _money(krw, g) {
   return formatCurrency(n, 'KRW');
 }
 
+/** 금액 한 칸 — 원화는 ‘149만 8천 원’, 정확한 금액은 title 과 화면 낭독용으로 함께 둔다. */
+function _amountRow(label, krw, g, cls) {
+  const short = g?.fx?.rate ? _money(krw, g) : _shortMoney(krw, g);
+  const exact = _money(krw, g);
+  return el('div', { class: 'money-row' + (cls ? ' ' + cls : '') }, [
+    el('dt', {}, label),
+    el('dd', { title: exact }, [short, el('span', { class: 'sr-only' }, ` (${exact})`)]),
+  ]);
+}
+
 function _row(label, value, { note, cls } = {}) {
   return el('div', { class: 'money-row' + (cls ? ' ' + cls : '') }, [
     el('dt', {}, note ? [label, ' ', el('small', {}, note)] : label),
     el('dd', {}, value),
   ]);
+}
+
+/** 금액이 실시간 조회값인지 추정치인지 한 단어로. */
+function _priceKind(g) {
+  const live = g.flightPriceSource === 'serpapi' || g.hotelPriceSource === 'serpapi';
+  const allLive = g.flightPriceSource === 'serpapi' && g.hotelPriceSource === 'serpapi';
+  return allLive ? '실시간 요금' : live ? '실시간·추정 섞임' : '추정 요금';
 }
 
 function _renderBudgetPanel(g) {
@@ -655,11 +695,11 @@ function _renderBudgetPanel(g) {
 
   const rows = $('#budgetPanelRows');
   rows.replaceChildren(
-    _row('총 여행 예산', _money(budget, g), { note: g.people ? `${g.people}명 전체` : '' }),
-    _row('예상 지출', _money(bd.total, g), { cls: 'money-row--total' }),
+    _amountRow('입력 예산', budget, g),
+    _amountRow('예상 총액', bd.total, g, 'money-row--total'),
     diff < 0
-      ? _row('예산 초과', _money(-diff, g), { cls: 'money-row--over' })
-      : _row('남는 금액', _money(diff, g), { cls: 'money-row--under' }),
+      ? _amountRow('예산 초과', -diff, g, 'money-row--over')
+      : _amountRow('남는 금액', diff, g, 'money-row--under'),
   );
 
   const bp = g.budgetPlan;
@@ -689,6 +729,8 @@ function _renderBudgetPanel(g) {
   if (g.sources?.liveConfigured && !g.sources.liveConfigured.ai) notes.push('AI 요약은 아직 연결되지 않았어요. 이 일정은 장소 검색 결과로 만든 기본 일정이에요.');
   const ul = $('#budgetNotices');
   ul.replaceChildren(...notes.map(t => el('li', {}, t)));
+  const why = $('#budgetWhyMeta');
+  if (why) why.textContent = [g.people ? `${g.people}명 전체` : '', _priceKind(g)].filter(Boolean).join(' · ');
 
   // 예산 초과 시 대안
   const alts = $('#budgetAlts');
@@ -698,7 +740,7 @@ function _renderBudgetPanel(g) {
     : [{ key: 'raise', label: `예산을 ${Math.ceil(bd.total / 10000)}만원으로 올리기`, detail: '지금 일정 그대로 진행해요', total: bd.total, fits: true, apply: { budget: Math.ceil(bd.total / 10000) } }]) : [];
   alts.hidden = !list.length;
   alts.replaceChildren(...(list.length ? [
-    el('p', { class: 'budget-alts-title' }, '예산에 맞추는 방법'),
+    el('p', { class: 'budget-alts-title' }, `예산에 맞추는 방법 ${list.length}가지`),
     ...list.map(alt => el('button', {
       type: 'button',
       class: 'budget-alt' + (alt.fits ? ' is-fit' : ''),
@@ -706,7 +748,7 @@ function _renderBudgetPanel(g) {
     }, [
       el('span', { class: 'budget-alt-label' }, alt.label),
       el('span', { class: 'budget-alt-detail' }, alt.detail),
-      el('span', { class: 'budget-alt-total' }, `예상 ${_money(alt.total, g)} · ${alt.fits ? '예산 안' : '여전히 초과'}`),
+      el('span', { class: 'budget-alt-total' }, `${_shortMoney(alt.total, g)} · ${alt.fits ? '예산 안' : '여전히 초과'}`),
     ])),
   ] : []));
 }
@@ -748,7 +790,8 @@ function _renderCostSummary(g) {
   if (note) note.textContent = '금액은 모두 추정치이고 원 단위에서 반올림했어요. 실제 요금은 예약할 때 확인해 주세요.';
 }
 
-/** 짧은 금액 라벨 (Day chip 표시용): 1,200,000원 → 120만원, 5,000원 → 5천원 */
+/** 짧은 금액 라벨: 428,000원 → '42만 8천 원', 1,200,000원 → '120만 원', 5,000원 → '5천 원'.
+ *  다른 통화로 보는 중이면 그 통화의 짧은 표기. */
 function _shortMoney(amount, g) {
   const n = Number(amount) || 0;
   if (g?.fx?.rate) {
@@ -757,11 +800,13 @@ function _shortMoney(amount, g) {
     } catch (_) { /* 아래 원화 표시로 */ }
   }
   if (n >= 10000) {
-    const v = n / 10000;
-    return (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + '만원';
+    let man = Math.floor(n / 10000);
+    let cheon = Math.round((n % 10000) / 1000);
+    if (cheon === 10) { man += 1; cheon = 0; }
+    return `${man.toLocaleString('ko-KR')}만${cheon ? ` ${cheon}천` : ''} 원`;
   }
-  if (n >= 1000) return Math.round(n / 1000) + '천원';
-  return n > 0 ? Math.round(n) + '원' : '0원';
+  if (n >= 1000) return `${Math.round(n / 1000)}천 원`;
+  return n > 0 ? `${Math.round(n).toLocaleString('ko-KR')}원` : '0원';
 }
 
 /* ============ Edit modal ============ */
@@ -1286,8 +1331,8 @@ function _paintSaveStatus() {
   let text, cls = '';
   if (saveState === 'saving') text = '계정에 저장하는 중…';
   else if (saveState === 'error') { text = '계정 저장에 실패했어요. 이 기기에는 저장돼 있어요.'; cls = 'is-error'; }
-  else if (onAccount) text = '계정에 저장됨 · 마이 › 저장한 일정에서 다시 볼 수 있어요';
-  else text = appState.currentUser ? '이 기기에만 저장돼 있어요. 저장을 누르면 계정에도 보관해요.' : '이 기기에만 저장돼 있어요. 로그인하면 계정에 보관할 수 있어요.';
+  else if (onAccount) text = '계정에 저장됨 · 마이 › 저장한 일정';
+  else text = appState.currentUser ? '이 기기에만 저장됨 · ‘저장’으로 계정에 보관' : '이 기기에만 저장됨 · 로그인하면 계정에 보관';
   box.className = 'save-status ' + cls;
   box.replaceChildren(...[el('span', {}, text),
     saveState === 'error' ? el('button', { type: 'button', class: 'btn-text', onclick: _saveToAccount }, '다시 시도') : null].filter(Boolean));

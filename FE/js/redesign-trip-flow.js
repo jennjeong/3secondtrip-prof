@@ -141,7 +141,7 @@ function _buildQuickDest() {
       dataset: { destQuick: d.name },
       ariaLabel: `${d.name}을(를) 도착 도시로 선택`,
       onclick: () => _applyCity(findCity(c => c.name === d.name), null, { from: 'quick' }),
-    }, [el('span', {}, d.emoji), el('span', {}, d.name)]));
+    }, d.name));
   });
 }
 function _buildConcepts() {
@@ -598,6 +598,12 @@ function _bindFormHandlers() {
     _refreshSummary();
     $('#airlineSearch')?.focus();
   });
+  $('#hotelReset')?.addEventListener('click', () => {
+    appState.trip.hotelP = { types: [], locations: [], amenities: [] };
+    ['#hotelTypeChips', '#hotelLocChips', '#hotelAmenChips'].forEach(sel => setMultiActive($(sel), sel === '#hotelTypeChips' ? 'data-hotel-type' : sel === '#hotelLocChips' ? 'data-hotel-loc' : 'data-hotel-amen', []));
+    _refreshBudget(); _refreshSummary(); _refreshMoreMeta();
+    _saveDraft();
+  });
 
   // ── 호텔 유형/위치/편의시설 (다중 선택) ──
   const hotelGroups = [
@@ -849,9 +855,33 @@ function _bindBudgetHandlers() {
 }
 
 /** 작성 중인 여행을 기기에 바로 저장 — 새로고침·이탈 후에도 이어서 쓸 수 있게. */
+/** 접힌 ‘세부 조건’ 상자에 무엇을 골랐는지 요약해, 열지 않아도 보이게 한다. */
+function _refreshMoreMeta() {
+  const t = appState.trip;
+  if (!t) return;
+  const h = t.hotelP || {};
+  const hn = (h.types?.length || 0) + (h.locations?.length || 0) + (h.amenities?.length || 0);
+  const hc = $('#hotelCount'); if (hc) hc.textContent = hn ? `${hn}개 선택` : '선택 안 함 · 예산에 맞는 숙소를 골라요';
+  const hr = $('#hotelReset'); if (hr) hr.hidden = !hn;
+  const hm = $('#hotelMoreMeta'); if (hm) hm.textContent = hn ? `${hn}개 선택` : '선택 안 함';
+  const f = t.flight || {};
+  const fn = (f.airlines?.length || 0) + (f.route && f.route !== 'any' ? 1 : 0) + (f.classType && f.classType !== 'any' ? 1 : 0);
+  const fm = $('#flightMoreMeta'); if (fm) fm.textContent = fn ? `${fn}개 선택` : '선택 안 함';
+  const parts = [];
+  if (t.includeFlight === false) parts.push('항공권 제외');
+  if (t.includeHotel === false) parts.push('숙소 제외');
+  if (t.currency && t.currency !== 'KRW') parts.push(`${t.currency}로 표시`);
+  if (fn) parts.push(`항공 ${fn}개`);
+  if (hn) parts.push(`숙소 ${hn}개`);
+  const bm = $('#budgetMoreMeta'); if (bm) bm.textContent = parts.length ? parts.join(' · ') : '선택 · 바꾸지 않아도 돼요';
+  const sn = (t.styles || []).length;
+  const sm = $('#styleH .form-label-meta'); if (sm) sm.textContent = sn ? `선택 · ${sn}개 선택됨` : '선택 · 여러 개 가능';
+}
+
 function _saveDraft() {
   const t = appState.trip;
   if (!t) return;
+  _refreshMoreMeta();
   t._draft = !!(t.cityName || t.originName || t._originText || t._cityText || t.startDate || t.concept || t.budget);
   t._draftStep = step;
   _syncPressed();
@@ -941,7 +971,7 @@ function _showStep() {
   $$('#tripStepProgress .step-line').forEach((line, i) => {
     line.classList.toggle('is-done', i < step - 1);
   });
-  const names = ['여행지', '날짜·인원', '여행 스타일', '예산'];
+  const names = ['여행지', '날짜·인원', '스타일', '예산'];
   $('#tripStepProgress')?.setAttribute('aria-label', `전체 4단계 중 ${step}단계 · ${names[step - 1]}`);
   $$('#createTripPage .step-pane').forEach(p => {
     const on = Number(p.dataset.stepPane) === step;
@@ -961,13 +991,13 @@ function _validateStep() {
     _autoConfirm('origin'); _autoConfirm('dest');
     if (!t.origin) {
       _fieldError('origin', $('#tripOrigin')?.value.trim()
-        ? '목록에서 출발 도시를 골라 주세요. 도시·국가·공항 코드로 찾을 수 있어요.'
+        ? '검색 결과에서 출발 도시를 선택해 주세요.'
         : '출발 도시를 입력해 주세요.');
       return false;
     }
     if (!t.city) {
       _fieldError('dest', $('#tripCitySearch')?.value.trim()
-        ? '목록에서 도착 도시를 골라 주세요. 없으면 아래 ‘국가·도시 직접 선택’을 써 보세요.'
+        ? '검색 결과에서 도착 도시를 선택해 주세요. 없으면 아래 ‘국가·도시 직접 선택’을 써 보세요.'
         : '도착 도시를 입력하거나 인기 도시를 골라 주세요.');
       return false;
     }

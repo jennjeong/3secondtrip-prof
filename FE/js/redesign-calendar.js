@@ -85,7 +85,9 @@ function _render() {
   if (lbl) lbl.textContent = `${cal.view.getFullYear()}년 ${cal.view.getMonth() + 1}월`;
   // 지금 어느 날짜를 고르는 중인지 제목에 보여 준다.
   const title = $('#calendarSheetTitle');
-  if (title) title.textContent = cal.focus === 'end' && cal.start ? '귀국일 선택' : '출발일 선택';
+  // 두 날짜를 다 고르면 ‘확인’ 단계 — 다시 누르면 출발일부터 새로 고른다.
+  if (title) title.textContent = cal.start && cal.end ? '날짜 확인 · 완료를 눌러 주세요'
+    : cal.start ? '귀국일 선택' : '출발일 선택';
   const first = new Date(cal.minDate.getFullYear(), cal.minDate.getMonth(), 1);
   const last = new Date(first.getFullYear(), first.getMonth() + MAX_MONTHS_AHEAD, 1);
   const prev = $('#calPrev'); if (prev) prev.disabled = cal.view <= first;

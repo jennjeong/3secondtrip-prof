@@ -208,3 +208,182 @@ body { font-size: 15px; line-height: 1.55; }
 
 /* 화면 전환 때 초점을 받는 제목은 누를 수 있는 요소가 아니므로 초점 테두리를 그리지 않는다 */
 h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus, h3[tabindex="-1"]:focus, .page-title[tabindex="-1"]:focus { outline: none; box-shadow: none; }
+
+/* ===================== 모바일 2차 — 320~430px ===================== */
+:root { --phone-gap: 12px; }
+
+/* 공통 터치 대상 */
+.topbar-back { width: var(--touch); height: var(--touch); }
+.city-clear { width: 36px; height: 36px; right: 4px; }
+.city-clear::after { content: ''; position: absolute; inset: -4px; }    /* 누르는 면은 44px */
+.btn-text { min-width: var(--touch); padding: 0 8px; justify-content: center; }
+.form-details > summary, .budget-more > summary, .budget-why > summary, .dest-advanced > summary { min-height: var(--touch); display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.check-row { min-height: var(--touch); }
+.search-card input[type="search"] { align-self: stretch; min-height: var(--touch); }
+.budget-input { min-height: 56px; }
+
+/* 하단 메뉴: 활성 탭은 아이콘과 글자 모두로 */
+.tab-button.is-active .tab-ico { stroke-width: 2.6; }
+.tab-button.is-active .tab-ico path, .tab-button.is-active .tab-ico circle, .tab-button.is-active .tab-ico rect, .tab-button.is-active .tab-ico polygon { fill: color-mix(in srgb, currentColor 14%, transparent); }
+
+/* 마이: 게스트 안내 두 줄까지 */
+.profile-email { white-space: normal; overflow: hidden; text-overflow: clip; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.45; }
+.profile-info { min-width: 0; flex: 1; }
+
+/* 결과: 도구 줄과 점검 버튼 */
+.schedule-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 10px; }
+.schedule-toolbar[hidden] { display: none; }
+.schedule-toolbar .view-toggle { margin: 0; }
+.checks-btn {
+  min-height: var(--touch); padding: 0 12px; border-radius: 12px; border: 1px solid var(--c-border);
+  background: var(--c-surface); font-size: 13px; font-weight: 700; color: var(--c-text-soft); margin-left: auto;
+}
+.checks-btn.is-warn { color: #9A3624; border-color: #F0C9C0; background: #FDF3F1; }
+.budget-why { margin-top: 8px; font-size: 13.5px; }
+.budget-why summary { color: var(--c-text-soft); font-weight: 600; }
+.tools-section { margin: var(--space-section) 0; }
+.tools-section[hidden] { display: none; }
+.tools-section > .section-sub { margin-top: 4px; }
+.rc-reason-line { font-size: 12.5px; font-weight: 600; color: var(--c-blue); margin-top: 2px; }
+.day-chip-cost { font-size: 12.5px; }
+
+@media (max-width: 479px) {
+  .section-block { margin: 26px 0; }
+  .page-header { margin: 4px 0 10px; }
+
+  /* 홈 히어로: 장식을 빼고 제목·설명·버튼만 */
+  .hero-card { padding: 18px 16px; gap: 12px; border-radius: 20px; }
+  .hero-title { font-size: 24px; margin: 0 0 6px; }
+  .hero-sub { font-size: 14px; line-height: 1.5; }
+  .hero-cta { min-height: var(--touch); padding: 0 16px; font-size: 14.5px; }
+  .hero-route, .hero-aurora { display: none; }
+  .search-card { min-height: 48px; margin: 12px 0 4px; }
+  .home-subh { margin: 12px 0 6px; font-size: 13px; }
+  /* 스타일 칩은 한 줄로 밀어 보기 — 오른쪽이 흐려져 다음 항목이 있음을 알린다 */
+  .home-styles {
+    flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none;
+    margin-right: calc(-1 * var(--app-side-padding)); padding-right: 28px;
+    -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent);
+    mask-image: linear-gradient(90deg, #000 82%, transparent);
+  }
+  .home-styles::-webkit-scrollbar { display: none; }
+  .home-styles .chip { flex: 0 0 auto; }
+  .section-head { margin-bottom: 10px; }
+  .section-title { font-size: 19px; }
+
+  /* 여행 만들기: 머리글·진행 표시 압축, 인기 도시는 글자 칩 */
+  #createTripPage .page-header .page-sub { display: none; }
+  #createTripPage .page-title { font-size: 22px; }
+  .step-progress { margin: 10px 0 14px; }
+  .step-dot { width: 28px; height: 28px; font-size: 13px; }
+  .step-dot span { font-size: 12px; }
+  .step-h { font-size: 18px; margin-bottom: 12px; }
+  .draft-banner { padding: 8px 12px; font-size: 13px; }
+  .dest-quick { display: flex !important; flex-wrap: wrap; gap: 8px; }
+  .dest-quick button {
+    min-height: var(--touch) !important; padding: 0 14px !important; align-items: center !important;
+    background: var(--c-surface) !important; color: var(--c-text) !important; border: 1px solid var(--c-border);
+    border-radius: 999px !important; font-size: 14px; font-weight: 600;
+  }
+  .dest-quick button.is-active { background: var(--c-text) !important; color: var(--c-bg) !important; border-color: var(--c-text); }
+  .budget-input { font-size: 30px; }
+
+  /* 결과: 첫 화면에 첫 장소까지 — 금액 세 개는 한 줄, 조정 방법은 옆으로 넘기기 */
+  .schedule-head .page-title { font-size: 22px; }
+  .schedule-actions { width: 100%; }
+  .action-btn { flex: 1 1 0; justify-content: center; padding: 0 8px; }
+  .save-status { margin: 4px 0 8px; font-size: 12.5px; }
+  .budget-panel { padding: 12px; }
+  .money-rows--panel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .money-rows--panel .money-row { flex-direction: column; align-items: flex-start; gap: 2px; padding: 0; border: 0; }
+  .money-rows--panel .money-row dt { font-size: 12px; color: var(--c-text-soft); }
+  .money-rows--panel .money-row dt small { display: block; font-size: 11.5px; }
+  .money-rows--panel .money-row dd { font-size: 15px !important; font-weight: 800; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+  .budget-alts { display: flex !important; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 10px calc(-1 * 12px) 0; padding: 0 12px; flex-wrap: nowrap; }
+  .budget-alts[hidden] { display: none !important; }
+  .budget-alts::-webkit-scrollbar { display: none; }
+  .budget-alts-title { flex: 0 0 100%; display: none; }
+  .budget-alt { flex: 0 0 auto; width: auto; min-width: 150px; max-width: 220px; padding: 8px 12px; }
+  .budget-alt-detail { display: none; }
+  .budget-alt-label { font-size: 14px; }
+  .day-row { margin-top: 6px; }
+}
+
+/* 2열이 들어갈 폭(380~767px): 세로 카드 2열, 사진은 낮게 */
+@media (min-width: 380px) and (max-width: 767px) {
+  .rc-media { aspect-ratio: 16 / 10; }
+}
+/* 좁은 폭(379px 이하): 한 줄 가로 카드 — 도시·코스명·기간·스타일을 먼저 */
+@media (max-width: 379px) {
+  .roadmap-grid, .roadmap-list { grid-template-columns: 1fr !important; }
+  .roadmap-card, .roadmap-list > .roadmap-card, #exploreGrid .roadmap-card:nth-child(5n+1) { flex-direction: row !important; align-items: stretch; }
+  .rc-media { aspect-ratio: auto !important; width: 96px; flex: 0 0 96px; min-height: 104px; padding: 6px; }
+  .roadmap-card .rc-bottom { padding: 10px 12px; }
+  .roadmap-card .rc-title { font-size: 15px; }
+}
+/* 탐색 결과: 1열(좁은 폭) → 2열(380px 이상) → 4열(768px 이상) */
+@media (min-width: 380px) and (max-width: 767px) {
+  #exploreGrid, #popularRoadmaps { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+.explore-state { margin: 0 0 10px; font-size: 13px; color: var(--c-text-soft); display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.explore-state[hidden] { display: none; }
+
+@media (max-width: 479px) {
+  .budget-alt { display: flex; flex-direction: column; justify-content: center; min-height: var(--touch); padding: 4px 12px; gap: 0; }
+  .budget-alt-label, .budget-alt-total { white-space: nowrap; }
+  .budget-alt-total { font-size: 12px; }
+  .budget-why { margin-top: 4px; }
+  .money-rows--panel .money-row dd { font-size: 16px !important; }
+  .save-status { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (max-width: 359px) {
+  .action-btn svg { display: none; }
+  .action-btn { font-size: 13px; padding: 0 6px; }
+}
+
+.budget-meta { margin: 6px 0 0; font-size: 12.5px; color: var(--c-text-soft); }
+.budget-meta[hidden], .budget-meta:empty { display: none; }
+.cost-why-h { margin: 14px 0 4px; font-size: 14px; font-weight: 800; }
+.day-row { display: flex; align-items: center; gap: 8px; }
+.day-row .day-chips { flex: 1 1 auto; min-width: 0; }
+.day-row .checks-btn { flex: 0 0 auto; margin-left: 0; }
+@media (max-width: 479px) {
+  .budget-panel { padding: 12px; }
+  .money-rows--panel { gap: 4px; }
+  .budget-alts { margin-top: 8px; }
+  .day-chip { padding: 6px 10px; }
+  .schedule-toolbar { margin: 8px 0; }
+}
+@media (max-width: 479px) {
+  .money-rows--panel { grid-template-columns: auto auto auto; justify-content: space-between; column-gap: 8px; }
+  .money-rows--panel .money-row dd { font-size: 15px !important; white-space: nowrap; word-break: keep-all; }
+}
+
+/* 인원·객실 +/− 버튼도 44px */
+.stepper button { width: var(--touch); height: var(--touch); }
+
+/* 가로로 눕힌 휴대폰(높이 500px 이하): 폭은 넓어도 세로가 짧으므로 머리글·히어로·하단 메뉴를 낮춘다 */
+@media (max-height: 500px) and (orientation: landscape) {
+  :root { --nav-h: 56px; --topbar-h: 44px; }
+  .topbar-brand-logo { height: 26px; width: auto; aspect-ratio: 742 / 120; object-fit: cover; object-position: top; max-height: none; }
+  .hero-card { min-height: 0 !important; padding: 16px 20px !important; gap: 10px; }
+  .hero-greet, .hero-route, .hero-aurora, .hero-preview { display: none !important; }
+  .hero-title { font-size: 24px !important; margin: 0 0 4px; }
+  .hero-text { max-width: 100% !important; }
+  .tab-button, .tab-fab-button { height: var(--nav-h) !important; }
+  .tab-fab-button { flex-direction: row !important; align-items: center !important; justify-content: center; gap: 6px; padding-bottom: 0 !important; }
+  .tab-fab-button .fab-plus { width: 40px; height: 40px; margin: 0; font-size: 24px; }
+  .tab-button { flex-direction: row; gap: 6px; }
+}
+
+/* 확대 200%(폭 260px 이하): 인원 줄은 위아래로, 금액 세 개는 한 줄씩 */
+@media (max-width: 260px) {
+  .stepper-row { flex-wrap: wrap; gap: 6px; }
+  .money-rows--panel { grid-template-columns: 1fr !important; }
+  .money-rows--panel .money-row { flex-direction: row !important; justify-content: space-between; }
+}
+/* 넓은 화면: 예산 조정 방법은 칸으로 */
+@media (min-width: 480px) {
+  .budget-alts:not([hidden]) { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+  .budget-alts .budget-alts-title { grid-column: 1 / -1; }
+}

@@ -546,11 +546,15 @@ export function drawDayMarkers(mapInst, places) {
   clearMarkers();
   if (!places?.length) return;
   const acts = appState?.generated?.days?.[activeDay]?.activities || [];
+  const seen = new Map();   // 같은 좌표(예: 숙소 체크인·복귀)는 핀이 겹치지 않게 조금씩 비켜 놓는다
   places.forEach((p, i) => {
     const ai = p._ref ? acts.indexOf(p._ref) : i;
     const num = (ai >= 0 ? ai : i) + 1;
+    const k = `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
+    const dup = seen.get(k) || 0;
+    seen.set(k, dup + 1);
     const m = new google.maps.Marker({
-      position: { lat: p.lat, lng: p.lng },
+      position: { lat: p.lat + dup * 0.00012, lng: p.lng + dup * 0.00012 },
       map: mapInst,
       label: { text: String(num), color: '#ffffff', fontWeight: '900' },
       title: `${num}. ${p.name}`,

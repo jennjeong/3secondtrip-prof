@@ -123,7 +123,7 @@
           <span class="search-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </span>
-          <input type="search" id="homeSearch" placeholder="도시·국가·코스 이름 (예: 도쿄, Paris)" aria-label="여행 코스 검색어" enterkeyhint="search"/>
+          <input type="search" id="homeSearch" placeholder="도시·코스 검색" aria-label="여행 코스 검색어 (도시·국가·코스 이름)" enterkeyhint="search"/>
           <button type="submit" class="search-submit">검색</button>
         </form>
 
@@ -190,7 +190,7 @@
           <span class="search-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </span>
-          <input type="search" id="exploreSearch" placeholder="도시·국가·코스 이름 (예: 도쿄, Paris)" aria-label="여행 코스 검색어" aria-controls="exploreGrid" enterkeyhint="search"/>
+          <input type="search" id="exploreSearch" placeholder="도시·코스 검색 (예: 도쿄)" aria-label="여행 코스 검색어 (도시·국가·코스 이름)" aria-controls="exploreGrid" enterkeyhint="search"/>
         </div>
 
         <h2 class="sr-only" id="exploreStyleH">여행 스타일</h2>
@@ -234,7 +234,7 @@
           <div class="step-line"></div>
           <div class="step-dot" data-step="2">2<span>날짜·인원</span></div>
           <div class="step-line"></div>
-          <div class="step-dot" data-step="3">3<span>여행 스타일</span></div>
+          <div class="step-dot" data-step="3">3<span>스타일</span></div>
           <div class="step-line"></div>
           <div class="step-dot" data-step="4">4<span>예산</span></div>
         </div>
@@ -248,7 +248,7 @@
             <label class="form-label" for="tripOrigin" data-i18n="departureCityLabel">출발 도시</label>
             <div class="city-search-wrap">
               <input class="form-input" type="search" id="tripOrigin"
-                     placeholder="도시·국가·공항 코드 (예: 서울, ICN)"
+                     placeholder="예: 서울, ICN"
                      name="departureCity"
                      autocomplete="off" role="combobox" aria-expanded="false"
                      aria-autocomplete="list" aria-controls="originSuggestions"
@@ -264,7 +264,7 @@
             <label class="form-label" for="tripCitySearch">도착 도시</label>
             <div class="city-search-wrap">
               <input class="form-input" type="search" id="tripCitySearch"
-                     placeholder="도시·국가·공항 코드 (예: 도쿄, Paris, NRT)" autocomplete="off"
+                     placeholder="예: 도쿄, NRT" autocomplete="off"
                      role="combobox" aria-expanded="false"
                      aria-autocomplete="list" aria-controls="citySuggestions"
                      aria-describedby="citySelectedHint"/>
@@ -364,8 +364,6 @@
         <!-- Step 4 — Budget (direct input + smart suggestion) -->
         <div class="step-pane" data-step-pane="4" hidden>
           <h3 class="step-h">예산을 알려 주세요</h3>
-          <div class="budget-trip-summary" id="budgetTripSummary" aria-label="여행 요약"></div>
-
           <div class="form-row budget-field">
             <label class="form-label" for="tripBudgetInput">총 여행 예산 <span class="form-label-meta">필수</span></label>
             <p class="form-hint" id="budgetHelp">일행 전체가 쓸 금액이에요. 만원 단위로 입력해 주세요.</p>
@@ -379,12 +377,6 @@
             <p class="budget-level-badge" id="budgetLevelBadge" aria-live="polite"></p>
           </div>
 
-          <fieldset class="budget-includes">
-            <legend class="form-label">예산에 포함할 항목</legend>
-            <label class="check-row"><input type="checkbox" id="includeFlight" checked/> <span>항공권 <small id="includeFlightNote">왕복</small></span></label>
-            <label class="check-row"><input type="checkbox" id="includeHotel" checked/> <span>숙소 <small id="includeHotelNote"></small></span></label>
-            <p class="form-hint">식비·입장료·쇼핑·현지 교통은 항상 포함해요.</p>
-          </fieldset>
 
           <section class="budget-suggest" aria-labelledby="budgetSuggestH">
             <div class="budget-suggest-head">
@@ -413,6 +405,17 @@
             </button>
           </div>
 
+          <h4 class="form-section-title" id="budgetTripSummaryH">여행 요약</h4>
+          <div class="budget-trip-summary" id="budgetTripSummary" aria-labelledby="budgetTripSummaryH"></div>
+
+          <details class="budget-more" id="budgetMore">
+            <summary class="form-section-title">세부 조건 <span class="form-label-meta" id="budgetMoreMeta">선택 · 포함 항목·통화·항공·숙소</span></summary>
+          <fieldset class="budget-includes">
+            <legend class="form-label">예산에 포함할 항목</legend>
+            <label class="check-row"><input type="checkbox" id="includeFlight" checked/> <span>항공권 <small id="includeFlightNote">왕복</small></span></label>
+            <label class="check-row"><input type="checkbox" id="includeHotel" checked/> <span>숙소 <small id="includeHotelNote"></small></span></label>
+            <p class="form-hint">식비·입장료·쇼핑·현지 교통은 항상 포함해요.</p>
+          </fieldset>
           <div class="form-row">
             <label class="form-label" for="tripCurrency">결과 표시 통화</label>
             <select class="form-input" id="tripCurrency" aria-describedby="currencyHelp">
@@ -424,9 +427,10 @@
             </select>
             <p class="form-hint" id="currencyHelp">예산은 원화로 입력해요. 다른 통화를 고르면 결과 금액을 그 통화로 환산해 보여 드려요. 환율 기준일도 함께 표시돼요.</p>
           </div>
+
           <!-- ───── 항공 옵션 ───── -->
           <details class="form-section form-details">
-            <summary class="form-section-title">항공편 세부 설정</summary>
+            <summary class="form-section-title">항공편 <span class="form-label-meta" id="flightMoreMeta"></span></summary>
 
             <label class="form-label">노선 종류</label>
             <div class="chip-row" id="flightRouteChips">
@@ -527,7 +531,9 @@
 
           <!-- ───── 호텔 옵션 ───── -->
           <details class="form-section form-details">
-            <summary class="form-section-title">숙소 세부 설정</summary>
+            <summary class="form-section-title">숙소 <span class="form-label-meta" id="hotelMoreMeta"></span></summary>
+            <div class="airline-meta"><span id="hotelCount" aria-live="polite">선택 안 함 · 예산에 맞는 숙소를 골라요</span>
+              <button type="button" class="btn-text" id="hotelReset" hidden>선택 초기화</button></div>
 
             <label class="form-label">숙소 유형 <span class="form-label-meta">중복 선택 가능</span></label>
             <div class="chip-row chip-row--wrap" id="hotelTypeChips">
@@ -567,6 +573,7 @@
               <button type="button" class="chip" data-hotel-amen="kids">키즈 친화</button>
             </div>
           </details>
+          </details>
 
           <div class="trip-summary" id="tripSummary"></div>
         </div>
@@ -601,18 +608,20 @@
         <section class="budget-panel" id="budgetPanel" hidden aria-labelledby="budgetPanelH">
           <h3 class="sr-only" id="budgetPanelH">예산과 예상 지출</h3>
           <dl class="money-rows money-rows--panel" id="budgetPanelRows"></dl>
-          <p class="budget-panel-plan" id="budgetPanelPlan"></p>
-          <ul class="budget-notices" id="budgetNotices"></ul>
+          <p class="budget-meta" id="budgetWhyMeta"></p>
           <div class="budget-alts" id="budgetAlts" hidden></div>
         </section>
 
         <div class="day-row" id="scheduleDayRow" hidden>
           <div class="day-chips" id="dayChips" role="tablist" aria-label="여행일"></div>
-          <button type="button" class="btn-edit" id="btnEditToggle" aria-pressed="false">편집</button>
+          <button type="button" class="checks-btn" id="dayChecksBtn" aria-expanded="false" aria-controls="dayChecks">점검</button>
         </div>
-        <div class="view-toggle" id="viewToggle" role="group" aria-label="보기 방식" hidden>
-          <button type="button" data-view="list" aria-pressed="true">목록</button>
-          <button type="button" data-view="map" aria-pressed="false">지도</button>
+        <div class="schedule-toolbar" id="scheduleToolbar" hidden>
+          <div class="view-toggle" id="viewToggle" role="group" aria-label="보기 방식">
+            <button type="button" data-view="list" aria-pressed="true">일정</button>
+            <button type="button" data-view="map" aria-pressed="false">지도</button>
+          </div>
+          <button type="button" class="btn-edit" id="btnEditToggle" aria-pressed="false">일정 편집</button>
         </div>
         <section class="day-checks" id="dayChecks" aria-label="이 날 일정 점검" hidden></section>
 
@@ -668,10 +677,17 @@
           <h2 class="cost-summary-title" id="costSummaryH">비용 자세히 보기</h2>
           <dl class="money-rows" id="costRows"></dl>
           <p class="cs-disclaimer" id="costNote"></p>
+          <h3 class="cost-why-h">금액 기준</h3>
+          <p class="budget-panel-plan" id="budgetPanelPlan"></p>
+          <ul class="budget-notices" id="budgetNotices"></ul>
         </section>
 
-        <div class="trip-tools" id="tripTools" hidden></div>
-        <div class="tool-card" id="collabPanel" hidden></div>
+        <section class="tools-section" id="toolsSection" aria-labelledby="toolsH" hidden>
+          <h2 class="section-title" id="toolsH">여행 도구</h2>
+          <p class="section-sub">날씨·환율·경비·준비물·내보내기·함께 편집</p>
+          <div class="trip-tools" id="tripTools" hidden></div>
+          <div class="tool-card" id="collabPanel" hidden></div>
+        </section>
 
         <div class="booking-cta" id="bookingCta" hidden>
           <div>
@@ -1123,7 +1139,7 @@
     </button>
     <button type="button" class="tab-fab-button" data-nav-to="create-trip">
       <span class="fab-plus" aria-hidden="true">+</span>
-      <span class="tab-label">여행 만들기</span>
+      <span class="tab-label">만들기</span>
     </button>
     <button type="button" class="tab-button" data-nav-to="schedule">
       <svg class="tab-ico" aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
