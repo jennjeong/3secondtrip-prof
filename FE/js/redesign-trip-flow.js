@@ -68,9 +68,27 @@ export function initTripFlow(state) {
     if (!document.activeElement?.matches?.('input:not([type=checkbox]):not([type=radio]), textarea')) typing(false);
   }, 60));
 
-  document.addEventListener('redesign:trip-prefill', () => {
-    _applyState();
-    step = 1; _showStep();
+  // 코스 상세의 '이 코스로 여행 만들기' — 도시·기간·스타일을 채우고 나머지는 사용자가 고른다.
+  document.addEventListener('redesign:trip-prefill', (e) => {
+    const d = e.detail || {};
+    _resetTripState();
+    const t = appState.trip;
+    const c = d.city ? findCity(x => x.name === d.city) : null;
+    if (c) { t.cityName = c.name; t.city = c.key; t.country = c.country; t.cityTier = c.tier; t.cityFlag = c.flag; }
+    else if (d.city) t._cityText = d.city;
+    if (CONCEPTS.some(x => x.key === d.concept)) t.concept = d.concept;
+    const n = Math.max(1, Math.min(MAX_TRIP_DAYS, Number(d.days) || 0));
+    if (d.days) {
+      // 날짜는 코스 기간에 맞춰 2주 뒤로 임시로 넣고, 2단계에서 바꿀 수 있게 알려 준다.
+      const s0 = new Date(); s0.setDate(s0.getDate() + 14);
+      const e0 = new Date(s0); e0.setDate(e0.getDate() + n - 1);
+      t.startDate = _isoLocal(s0); t.endDate = _isoLocal(e0);
+    }
+    t._draft = true;
+    step = 1; _showStep(); _applyState();
+    _showDraftBanner(false);
+    _showPrefillBanner(d.title);
+    _saveDraft();
   });
 
   document.addEventListener('redesign:nav', (e) => {
@@ -84,6 +102,7 @@ export function initTripFlow(state) {
  *  meta.prefill — 코스 상세 등에서 미리 채워 둔 값 보존 / meta.fresh — 무조건 새로 시작 */
 function _enterCreateTrip(meta = {}) {
   const t = appState.trip;
+  if (!meta.prefill) document.getElementById('prefillBanner')?.remove();
   const resume = !meta.prefill && !meta.fresh && !!t._draft;
   if (!meta.prefill && !resume) _resetTripState();
   step = resume ? Math.min(4, Math.max(1, t._draftStep || 1)) : 1;
@@ -841,6 +860,16 @@ function _showDraftBanner(show) {
     ]);
     $('#tripStepProgress')?.before(bar);
   }
+}
+
+function _showPrefillBanner(title) {
+  document.getElementById('prefillBanner')?.remove();
+  if (!title) return;
+  const bar = el('div', { id: 'prefillBanner', class: 'draft-banner', role: 'status' }, [
+    el('span', {}, `‘${title}’의 도시·기간·여행 스타일을 채웠어요. 날짜는 임시로 넣었으니 2단계에서 바꿔 주세요.`),
+    el('button', { type: 'button', class: 'btn-text', onclick: () => bar.remove() }, '닫기'),
+  ]);
+  $('#tripStepProgress')?.before(bar);
 }
 
 /* ============ Duration / Summary / Steps ============ */

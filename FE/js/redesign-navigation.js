@@ -9,12 +9,12 @@
 const TABS = ['home', 'explore', 'create-trip', 'schedule', 'my'];
 const PAGE_TITLES = {
   home: '3초 여행',
-  explore: '탐색',
+  explore: '여행 코스 탐색',
   'create-trip': '새 여행 만들기',
   schedule: '나의 일정',
   my: '마이',
   auth: '로그인',
-  'roadmap-detail': '로드맵',
+  'roadmap-detail': '여행 코스',
   blog: '블로그',
   feedback: '피드백',
   survey: '취향 분석',
@@ -34,6 +34,7 @@ const state = {
 };
 
 const listeners = new Set();
+const scrollMemory = {};   // page → 마지막 스크롤 위치
 
 /** Public API */
 export function onNavChange(cb) { listeners.add(cb); return () => listeners.delete(cb); }
@@ -52,6 +53,9 @@ export function navigate(pageId, opts = {}) {
     _emit(pageId, opts.meta || {});
     return true;
   }
+  // 떠나는 화면의 스크롤 위치를 기억해 뒤로 가기로 돌아오면 되살린다.
+  const prevScroll = document.querySelector('.app-page.is-active .page-scroll');
+  if (state.current && prevScroll) scrollMemory[state.current] = prevScroll.scrollTop;
   if (!state.byPop) {
     if (state.current) state.history.push({ page: state.current, meta: { ...state.meta } });
     state.forward = [];
@@ -62,7 +66,9 @@ export function navigate(pageId, opts = {}) {
   // Toggle page visibility
   document.querySelectorAll('.app-page').forEach(p => p.classList.remove('is-active'));
   page.classList.add('is-active');
-  page.querySelector('.page-scroll')?.scrollTo({ top: 0, behavior: 'instant' });
+  const scroller = page.querySelector('.page-scroll');
+  const restoreTo = state.byPop ? scrollMemory[pageId] : null;
+  scroller?.scrollTo({ top: 0, behavior: 'instant' });
 
   _syncTabs(pageId);
   _syncTopbar(pageId);
@@ -76,6 +82,8 @@ export function navigate(pageId, opts = {}) {
   }
 
   _emit(pageId, state.meta);
+  // 목록이 다시 그려진 뒤에 위치를 되살린다.
+  if (restoreTo && scroller) requestAnimationFrame(() => scroller.scrollTo({ top: restoreTo, behavior: 'instant' }));
   return true;
 }
 

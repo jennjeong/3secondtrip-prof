@@ -13,9 +13,10 @@ let star = 0;
 const tags = new Set();
 
 const MOCK_REVIEWS = [
-  { stars: 5, text: '3초 만에 일정이 나와서 정말 편했어요!', tags: ['효율','가성비'], city: '도쿄', at: '2026-04-12' },
-  { stars: 4, text: '제주 힐링 루트 추천해줘서 좋았습니다.',     tags: ['힐링'],         city: '제주', at: '2026-04-03' },
-  { stars: 5, text: '예약까지 한 번에 해결되니 신세계네요.',     tags: ['프리미엄'],     city: '파리', at: '2026-03-28' },
+  // 실제 후기가 쌓이기 전까지 보여 주는 예시 — 화면에 '예시' 배지를 붙인다.
+  { stars: 5, text: '날짜와 예산만 넣었는데 하루씩 일정이 나와서 편했어요.', tags: ['효율','가성비'], city: '도쿄', at: '2026-04-12', sample: true },
+  { stars: 4, text: '제주 힐링 코스를 바탕으로 동선만 조금 고쳐서 썼어요.', tags: ['힐링'],         city: '제주', at: '2026-04-03', sample: true },
+  { stars: 5, text: '예상 비용이 날짜별로 나뉘어 있어 예산 잡기 쉬웠어요.',   tags: ['프리미엄'],     city: '파리', at: '2026-03-28', sample: true },
 ];
 
 export function initReviews(state) {
@@ -114,7 +115,10 @@ export function renderReviewPreview() {
 
 function _itemEl(r) {
   return el('div', { class: 'review-item' }, [
-    el('div', { class: 'rv-stars' }, '★'.repeat(r.stars) + '☆'.repeat(5 - r.stars)),
+    el('div', { class: 'rv-stars' }, [
+      el('span', { 'aria-label': `별점 5점 중 ${r.stars}점`, role: 'img' }, '★'.repeat(r.stars) + '☆'.repeat(5 - r.stars)),
+      r.sample ? el('span', { class: 'rv-sample' }, '예시') : null,
+    ]),
     el('div', { class: 'rv-text' }, r.text),
     el('div', { class: 'rv-meta' }, `${r.city || ''} · ${(r.tags || []).join(' · ') || ''} · ${r.at || ''}`),
   ]);
@@ -122,7 +126,10 @@ function _itemEl(r) {
 
 function _previewEl(r) {
   return el('div', { class: 'review-preview' }, [
-    el('div', { class: 'rv-stars' }, '★'.repeat(r.stars)),
+    el('div', { class: 'rv-stars' }, [
+      el('span', { 'aria-label': `별점 5점 중 ${r.stars}점`, role: 'img' }, '★'.repeat(r.stars)),
+      r.sample ? el('span', { class: 'rv-sample' }, '예시') : null,
+    ]),
     el('div', { class: 'rv-text' }, r.text),
     el('div', { class: 'rv-meta' }, `${r.city || ''} · ${r.at || ''}`),
   ]);

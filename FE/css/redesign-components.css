@@ -2665,3 +2665,186 @@ body.is-typing .bottom-tab-nav { display: none; }
 .cal-cell:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 1px; }
 .icon-btn:disabled { opacity: .3; cursor: not-allowed; }
 .concept-card.is-active { background: color-mix(in srgb, var(--c-primary) 9%, var(--c-surface)); }
+
+/* ===================== Phase 3 — 홈·탐색·코스 상세 ===================== */
+/* 홈 검색 — 검색 버튼으로 탐색에 넘어간다 */
+.search-card .search-submit {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--c-text);
+  color: var(--c-bg);
+  font-size: 13px;
+  font-weight: 700;
+}
+.home-subh { margin: 18px 0 8px; font-size: 14px; font-weight: 700; color: var(--c-text-soft); }
+.home-styles { gap: 8px; }
+.section-sub { margin: -4px 0 10px; font-size: 13px; color: var(--c-text-soft); line-height: 1.5; }
+
+/* 모바일 첫 화면에서는 인사말을 빼 제목·설명·버튼이 먼저 읽히게 */
+@media (max-width: 479px) {
+  .hero-greet { display: none; }
+  .hero-card { min-height: 0; gap: 18px; }
+  .hero-title { font-size: 28px; }
+  .hero-route { opacity: .55; width: 110px; height: 154px; }
+}
+
+/* 도시 바로가기 — 멈춤 버튼 */
+.city-section .section-head { margin-bottom: 0; }
+.city-section .city-marquee { margin-top: 4px; margin-bottom: 0; }
+.city-marquee.is-paused .city-marquee-track { animation-play-state: paused; }
+.marquee-pause { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) {
+  .marquee-pause { display: none; }
+}
+
+/* 탐색 — 결과 수와 정렬 */
+.explore-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+.explore-count { margin: 0; font-size: 14px; font-weight: 700; color: var(--c-text); }
+.explore-bar .sort-tabs { margin: 0; flex: 0 0 auto; width: 168px; }
+.sort-tabs--2::before { width: calc((100% - 12px) / 2) !important; }
+#exploreFilters { gap: 8px; margin-top: 12px; }
+
+/* 코스 카드 — 도시·국가 → 제목 → 기간·스타일 → 좋아요 */
+.roadmap-card .rc-top { gap: 6px; justify-content: flex-start; flex-wrap: wrap; }
+.rc-sample, .rc-reason {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.rc-sample { background: rgba(255,255,255,.92); color: #111418; }
+.rc-reason { background: rgba(0,0,0,.38); color: #fff; }
+.rc-place { font-size: 12px; font-weight: 600; opacity: .9; }
+.rc-title {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -.02em;
+  text-shadow: 0 2px 6px rgba(0,0,0,.25);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.rc-info { margin-top: 4px; font-size: 12px; font-weight: 600; opacity: .92; }
+.roadmap-card .rc-bottom .rc-likes { margin-top: 6px; width: fit-content; background: rgba(0,0,0,.3); }
+.roadmap-list > .roadmap-card { height: 200px; }
+@media (min-width: 768px) { .roadmap-list > .roadmap-card { flex-basis: 280px; } }
+
+/* 코스 상세 */
+.roadmap-cover .rd-city { font-size: 13px; font-weight: 600; opacity: .9; margin: 0; }
+.roadmap-cover .rd-title { margin: 4px 0 2px; font-size: 26px; line-height: 1.25; font-weight: 800; letter-spacing: -.03em; }
+.roadmap-cover .rd-title:focus { outline: none; }
+.meta-pill--sample { background: var(--c-text) !important; color: var(--c-bg); border-color: transparent !important; font-weight: 700; }
+.roadmap-body { margin-top: 8px; }
+.rd-h { margin: 22px 0 10px; font-size: 17px; font-weight: 800; letter-spacing: -.02em; }
+.rd-note { margin: 10px 0; font-size: 13px; color: var(--c-text-soft); line-height: 1.6; }
+.rd-loading { padding: 32px 0; text-align: center; color: var(--c-text-soft); }
+.rd-cost {
+  padding: 14px 16px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+}
+.rd-cost .rd-h { margin: 0 0 6px; font-size: 14px; color: var(--c-text-soft); }
+.rd-cost-num { margin: 0; font-size: 20px; font-weight: 800; }
+.rd-cost-note { margin: 2px 0 0; font-size: 13px; color: var(--c-text-soft); }
+.rd-source { margin: 8px 0 0; font-size: 12px; color: var(--c-text-mute); line-height: 1.5; }
+.rd-day { margin-bottom: 16px; }
+.rd-day-h { margin: 0 0 8px; font-size: 15px; font-weight: 800; }
+.rd-stops { list-style: none; margin: 0; padding: 0; }
+.rd-stop {
+  display: grid;
+  grid-template-columns: 48px 24px 1fr;
+  align-items: start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+}
+.rd-time { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--c-text-soft); padding-top: 1px; }
+.rd-name { font-size: 14px; font-weight: 600; line-height: 1.4; }
+.rd-name small { display: block; font-size: 12px; font-weight: 500; color: var(--c-text-mute); }
+.rd-move {
+  margin: 0 0 0 30px;
+  padding: 6px 0 6px 18px;
+  border-left: 2px dashed var(--c-border);
+  font-size: 12px;
+  color: var(--c-text-soft);
+}
+.rd-missing { padding: 40px 0; }
+.rd-missing .empty-title { margin: 8px 0 4px; font-size: 18px; font-weight: 800; }
+.rd-missing .empty-title:focus { outline: none; }
+.rd-missing .btn { margin-top: 10px; }
+#roadmapDetailPage .roadmap-cta-row {
+  position: sticky;
+  bottom: calc(-1 * var(--nav-h) - var(--safe-bottom) - 24px);
+  display: flex;
+  gap: 8px;
+  margin: 16px calc(-1 * var(--app-side-padding)) 0;
+  padding: 10px var(--app-side-padding) 22px;
+  background: linear-gradient(to bottom, transparent, var(--c-bg) 14px);
+  z-index: 5;
+}
+#roadmapDetailPage .roadmap-cta-row .btn-primary { flex: 1; }
+#roadmapDetailPage .roadmap-cta-row[hidden] { display: none; }
+
+/* 후기 예시 배지 */
+.rv-sample {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--c-text);
+  color: var(--c-bg);
+  font-size: 10.5px;
+  font-weight: 700;
+  vertical-align: 2px;
+}
+/* 가로 스크롤 목록이 화면 여백과 같은 폭만큼만 밖으로 나가게(320px에서 가로 넘침 방지) */
+.review-preview-list, .roadmap-list {
+  margin-left: calc(-1 * var(--app-side-padding));
+  margin-right: calc(-1 * var(--app-side-padding));
+  padding-left: var(--app-side-padding);
+  padding-right: var(--app-side-padding);
+}
+/* 데스크톱 히어로 오른쪽 — 일정 미리보기 카드 */
+.hero-preview { display: none; }
+@media (min-width: 1024px) {
+  .hero-text { max-width: 54%; }
+  .hero-preview {
+    display: block;
+    position: absolute;
+    right: 9%;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 300px;
+    padding: 18px 20px;
+    border-radius: 18px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.18);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #fff;
+  }
+  .hp-head { display: flex; justify-content: space-between; align-items: center; margin: 0 0 12px; font-size: 15px; font-weight: 800; }
+  .hp-badge { padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.9); color: #111418; font-size: 11px; font-weight: 700; }
+  .hp-days { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .hp-days li { font-size: 13px; color: rgba(255,255,255,.85); padding: 8px 10px; border-radius: 10px; background: rgba(0,0,0,.18); }
+  .hp-days b { margin-right: 6px; color: #fff; }
+  .hp-cost { margin: 12px 0 0; font-size: 12.5px; color: rgba(255,255,255,.75); }
+  .hp-cost b { color: #fff; }
+}
+@media (min-width: 1024px) { .hero-route { display: none; } }
