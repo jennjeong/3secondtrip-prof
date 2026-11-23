@@ -35,7 +35,7 @@ def signup(payload: PasswordSignupRequest, db: Session = Depends(get_db)):
         email=payload.email, password=payload.password, nickname=payload.nickname,
         name=payload.name, phone=payload.phone, birth_date=payload.birth_date,
     )
-    token = create_access_token(user_id=user.id)
+    token = create_access_token(user_id=user.id, token_version=user.token_version or 0)
     return SignupResponse(user=UserPublic.model_validate(user), access_token=token)
 
 
@@ -45,7 +45,7 @@ def login(payload: PasswordLoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email_normalized == en, User.provider == "local").first()
     if not user or not user.password_hash or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
-    token = create_access_token(user_id=user.id)
+    token = create_access_token(user_id=user.id, token_version=user.token_version or 0)
     return SignupResponse(user=UserPublic.model_validate(user), access_token=token)
 
 

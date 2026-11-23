@@ -116,3 +116,54 @@ def test_oauth_bad_state_returns_to_app(client):
     r = client.get("/auth/google/callback?code=abc&state=forged", follow_redirects=False)
     assert r.status_code == 302
     assert "#login_error=state" in r.headers["location"]
+
+
+# ── 비밀번호를 바꾸면 다른 기기의 로그인이 끊긴다 ──────────────────────
+def _login(client, email, pw):
+    r = client.post("/users/login", json={"email": email, "password": pw})
+    assert r.status_code == 200, r.text
+    return r.json()["access_token"]
+
+
+def _me(client, token):
+    return client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
+
+
+def test_reset_signs_out_other_devices(client, monkeypatch):
+    email = _signup(client)
+    phone = _login(client, email, "abc12345")
+    laptop = _login(client, email, "abc12345")
+    assert _me(client, phone).status_code == 200
+    token = _issue(client, email, monkeypatch)
+    assert client.post("/users/password-reset/confirm", json={"token": token, "password": "newpass99"}).status_code == 200
+    for old in (phone, laptop):
+        r = _me(client, old)
+        assert r.status_code == 401
+        assert r.json()["detail"] == "token_revoked"
+    fresh = _login(client, email, "newpass99")
+    assert _me(client, fresh).status_code == 200
+
+
+def test_old_token_without_version_still_works_until_reset(client, monkeypatch):
+    """배포 전에 발급된(tv 없는) 토큰은 배포만으로 끊기지 않는다."""
+    from app.core.security import create_access_token
+    email = _signup(client)
+    uid = _me(client, _login(client, email, "abc12345")).json()["id"]
+    legacy = create_access_token(user_id=uid)          # tv 없음
+    assert _me(client, legacy).status_code == 200
+    token = _issue(client, email, monkeypatch)
+    client.post("/users/password-reset/confirm", json={"token": token, "password": "newpass99"})
+    assert _me(client, legacy).status_code == 401
+
+
+def test_revoked_token_is_guest_on_optional_routes(client, monkeypatch):
+    """로그인이 선택인 API(피드백 등)에서는 옛 토큰을 비회원으로 취급한다."""
+    email = _signup(client)
+    old = _login(client, email, "abc12345")
+    token = _issue(client, email, monkeypatch)
+    client.post("/users/password-reset/confirm", json={"token": token, "password": "newpass99"})
+    from app.routers import feedback
+    feedback._create_limit._hits.clear(); feedback._create_limit._all.clear()
+    r = client.post("/feedback", json={"feedback_type": "etc", "content": "c"}, headers={"Authorization": f"Bearer {old}"})
+    assert r.status_code == 201
+    assert r.json()["user_id"] is None

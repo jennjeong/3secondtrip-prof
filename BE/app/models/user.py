@@ -43,6 +43,8 @@ class User(Base):
     # SQLite and FALSE/TRUE on Postgres (a literal '0'/'1' is invalid for a PG boolean).
     is_admin   = Column(Boolean, nullable=False, default=False, server_default=expression.false(), index=True)
     is_active  = Column(Boolean, nullable=False, default=True,  server_default=expression.true(),  index=True)
+    # 비밀번호를 바꾸면 1 올린다 — 이전 번호로 발급된 로그인 토큰은 모두 거절된다
+    token_version = Column(Integer, nullable=False, default=0, server_default="0")
 
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

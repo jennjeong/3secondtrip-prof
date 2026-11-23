@@ -110,7 +110,7 @@ async def google_callback(request: Request, code: str | None = None, state: str 
     if not mapped["provider_user_id"]:
         raise HTTPException(status_code=500, detail="Invalid Google profile")
     user = get_or_create_oauth_user(db, **mapped)
-    jwt_token = create_access_token(user_id=user.id)
+    jwt_token = create_access_token(user_id=user.id, token_version=user.token_version or 0)
     return _redirect_with_token(jwt_token)
 
 
@@ -145,7 +145,7 @@ async def kakao_callback(request: Request, code: str | None = None, state: str |
     if not mapped["provider_user_id"]:
         raise HTTPException(status_code=500, detail="Invalid Kakao profile")
     user = get_or_create_oauth_user(db, **mapped)
-    jwt_token = create_access_token(user_id=user.id)
+    jwt_token = create_access_token(user_id=user.id, token_version=user.token_version or 0)
     return _redirect_with_token(jwt_token)
 
 
@@ -191,7 +191,7 @@ async def apple_callback_post(
     if not mapped["provider_user_id"]:
         raise HTTPException(status_code=500, detail="Invalid Apple claims")
     db_user = get_or_create_oauth_user(db, **mapped)
-    jwt_token = create_access_token(user_id=db_user.id)
+    jwt_token = create_access_token(user_id=db_user.id, token_version=db_user.token_version or 0)
     return _redirect_with_token(jwt_token)
 
 
@@ -252,5 +252,5 @@ async def naver_callback(request: Request, code: str | None = None, state: str |
     if not mapped["provider_user_id"]:
         raise HTTPException(status_code=500, detail="Invalid Naver profile")
     user = get_or_create_oauth_user(db, **mapped)
-    jwt_token = create_access_token(user_id=user.id)
+    jwt_token = create_access_token(user_id=user.id, token_version=user.token_version or 0)
     return _redirect_with_token(jwt_token)

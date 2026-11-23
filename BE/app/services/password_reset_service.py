@@ -97,6 +97,8 @@ def confirm_reset(db: Session, token: str, new_password: str) -> bool:
     if not user or user.provider != "local":
         return False
     user.password_hash = hash_password(new_password)
+    # 다른 기기에 남아 있는 로그인을 모두 끊는다
+    user.token_version = int(user.token_version or 0) + 1
     row.used_at = now
     db.commit()
     return True

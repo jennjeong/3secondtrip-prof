@@ -148,7 +148,9 @@ export async function refreshCurrentUser() {
       clearAccessToken();
       appState.currentUser = null;
       appState.authOffline = false;
-      if (hadToken) showToast('로그인이 만료됐어요. 만들던 일정은 이 기기에 그대로 있어요', 3200);
+      if (hadToken) showToast(e?.body?.detail === 'token_revoked'
+        ? '비밀번호가 바뀌어 이 기기에서 로그아웃됐어요. 새 비밀번호로 다시 로그인해 주세요. 만들던 일정은 그대로 있어요'
+        : '로그인이 만료됐어요. 만들던 일정은 이 기기에 그대로 있어요', 4200);
     } else {
       // 서버에 닿지 못한 경우 — 로그아웃시키지 않고 연결 문제임을 알린다.
       appState.authOffline = hadToken;

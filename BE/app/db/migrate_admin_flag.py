@@ -1,4 +1,4 @@
-"""Auto-migration: add is_admin / is_active columns to existing users table."""
+"""Auto-migration: add is_admin / is_active / token_version columns to existing users table."""
 from sqlalchemy import inspect, text
 from app.db.database import engine
 
@@ -24,6 +24,8 @@ def ensure_admin_columns() -> None:
         to_add.append(("is_admin",  f"BOOLEAN NOT NULL DEFAULT {false_lit}"))
     if "is_active" not in cols:
         to_add.append(("is_active", f"BOOLEAN NOT NULL DEFAULT {true_lit}"))
+    if "token_version" not in cols:
+        to_add.append(("token_version", "INTEGER NOT NULL DEFAULT 0"))
     if not to_add:
         return
 
