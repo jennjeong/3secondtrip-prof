@@ -10,6 +10,7 @@ import { el, $, $$, setActiveByData, showToast } from './redesign-ui.js';
 import { API_URL, api } from './redesign-api-adapter.js';
 import { searchCities } from './redesign-cities.js';
 import { sampleCourseFor } from './redesign-course-samples.js';
+import { publicLink, publicPath, shareLink } from './redesign-native.js';
 
 // In-memory cache for landmark image URLs we've already verified loadable.
 const LANDMARK_OK = new Set();
@@ -135,6 +136,16 @@ export function initRoadmaps(state) {
     explore.query = (e.target.value || '').trim();
     renderExplore();
   });
+  // 홈 검색 — 비어 있으면 아이콘과 입력만, 입력하면 지우기와 검색이 보인다(키보드의 검색 키로도 확정).
+  const _hs = $('#homeSearch');
+  const _paintHomeSearch = () => {
+    const has = !!(_hs?.value || '').trim();
+    $('#homeSearchClear').hidden = !has;
+    $('#homeSearchForm')?.classList.toggle('has-text', has);
+  };
+  _hs?.addEventListener('input', _paintHomeSearch);
+  $('#homeSearchClear')?.addEventListener('click', () => { _hs.value = ''; _paintHomeSearch(); _hs.focus(); });
+  _paintHomeSearch();
   $('#homeSearchForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
     explore.query = ($('#homeSearch')?.value || '').trim();
@@ -644,12 +655,10 @@ async function _shareCurrent() {
   const m = window.__redesign?.__currentRoadmap;
   if (!m) return;
   const slug = m.isSample ? COURSE_PAGE[m.city] : null;
-  const url = slug ? `${location.origin}/trips/${slug}.html`
-    : `${location.origin}${location.pathname}#page=roadmap-detail&id=${encodeURIComponent(m.id)}`;
+  const url = slug ? publicPath(`trips/${slug}.html`)
+    : publicLink(`#page=roadmap-detail&id=${encodeURIComponent(m.id)}`);
   const data = { title: m.title, text: `${m.city} ${_daysLabel(m.days)} 여행 코스`, url };
-  try {
-    if (navigator.share) { await navigator.share(data); return; }
-  } catch (e) { if (e?.name === 'AbortError') return; }
+  if (await shareLink(data)) return;
   try { await navigator.clipboard.writeText(url); showToast('코스 주소를 복사했어요'); }
   catch (_) { window.prompt('이 주소를 복사해 공유하세요', url); }
 }

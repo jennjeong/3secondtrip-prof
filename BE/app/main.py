@@ -43,6 +43,8 @@ _DEFAULT_ALLOWED = {
     "https://localhost:5500", "https://127.0.0.1:5500",
     "http://localhost:8080", "http://127.0.0.1:8080",
     "http://localhost:8090", "http://127.0.0.1:8090",   # admin panel
+    # iOS·Android 앱(Capacitor) — 앱 안 웹뷰의 출처
+    "capacitor://localhost", "https://localhost", "http://localhost",
 }
 _extra = [o.strip() for o in (os.getenv("CORS_ORIGINS") or "").split(",") if o.strip()]
 _ALLOWED = _DEFAULT_ALLOWED.union(_extra)

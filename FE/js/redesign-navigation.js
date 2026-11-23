@@ -146,8 +146,15 @@ function _syncTopbar(pageId) {
   const back  = document.querySelector('.topbar-back');
   // .sr-only — visually hidden but used by screen readers via aria-live.
   if (title) title.textContent = PAGE_TITLES[pageId] || '3초 여행';
-  const showBack = !TABS.includes(pageId);
-  if (back) back.hidden = !showBack;
+  document.documentElement.dataset.page = pageId;   // 화면별 앱 셸 모양(로고/제목·뒤로/전용 흐름)
+  // 여행 만들기는 하단 탭 없이 여는 전용 흐름 — 왼쪽 위 버튼으로 닫는다(작성 내용은 초안으로 남는다).
+  const flow = pageId === 'create-trip';
+  const showBack = !TABS.includes(pageId) || flow;
+  if (back) {
+    back.hidden = !showBack;
+    back.setAttribute('aria-label', flow ? '여행 만들기 닫기 — 작성한 내용은 남아요' : '뒤로 가기');
+    back.classList.toggle('is-close', flow);
+  }
   // Class fallback for browsers without :has() — collapses the empty
   // topbar on tab pages so there is no wasted top space.
   if (topbar) topbar.classList.toggle('topbar--collapsed', !showBack);

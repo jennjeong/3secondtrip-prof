@@ -1,0 +1,21 @@
+{
+  "appId": "com.threesecondtrip.app",
+  "appName": "3초 여행",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#F7F8FA"
+  },
+  "android": {
+    "backgroundColor": "#F7F8FA"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    },
+    "Keyboard": {
+      "resize": "none",
+      "resizeOnFullScreen": false
+    }
+  }
+}

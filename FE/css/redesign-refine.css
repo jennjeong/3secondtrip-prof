@@ -563,3 +563,155 @@ h1, h2, h3, .rc-title, .schedule-place-name, .mlc-title { word-break: keep-all; 
 .meta-pill { min-height: 28px; padding: 0 10px; border: 1px solid var(--r-border); background: var(--r-surface); color: var(--r-text-2); }
 .roadmap-cover { box-shadow: none; }
 #bookingSheet .book-hint { text-align: left; }
+
+/* =====================================================================
+ * 앱(iOS·Android) 1차 묶음 — 앱 셸 · 하단 탭 · 만들기 전용 흐름 · 홈 · 여행 만들기 · 일정 결과
+ * ===================================================================== */
+:root { --r-brand: #285CAA; --r-brand-press: #214C8D; --r-text-2: #556277; --r-focus: #285CAA; }
+
+/* 하단 탭 — 같은 중심선·높이, 선택은 색과 굵기만(위쪽 막대 표시는 뺀다) */
+.tab-button.is-active::before { display: none; }
+.tab-button, .tab-fab-button {
+  display: flex !important; flex-direction: column; align-items: center; justify-content: flex-end;
+  gap: 4px; padding-bottom: 9px !important; color: var(--r-text-2);
+}
+.tab-button.is-active, .tab-fab-button.is-active { color: var(--r-brand) !important; }
+.tab-button .tab-label, .tab-fab-button .tab-label { font-size: 11px; line-height: 14px; }
+.tab-fab-button { color: var(--r-text-2) !important; }
+/* 가운데 만들기 — 파랑은 살리고 돌출·그림자는 줄인다 */
+.tab-fab-button .fab-plus {
+  width: 44px !important; height: 40px !important; margin: -8px 0 0 !important; border-radius: 14px !important;
+  font-size: 26px !important; box-shadow: none !important; background: var(--r-brand) !important; color: var(--r-on-brand) !important;
+}
+
+/* 단계 표시(작은 화면) — ‘1/4 여행지’ + 가는 진행 막대 */
+.step-compact { display: none; align-items: center; gap: 8px; margin: 2px 0 18px; font-size: 14px; }
+.step-compact .stc-count { font-weight: 800; color: var(--r-brand); font-variant-numeric: tabular-nums; }
+.step-compact .stc-name { font-weight: 800; color: var(--r-text); }
+.step-compact .stc-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--r-border); overflow: hidden; margin-left: 4px; }
+.step-compact .stc-bar i { display: block; height: 100%; background: var(--r-brand); transition: width var(--r-fast) var(--r-ease); }
+.topbar-back.is-close svg { display: none; }
+.topbar-back.is-close::before { content: '×'; font-size: 30px; line-height: 1; font-weight: 300; }
+
+@media (max-width: 1023px) {
+  /* 홈만 로고, 다른 화면은 [뒤로] 제목 */
+  :root:not([data-page="home"]) .app-topbar .topbar-brand { display: none; }
+  :root:not([data-page="home"]) .app-topbar .topbar-title {
+    position: static !important; width: auto !important; height: auto !important; margin: 0 !important;
+    clip: auto !important; clip-path: none !important; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    font-size: 17px; font-weight: 800; color: var(--r-text); text-align: center; grid-column: 2;
+  }
+  /* 탐색·내 일정·마이 — 본문에 큰 제목이 있으니 상단바 제목은 숨기고 높이를 줄인다 */
+  :root[data-page="explore"] .app-topbar .topbar-title,
+  :root[data-page="schedule"] .app-topbar .topbar-title,
+  :root[data-page="my"] .app-topbar .topbar-title { visibility: hidden; }
+  :root[data-page="explore"] .app-topbar, :root[data-page="schedule"] .app-topbar, :root[data-page="my"] .app-topbar {
+    height: calc(8px + var(--safe-top)) !important; border-bottom: 0; overflow: hidden;
+  }
+
+  /* 여행 만들기 — 하단 탭 없이 전용 흐름. 아래에는 이전·다음 바 하나만 */
+  :root[data-page="create-trip"] { --nav-h: 0px; }
+  :root[data-page="create-trip"] .bottom-tab-nav { display: none !important; }
+  :root[data-page="create-trip"] #createTripPage .page-header .page-title { display: none; }
+  :root[data-page="create-trip"] .step-progress { display: none; }
+  :root[data-page="create-trip"] .step-compact { display: flex; }
+  :root[data-page="create-trip"] .step-nav {
+    position: sticky; bottom: 0; padding-bottom: calc(12px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
+  }
+  :root.kb-open[data-page="create-trip"] .step-nav { padding-bottom: 12px; }
+}
+
+/* 홈 — 소개 상자 세로 여백 축소, 제목 두 줄·설명·버튼 12~16 간격 */
+@media (max-width: 599px) {
+  #homePage .hero-card { padding: 20px 18px 18px !important; }
+  #homePage .hero-card .hero-greet { display: none; }
+  #homePage .hero-card .hero-title { font-size: 26px !important; line-height: 1.28; margin: 0; }
+  #homePage .hero-card .hero-sub { margin-top: 6px; font-size: 15px; }
+  #homePage .hero-card .hero-cta { margin-top: 14px !important; }
+  /* 스타일 칩 6개 — 3×2로 줄 끝에 하나만 남지 않게 */
+  #homePage .home-styles { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  #homePage .home-styles .chip { width: 100%; justify-content: center; padding: 0 8px; }
+}
+#homePage .section-head { align-items: baseline; }
+#homePage .section-head .section-more { min-height: 32px; }
+
+/* 홈 검색 — [검색 아이콘][입력][지우기][검색] · 비어 있으면 아이콘과 입력만 */
+#homeSearchForm .search-clear {
+  flex: none; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 10px; background: transparent; color: var(--r-text-2);
+}
+#homeSearchForm .search-clear:hover { background: var(--r-surface-2); }
+#homeSearchForm .search-clear[hidden] { display: none; }
+#homeSearchForm:not(.has-text) .search-submit { display: none; }
+#homeSearchForm.has-text .search-submit { background: var(--r-brand-soft) !important; color: var(--r-brand-on-soft) !important; border: 0 !important; }
+
+/* 여행지 단계 — 도착 도시 추천 6개는 3×2 */
+#destQuick { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+#destQuick button {
+  width: 100%; min-height: 48px; align-items: center; justify-content: center; padding: 0 8px;
+  background: var(--r-surface) !important; color: var(--r-text) !important; border: 1px solid var(--r-border-strong);
+  border-radius: var(--r-radius-ctl); font-size: 15px; font-weight: 700; text-shadow: none;
+}
+#destQuick button::before, #destQuick button::after { display: none !important; }
+#destQuick button.is-active, #destQuick button[aria-pressed="true"] { background: var(--r-brand-soft) !important; border-color: var(--r-brand); color: var(--r-brand-on-soft) !important; }
+
+/* 날짜 칸 — 라벨은 위, 날짜는 버튼 안 왼쪽, 달력 아이콘은 오른쪽 */
+.date-trigger { width: 100%; justify-content: space-between; min-height: 52px; }
+.date-trigger .dt-icon { order: 2; }
+.date-trigger .dt-label { order: 1; font-size: 16px; font-weight: 700; }
+@media (max-width: 359px) { #tripStartTrigger, #tripEndTrigger { min-width: 0; } }
+
+/* 여행 중 — 검은 상자 대신 밝은 카드, ‘다음 장소 / 현지 시각 / 몇 분 뒤’ */
+.now-next { background: var(--r-surface) !important; color: var(--r-text) !important; border: 1px solid var(--r-border); border-left: 4px solid var(--r-brand); border-radius: var(--r-radius-card); padding: 12px 14px; }
+.now-next .nn-head { font-size: 13px; color: var(--r-text-2); margin: 0 0 6px; }
+.now-next .nn-head strong { color: var(--r-brand-on-soft); }
+.now-next .nn-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px; padding: 4px 0; align-items: baseline; }
+.now-next .nn-label { font-size: 13px; font-weight: 800; color: var(--r-text-2); }
+.now-next .nn-place strong { display: block; font-size: 16px; }
+.now-next .nn-place small { font-size: 13px; color: var(--r-text-2); }
+.now-next .btn-soft { background: var(--r-surface) !important; color: var(--r-text) !important; border: 1px solid var(--r-border-strong) !important; }
+.now-next .btn-text { color: var(--r-brand) !important; text-decoration: none; }
+
+/* 예산 대안 — 추천 1개 요약 + 다른 대안 보기 */
+#budgetAlts { display: block !important; overflow: visible !important; }
+#budgetAlts .budget-alts-title { font-size: 14px; font-weight: 800; margin: 14px 0 8px; color: var(--r-text); }
+.alt-card { border: 1px solid var(--r-border); border-radius: var(--r-radius-ctl); padding: 12px 14px; background: var(--r-surface); }
+.alt-card + .alt-card { margin-top: 10px; }
+.alt-card .alt-card-title { font-size: 15px; font-weight: 800; margin: 0; }
+.alt-card .alt-card-detail { font-size: 13px; color: var(--r-text-2); margin: 2px 0 0; }
+.alt-card .alt-card-rows { margin: 10px 0 0; }
+.alt-card .alt-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 14px; }
+.alt-card .alt-row dt { color: var(--r-text-2); }
+.alt-card .alt-row dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.alt-card .alt-row.is-over dd { color: var(--r-danger); }
+.alt-card.is-fit .alt-row:last-child dd { color: var(--r-ok); }
+.alt-card .alt-apply { width: 100%; margin-top: 10px; min-height: 44px; }
+#budgetAlts .budget-alts-more { margin-top: 6px; }
+.alt-sheet-lead { font-size: 14px; color: var(--r-text-2); margin: 0 0 12px; }
+.alt-sheet-h { font-size: 15px; font-weight: 800; margin: 16px 0 8px; }
+#altSheet { z-index: 95; }
+#altBackdrop { z-index: 94; }
+
+/* 앱 — 상태바·홈 인디케이터는 Capacitor 웹뷰가 env() 로 알려 준다. 키보드가 열리면 아래 여백을 줄인다 */
+:root.is-app.kb-open .bottom-tab-nav { display: none; }
+
+/* 대안 시트 — 카드마다 파란 버튼이 반복되지 않게 보조 모양 */
+#altSheet .alt-apply { background: var(--r-surface) !important; color: var(--r-brand-on-soft) !important; border: 1px solid var(--r-brand) !important; }
+#altSheet .alt-card.is-fit .alt-apply { background: var(--r-brand) !important; color: var(--r-on-brand) !important; }
+
+/* 여행 만들기(작은 화면) — 이전·다음 바는 항상 화면 맨 아래(키보드가 열리면 그 위) */
+@media (max-width: 1023px) {
+  :root[data-page="create-trip"] #createTripPage .step-nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; margin: 0 auto; max-width: var(--app-content-max, 100%);
+    background: var(--r-bg); border-top: 1px solid var(--r-border);
+  }
+  :root[data-page="create-trip"] #createTripPage .page-scroll { padding-bottom: calc(96px + var(--safe-bottom, 0px)); }
+}
+
+/* 앱 — 키보드가 열리면(웹뷰 크기는 그대로) 하단 고정 바를 키보드 바로 위로 */
+:root.is-app.kb-open[data-page="create-trip"] #createTripPage .step-nav { bottom: var(--kb, 0px); padding-bottom: 10px; }
+:root.is-app.kb-open .bottom-sheet { padding-bottom: var(--kb, 0px); }
+/* 자동완성 목록이 열려 있으면 이전·다음 바를 잠시 숨겨 결과를 가리지 않는다 */
+#createTripPage:has(.city-suggestions:not([hidden])) .step-nav,
+#createTripPage:has(.place-suggestions:not([hidden])) .step-nav { visibility: hidden; }
+#createTripPage .city-suggestions { max-height: min(50vh, 320px); overflow-y: auto; overscroll-behavior: contain; }

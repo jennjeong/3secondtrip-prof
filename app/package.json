@@ -1,0 +1,25 @@
+{
+  "name": "3secondtrip-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "3초 여행 iOS·Android 앱 — FE 웹 코드를 Capacitor 로 감싼다",
+  "type": "module",
+  "scripts": {
+    "build:www": "node scripts/build-www.mjs",
+    "sync": "npm run build:www && npx cap sync",
+    "ios": "npm run sync && npx cap open ios",
+    "android": "npm run sync && npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
+    "@capacitor/keyboard": "^8.0.6",
+    "@capacitor/share": "^8.0.3",
+    "@capacitor/status-bar": "^8.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.2"
+  }
+}

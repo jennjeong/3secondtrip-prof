@@ -1094,6 +1094,12 @@ function _showStep() {
   });
   const names = ['여행지', '날짜·인원', '스타일', '예산'];
   $('#tripStepProgress')?.setAttribute('aria-label', `전체 4단계 중 ${step}단계 · ${names[step - 1]}`);
+  const sc = $('#stepCompact');
+  if (sc) {
+    sc.querySelector('.stc-count').textContent = `${step}/4`;
+    sc.querySelector('.stc-name').textContent = names[step - 1];
+    sc.querySelector('.stc-bar i').style.width = `${step * 25}%`;
+  }
   $$('#createTripPage .step-pane').forEach(p => {
     const on = Number(p.dataset.stepPane) === step;
     p.classList.toggle('is-active', on);

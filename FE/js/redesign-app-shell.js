@@ -4,6 +4,7 @@
  */
 
 import { trackEvent } from './redesign-api-adapter.js';
+import { NATIVE } from './redesign-native.js';
 
 const MAX_ERRORS_PER_PAGE = 3;
 
@@ -25,7 +26,7 @@ function _countErrors() {
 
 export function initAppShell() {
   window.addEventListener('appinstalled', () => trackEvent('app_installed'));
-  if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator && !NATIVE) {   // 앱은 파일을 앱 안에 담고 있어 서비스 워커가 필요 없다
     navigator.serviceWorker.register('/sw.js').catch(e => console.warn('[pwa] 등록 실패:', e?.message));
   }
   if (_isLocal()) return;

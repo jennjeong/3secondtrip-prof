@@ -1,7 +1,8 @@
 /* 3초 여행 — Redesign Main bootstrap */
 
 import { handleOAuthCallbackToken, getAccessToken, wakeServer } from './redesign-api-adapter.js';
-import { initNavigation, navigate, onNavChange, getCurrent } from './redesign-navigation.js';
+import { initNavigation, navigate, onNavChange, getCurrent, goBack } from './redesign-navigation.js';
+import { initNative } from './redesign-native.js';
 import { initAuth, refreshCurrentUser, handleAuthReturn, captureAuthHash } from './redesign-auth.js';
 import { initRoadmaps, renderHomeRoadmaps, renderExplore } from './redesign-roadmaps.js';
 import { initTripFlow } from './redesign-trip-flow.js';
@@ -183,6 +184,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initSubscription(appState);
   initCollab(appState, renderSchedule);
   initAppShell();
+  initNative({ goBack });
   initDialogs();
   // 소셜 로그인 취소·실패(#login_error), 비밀번호 재설정 링크(#reset_token) 처리
   handleAuthReturn();

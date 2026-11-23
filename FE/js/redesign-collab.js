@@ -6,6 +6,7 @@
 
 import { api, trackEvent } from './redesign-api-adapter.js';
 import { $, el, showToast } from './redesign-ui.js';
+import { publicLink } from './redesign-native.js';
 
 const TOKEN_KEY = 'tst_collab_v1';
 const MANAGE_KEY = 'tst_collab_manage_v1';   // 내가 만든 링크의 관리 키(회수용) — 이 기기에만 둔다
@@ -52,7 +53,7 @@ async function _revoke() {
 }
 
 function _link() {
-  return `${location.origin}${location.pathname}#page=schedule&collab=${token}`;
+  return publicLink(`#page=schedule&collab=${token}`);
 }
 
 function _applyRemote(remote) {
