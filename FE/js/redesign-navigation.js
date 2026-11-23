@@ -11,26 +11,29 @@ const PAGE_TITLES = {
   home: '3초 여행',
   explore: '여행 코스 탐색',
   'create-trip': '새 여행 만들기',
-  schedule: '나의 일정',
+  schedule: '내 일정',
   my: '마이',
   auth: '로그인',
   'roadmap-detail': '여행 코스',
-  blog: '블로그',
-  feedback: '피드백',
+  blog: '블로그 쓰기',
+  feedback: '의견 보내기',
   survey: '취향 분석',
   'my-saved': '저장한 일정',
-  'my-roadmaps': '내 로드맵',
+  'my-roadmaps': '내가 공개한 코스',
   'my-reviews': '내 후기',
   'my-blogs': '내 블로그',
-  subscription: '구독 · 멤버십',
+  subscription: '요금제',
 };
+const HOME_DOC_TITLE = document.title;
 
+/* 방문 기록은 브라우저 history 하나만 쓴다.  각 항목에 idx 를 붙여
+ * 앱 안의 뒤로 가기 버튼·스와이프·브라우저 뒤로/앞으로가 같은 기록을 따라가게 한다. */
 const state = {
   current: 'home',
-  history: [],   // back stack
-  forward: [],   // forward stack (cleared on new nav)
-  byPop: false,  // true when popstate-driven (don't push)
-  meta: {},      // optional per-page context (e.g. roadmap-detail.id)
+  idx: 0,        // 지금 보고 있는 기록의 순번(앱 안에서 처음 연 화면 = 0)
+  byPop: false,  // 뒤로/앞으로 이동 중이면 기록을 새로 쌓지 않는다
+  meta: {},      // 화면별 정보(예: roadmap-detail.id)
+  booted: false, // 첫 화면에서는 초점을 옮기지 않는다
 };
 
 const listeners = new Set();
@@ -49,21 +52,20 @@ export function navigate(pageId, opts = {}) {
     return false;
   }
   if (state.current === pageId && !opts.force) {
-    // Re-emit so modules can refresh
-    _emit(pageId, opts.meta || {});
+    // 같은 화면 — 정보(meta)가 바뀌었으면 주소만 덮어쓰고 다시 알린다
+    if (opts.meta && !state.byPop) {
+      state.meta = opts.meta;
+      try { history.replaceState({ page: pageId, meta: state.meta, idx: state.idx }, '', _buildHash(pageId, state.meta)); } catch (_) {}
+    }
+    _emit(pageId, opts.meta || state.meta || {});
     return true;
   }
   // 떠나는 화면의 스크롤 위치를 기억해 뒤로 가기로 돌아오면 되살린다.
   const prevScroll = document.querySelector('.app-page.is-active .page-scroll');
   if (state.current && prevScroll) scrollMemory[state.current] = prevScroll.scrollTop;
-  if (!state.byPop) {
-    if (state.current) state.history.push({ page: state.current, meta: { ...state.meta } });
-    state.forward = [];
-  }
   state.current = pageId;
   state.meta = opts.meta || {};
 
-  // Toggle page visibility
   document.querySelectorAll('.app-page').forEach(p => p.classList.remove('is-active'));
   page.classList.add('is-active');
   const scroller = page.querySelector('.page-scroll');
@@ -72,44 +74,43 @@ export function navigate(pageId, opts = {}) {
 
   _syncTabs(pageId);
   _syncTopbar(pageId);
+  document.title = pageId === 'home' ? HOME_DOC_TITLE : `${PAGE_TITLES[pageId] || '3초 여행'} · 3초 여행`;
 
-  // Push to browser history
-  if (!state.byPop && !opts.replace) {
-    try { history.pushState({ page: pageId, meta: state.meta }, '', _buildHash(pageId, state.meta)); }
-    catch (_) {}
-  } else if (!state.byPop && opts.replace) {
-    try { history.replaceState({ page: pageId, meta: state.meta }, '', _buildHash(pageId, state.meta)); } catch (_) {}
+  if (!state.byPop) {
+    try {
+      if (opts.replace) history.replaceState({ page: pageId, meta: state.meta, idx: state.idx }, '', _buildHash(pageId, state.meta));
+      else { state.idx += 1; history.pushState({ page: pageId, meta: state.meta, idx: state.idx }, '', _buildHash(pageId, state.meta)); }
+    } catch (_) {}
   }
 
   _emit(pageId, state.meta);
-  // 목록이 다시 그려진 뒤에 위치를 되살린다.
   if (restoreTo && scroller) requestAnimationFrame(() => scroller.scrollTo({ top: restoreTo, behavior: 'instant' }));
+  if (state.booted) _focusPage(page);
   return true;
 }
 
-/** Go back — uses internal history first, then natural Home fallback */
+/** 화면이 바뀌면 그 화면의 제목으로 초점을 옮긴다(화면 낭독기가 새 화면을 읽기 시작하도록).
+ *  화면 모듈이 이미 다른 곳(입력칸 등)에 초점을 두었으면 건드리지 않는다. */
+function _focusPage(page) {
+  requestAnimationFrame(() => {
+    if (page.contains(document.activeElement) && document.activeElement !== page) return;
+    const h = page.querySelector('h1, .page-title, h2');
+    if (!h) return;
+    if (!h.hasAttribute('tabindex')) h.setAttribute('tabindex', '-1');
+    h.focus({ preventScroll: true });
+  });
+}
+
+/** 뒤로 — 앱 안에서 쌓은 기록이 있으면 브라우저 뒤로와 같게, 없으면 홈으로. */
 export function goBack() {
-  if (state.history.length > 0) {
-    const entry = state.history.pop();
-    state.forward.push({ page: state.current, meta: { ...state.meta } });
-    state.byPop = true;
-    navigate(entry.page, { meta: entry.meta });
-    state.byPop = false;
-    try { history.back(); } catch (_) {}
-    return true;
-  }
-  if (state.current !== 'home') { navigate('home'); return true; }
+  if (state.idx > 0) { history.back(); return true; }
+  if (state.current !== 'home') { navigate('home', { replace: true }); return true; }
   return false;
 }
 
-/** Go forward — uses forward stack if available */
+/** 앞으로 — 브라우저 앞으로와 같다. */
 export function goForward() {
-  if (state.forward.length === 0) return false;
-  const entry = state.forward.pop();
-  state.history.push({ page: state.current, meta: { ...state.meta } });
-  state.byPop = true;
-  navigate(entry.page, { meta: entry.meta });
-  state.byPop = false;
+  history.forward();
   return true;
 }
 
@@ -120,11 +121,21 @@ function _emit(page, meta) {
   listeners.forEach(cb => { try { cb(page, meta); } catch (_) {} });
 }
 
+function _goByHistory(data) {
+  state.byPop = true;
+  try { navigate(data.page, { meta: data.meta || {} }); }
+  finally { state.byPop = false; }
+}
+
 function _syncTabs(pageId) {
-  document.querySelectorAll('.bottom-tab-nav [data-nav-to]').forEach(btn => {
-    const isActive = btn.dataset.navTo === pageId;
+  // 상세·하위 화면에서도 어느 메뉴 아래인지 보이게 한다.
+  const parent = { 'roadmap-detail': 'explore', 'my-saved': 'my', 'my-roadmaps': 'my', 'my-reviews': 'my', 'my-blogs': 'my',
+    subscription: 'my', survey: 'my', feedback: 'my', blog: 'my', auth: 'my' }[pageId] || pageId;
+  document.querySelectorAll('.bottom-tab-nav [data-nav-to], .topbar-nav [data-nav-to]').forEach(btn => {
+    if (btn.classList.contains('topbar-cta')) return;
+    const isActive = btn.dataset.navTo === parent;
     btn.classList.toggle('is-active', isActive);
-    if (isActive) btn.setAttribute('aria-current', 'page');
+    if (btn.dataset.navTo === pageId) btn.setAttribute('aria-current', 'page');
     else btn.removeAttribute('aria-current');
   });
 }
@@ -204,11 +215,9 @@ export function initNavigation() {
 
   // Browser history sync — popstate (primary)
   window.addEventListener('popstate', (e) => {
-    const data = (e.state && e.state.page) ? e.state : _parseHash();
-    if (!data) { state.byPop = true; navigate('home'); state.byPop = false; return; }
-    state.byPop = true;
-    navigate(data.page, { meta: data.meta || {} });
-    state.byPop = false;
+    const data = (e.state && e.state.page) ? e.state : (_parseHash() || { page: 'home', meta: {} });
+    state.idx = Number.isInteger(e.state?.idx) ? e.state.idx : 0;
+    _goByHistory(data);
   });
 
   // Browser history sync — hashchange (fallback for Safari 트랙패드 백 제스처,
@@ -217,9 +226,7 @@ export function initNavigation() {
     const data = _parseHash();
     if (!data) return;
     if (state.current === data.page) return;     // already in sync — popstate already handled it
-    state.byPop = true;
-    navigate(data.page, { meta: data.meta || {} });
-    state.byPop = false;
+    _goByHistory(data);
   });
 
   // Edge swipe — left edge = back, right edge = forward
@@ -227,11 +234,13 @@ export function initNavigation() {
 
   // Initial route — honour hash if present
   const initial = _parseHash();
+  state.idx = Number.isInteger(history.state?.idx) ? history.state.idx : 0;
   if (initial && document.querySelector(`.app-page[data-page="${initial.page}"]`)) {
-    navigate(initial.page, { meta: initial.meta, replace: true });
+    navigate(initial.page, { meta: initial.meta, replace: true, force: true });
   } else {
-    navigate('home', { replace: true });
+    navigate('home', { replace: true, force: true });
   }
+  state.booted = true;
 }
 
 /* Edge swipe — Safari/iOS-style 좌측 엣지에서 오른쪽으로 끌면 뒤로,

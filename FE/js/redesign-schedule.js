@@ -1231,7 +1231,7 @@ async function _toggleSave() {
   if (!g) { showToast('저장할 일정이 없어요'); return; }
   if (!appState.currentUser) {
     showToast('로그인하면 계정에 저장할 수 있어요. 지금 일정은 이 기기에 저장돼 있어요', 3200);
-    navigate('auth');
+    navigate('auth', { meta: { return: 'schedule' } });
     return;
   }
   if (g.savedScheduleId) {

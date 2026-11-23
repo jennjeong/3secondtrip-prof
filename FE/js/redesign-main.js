@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initSurvey(appState);
   initMap(appState);
   initMyPages(appState);
-  initSubscription();
+  initSubscription(appState);
   initTripTools(appState);
   initCollab(appState, renderSchedule);
   initAppShell();

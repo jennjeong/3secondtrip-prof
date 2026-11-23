@@ -10,7 +10,7 @@
  */
 
 import { api, startSocialLogin, getAccessToken, setAccessToken, clearAccessToken } from './redesign-api-adapter.js';
-import { navigate, getCurrent } from './redesign-navigation.js';
+import { navigate, getCurrent, getMeta } from './redesign-navigation.js';
 import { $, showToast } from './redesign-ui.js';
 
 let appState = null;
@@ -36,8 +36,10 @@ export function initAuth(state) {
   $('#profileAuthBtn')?.addEventListener('click', () => {
     if (appState.currentUser) {
       _logout();
+    } else if (appState.authOffline) {
+      refreshCurrentUser().then(me => showToast(me ? '다시 연결됐어요' : '아직 서버에 연결할 수 없어요. 잠시 뒤 다시 시도해 주세요'));
     } else {
-      navigate('auth');
+      navigate('auth', { meta: { return: 'my' } });
     }
   });
   $('#myLogoutBtn')?.addEventListener('click', _logout);
@@ -121,17 +123,32 @@ async function _checkNickname() {
 }
 
 export async function refreshCurrentUser() {
+  const hadToken = !!getAccessToken();
   try {
     const me = await api.me();
     appState.currentUser = me;
+    appState.authOffline = false;
     _renderProfile();
-    // If user just logged in, route to my page
-    if (getCurrent() === 'auth') navigate('my', { replace: true });
+    // 방금 로그인했다면 로그인 전에 보던 화면으로 돌아간다(만들던 일정은 그대로 이어진다).
+    if (getCurrent() === 'auth') {
+      const back = getMeta()?.return;
+      navigate(back && back !== 'auth' ? back : 'my', { replace: true });
+    }
+    document.dispatchEvent(new CustomEvent('redesign:auth-ready'));
     return me;
   } catch (e) {
-    if (e?.status === 401) clearAccessToken();
-    appState.currentUser = null;
+    if (e?.status === 401) {
+      clearAccessToken();
+      appState.currentUser = null;
+      appState.authOffline = false;
+      if (hadToken) showToast('로그인이 만료됐어요. 만들던 일정은 이 기기에 그대로 있어요', 3200);
+    } else {
+      // 서버에 닿지 못한 경우 — 로그아웃시키지 않고 연결 문제임을 알린다.
+      appState.authOffline = hadToken;
+    }
+    if (e?.status === 401 || !hadToken) appState.currentUser = null;
     _renderProfile();
+    document.dispatchEvent(new CustomEvent('redesign:auth-ready'));
     return null;
   }
 }
@@ -159,10 +176,13 @@ function _renderProfile() {
     if (btn)  btn.textContent = '로그아웃';
     if (lo)   lo.hidden = false;
   } else {
-    if (name) name.textContent = '게스트';
-    if (mail) mail.textContent = '로그인하면 일정을 저장할 수 있어요';
+    const offline = !!appState.authOffline;
+    if (name) name.textContent = offline ? '연결 확인 중' : '게스트';
+    if (mail) mail.textContent = offline
+      ? '서버에 연결하지 못해 로그인 상태를 확인하지 못했어요. 이 기기의 일정은 그대로 볼 수 있어요.'
+      : '로그인하면 일정을 계정에 보관하고 다른 기기에서도 볼 수 있어요';
     if (av)   av.textContent = '3';
-    if (btn)  btn.textContent = '로그인';
+    if (btn)  btn.textContent = offline ? '다시 연결' : '로그인';
     if (lo)   lo.hidden = true;
   }
 }

@@ -209,7 +209,7 @@ function _replaceExploreHash() {
   if (getCurrent() !== 'explore') return;
   const meta = _exploreMeta();
   const qs = new URLSearchParams({ page: 'explore', ...meta }).toString();
-  try { history.replaceState({ page: 'explore', meta }, '', '#' + qs); } catch (_) {}
+  try { history.replaceState({ ...(history.state || {}), page: 'explore', meta }, '', '#' + qs); } catch (_) {}
 }
 
 const DEFAULT_GRADIENT = 'linear-gradient(135deg, #3A4652 0%, #111418 100%)';
@@ -451,7 +451,8 @@ function _setDocMeta(title, desc) {
   if (d) d.content = desc;
 }
 function _resetDocTitle() {
-  if (document.title !== DOC_TITLE) _setDocMeta(DOC_TITLE, DOC_DESC);
+  const d = document.querySelector('meta[name="description"]');
+  if (d && d.content !== DOC_DESC) d.content = DOC_DESC;
 }
 
 let detailSeq = 0;

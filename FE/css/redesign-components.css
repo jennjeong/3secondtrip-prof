@@ -2998,3 +2998,68 @@ body.is-typing .bottom-tab-nav { display: none; }
 .review-vis legend { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
 .review-vis .check-row { display: flex; gap: 8px; align-items: center; min-height: 40px; font-size: 14px; }
 .review-tags .chip-mini.is-active::before { content: "✓ "; }
+
+/* ===================== Phase 5 — 마이·내비게이션 ===================== */
+/* 마이: 용도별 묶음 */
+.my-group { margin-top: 20px; }
+.my-group-h { margin: 0 0 8px 2px; font-size: 13px; font-weight: 700; color: var(--c-text-soft); }
+.my-group .setting-row { gap: 12px; justify-content: flex-start; min-height: 52px; text-align: left; }
+.my-group .sr-ico { display: inline-flex; color: var(--c-text-soft); flex: 0 0 auto; }
+.my-group .sr-label { flex: 1; min-width: 0; font-weight: 600; color: var(--c-text); }
+.my-group .setting-meta { font-size: 12.5px; color: var(--c-text-soft); max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.my-group .setting-row:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
+.sub-status { margin: 0 0 14px; padding: 10px 12px; border-radius: 12px; background: var(--c-surface-2); font-size: 13px; line-height: 1.5; }
+.sub-cta:disabled { opacity: .6; cursor: default; }
+
+/* 하단 메뉴 — 가운데 버튼에도 글자, 활성 탭과 키보드 초점을 다르게 */
+.tab-button { position: relative; }
+.tab-button.is-active { color: var(--c-text); font-weight: 800; }
+.tab-button.is-active::before {
+  content: ''; position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+  width: 20px; height: 3px; border-radius: 3px; background: var(--c-text);
+}
+.tab-button:focus-visible, .tab-fab-button:focus-visible {
+  outline: 2px solid var(--c-primary); outline-offset: -4px; border-radius: 12px;
+}
+.tab-fab-button {
+  width: auto !important; height: var(--nav-h) !important; margin: 0 !important;
+  background: none !important; box-shadow: none !important; border-radius: 0;
+  flex-direction: column; gap: 3px; justify-content: flex-end; padding-bottom: 8px;
+  color: var(--c-text); font-size: 11px; font-weight: 700;
+}
+.tab-fab-button .fab-plus {
+  display: inline-grid; place-items: center;
+  width: 50px; height: 50px; margin: -22px 0 0;
+  border-radius: 50%; background: var(--c-primary); color: #fff;
+  font-size: 28px; font-weight: 300; line-height: 1;
+  box-shadow: 0 8px 20px rgba(17,20,24,.22), 0 0 0 4px var(--c-bg);
+  transition: transform .18s ease;
+}
+.tab-fab-button:active .fab-plus { transform: scale(.94); }
+.tab-fab-button.is-active .tab-label { font-weight: 800; }
+.tab-fab-button .tab-label { white-space: nowrap; }
+@media (max-width: 359px) {
+  .tab-button, .tab-fab-button { font-size: 10px !important; }
+  .tab-fab-button .fab-plus { width: 44px; height: 44px; }
+}
+
+/* 상단 헤더 — 넓은 화면에서는 로고·핵심 메뉴·여행 만들기를 위에, 하단 메뉴는 숨김 */
+.topbar-nav { display: none; }
+@media (min-width: 1024px) {
+  :root { --nav-h: 0px; }
+  .bottom-tab-nav { display: none !important; }
+  .app-topbar { display: flex; align-items: center; gap: 12px; padding-inline: var(--app-side-padding); }
+  .topbar-brand { position: static; transform: none; padding-top: 0; }
+  .topbar-spacer { display: none; }
+  .topbar-nav { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+  .topbar-nav a {
+    display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px;
+    border-radius: 999px; color: var(--c-text-soft); font-size: 14px; font-weight: 600; text-decoration: none;
+  }
+  .topbar-nav a:hover { color: var(--c-text); background: var(--c-surface-2); }
+  .topbar-nav a.is-active { color: var(--c-text); font-weight: 800; background: var(--c-surface-2); }
+  .topbar-nav a:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+  .topbar-nav .topbar-cta { margin-left: 8px; background: var(--c-text); color: var(--c-bg); }
+  .topbar-nav .topbar-cta:hover { background: var(--c-text); color: var(--c-bg); opacity: .9; }
+  .page-scroll { padding-bottom: calc(var(--safe-bottom) + 40px); }
+}

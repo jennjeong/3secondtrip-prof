@@ -27,7 +27,8 @@ export function initMyPages(state) {
       case 'my-blogs':    renderMyBlogs();    break;
     }
   };
-  document.addEventListener('redesign:auth-ready', () => render(getCurrent()));
+  document.addEventListener('redesign:auth-ready', () => { render(getCurrent()); if (getCurrent() === 'my') _paintMyHome(); });
+  document.addEventListener('redesign:nav', (e) => { if (e.detail.page === 'my') _paintMyHome(); });
   // Render the right page when user arrives via nav
   document.addEventListener('redesign:nav', (e) => {
     switch (e.detail.page) {
@@ -37,6 +38,26 @@ export function initMyPages(state) {
       case 'my-blogs':    renderMyBlogs();    break;
     }
   });
+}
+
+/** 마이 첫 화면 — 다시 찾는 항목(저장한 일정·내가 만든 일정)에 현재 상태를 붙인다. */
+let _countSeq = 0;
+async function _paintMyHome() {
+  const g = appState?.generated;
+  const trip = $('#myTripMeta');
+  if (trip) trip.textContent = g?.days?.length
+    ? `${g.title || g.city} · ${g.days[0].date.slice(5).replace('-', '/')}~${g.days.at(-1).date.slice(5).replace('-', '/')}`
+    : '아직 없어요';
+  const saved = $('#mySavedMeta');
+  if (!saved) return;
+  if (!appState?.currentUser) { saved.textContent = appState?.authOffline ? '연결 확인 중' : '로그인 필요'; return; }
+  const seq = ++_countSeq;
+  try {
+    const rows = await api.listSchedules();
+    if (seq !== _countSeq) return;
+    const n = (rows || []).filter(r => r.is_saved).length;
+    saved.textContent = n ? `${n}개` : '아직 없어요';
+  } catch (_) { if (seq === _countSeq) saved.textContent = '불러오지 못함'; }
 }
 
 function _requireLogin(emptyId, msg) {
