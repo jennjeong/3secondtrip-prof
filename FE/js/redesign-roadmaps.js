@@ -169,13 +169,13 @@ export function initRoadmaps(state) {
 
   document.addEventListener('redesign:nav', (e) => {
     const { page, meta } = e.detail || {};
-    if (page === 'roadmap-detail') _openDetail(meta?.id);
+    if (page === 'roadmap-detail') _openDetail(meta?.id, meta?.city);
     else if (page === 'explore') _syncExploreUI();   // 조건은 이 모듈이 기억한다(주소의 값은 첫 진입 때만 읽음)
     if (page !== 'roadmap-detail') _resetDocTitle();
   });
   // 주소로 바로 들어온 경우 — 첫 이동 알림이 이 모듈보다 먼저 지나간다.
   const h = new URLSearchParams((location.hash || '').replace(/^#/, ''));
-  if (h.get('page') === 'roadmap-detail') _openDetail(h.get('id'));
+  if (h.get('page') === 'roadmap-detail') _openDetail(h.get('id'), h.get('city'));
   else if (h.get('page') === 'explore') { _applyExploreMeta(Object.fromEntries(h)); }
 }
 
@@ -461,9 +461,19 @@ function _resetDocTitle() {
 }
 
 let detailSeq = 0;
-async function _openDetail(id) {
+async function _openDetail(id, city) {
   const seq = ++detailSeq;
   const body = document.getElementById('roadmapBody');
+  // 공유용 코스 페이지(trips/*.html)에서는 도시로 들어온다 — 그 도시의 예시 코스를 연다.
+  if (!id && city) {
+    await loaded;
+    if (seq !== detailSeq) return;
+    const byCity = roadmaps.find(r => r.city === city && r.isSample) || roadmaps.find(r => r.city === city);
+    if (byCity) {
+      try { history.replaceState({ ...(history.state || {}), meta: { id: byCity.id } }, '', `#page=roadmap-detail&id=${encodeURIComponent(byCity.id)}`); } catch (_) {}
+      id = byCity.id;
+    }
+  }
   if (!id) { _renderMissing(); return; }
   let m = roadmaps.find(r => r.id === String(id));
   if (!m) {
@@ -588,10 +598,15 @@ function _renderRoadmapDetail(m) {
   body.replaceChildren(...parts);
 }
 
+// 예시 코스는 미리보기(제목·설명)가 붙는 정적 코스 페이지 주소로 공유한다.
+const COURSE_PAGE = { 도쿄: 'tokyo', 파리: 'paris', 제주: 'jeju', 오사카: 'osaka', 방콕: 'bangkok', 서울: 'seoul', 뉴욕: 'newyork', 시드니: 'sydney' };
+
 async function _shareCurrent() {
   const m = window.__redesign?.__currentRoadmap;
   if (!m) return;
-  const url = `${location.origin}${location.pathname}#page=roadmap-detail&id=${encodeURIComponent(m.id)}`;
+  const slug = m.isSample ? COURSE_PAGE[m.city] : null;
+  const url = slug ? `${location.origin}/trips/${slug}.html`
+    : `${location.origin}${location.pathname}#page=roadmap-detail&id=${encodeURIComponent(m.id)}`;
   const data = { title: m.title, text: `${m.city} ${_daysLabel(m.days)} 여행 코스`, url };
   try {
     if (navigator.share) { await navigator.share(data); return; }

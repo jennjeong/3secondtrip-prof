@@ -312,6 +312,18 @@ function _renderPlaceList(kind, query) {
     });
   });
   _openList(kind);
+  _announce(`검색 결과 ${n}개. 위아래 방향키로 고르고 Enter 로 선택하세요.`);
+}
+
+/** 화면 낭독기에 짧게 알린다(검색 결과 수 등). */
+function _announce(text) {
+  let live = document.getElementById('srAnnounce');
+  if (!live) {
+    live = el('p', { id: 'srAnnounce', class: 'sr-only', role: 'status', 'aria-live': 'polite' });
+    document.body.appendChild(live);
+  }
+  live.textContent = '';
+  setTimeout(() => { live.textContent = text; }, 30);
 }
 
 function _bindPlaceSearch(kind) {
@@ -1898,6 +1910,15 @@ async function _generateSchedule() {
   try {
     await _generateScheduleInner(t, btn, startedAt);
     trackEvent('trip_generate_done');
+    // 운영 지표 — 개수만 센다(도시·날짜·금액 같은 여행 정보는 보내지 않음).
+    const sec = (Date.now() - startedAt) / 1000;
+    trackEvent(sec < 10 ? 'gen_time_under10' : sec < 30 ? 'gen_time_10to30' : 'gen_time_over30');
+    const g = appState.generated;
+    if (g) {
+      const live = g.flightPriceSource === 'serpapi' || g.hotelPriceSource === 'serpapi';
+      trackEvent(live ? 'gen_price_live' : 'gen_price_estimated');
+      if (g.sources?.placesSample) trackEvent('gen_places_fallback');
+    }
     return true;
   } catch (e) {
     console.error('[trip-flow] 일정 생성 실패:', e);
@@ -1981,6 +2002,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
       return places;
     } catch (e) {
       console.warn('[trip-flow] places search failed for', slot, q, e?.message);
+      if (!searchForSlot._failed) { searchForSlot._failed = true; trackEvent('api_fail_places'); }   // 생성 1회에 한 번만
       slotCache.set(slot, []);
       return [];
     }
@@ -2150,6 +2172,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
     }
   } catch (e) {
     console.warn('[trip-flow] SerpApi 호텔 요금 조회 실패 — 추정값 폴백:', e?.message);
+    trackEvent('api_fail_hotels');
   }
 
   if (Number.isFinite(_serpNightly) && _serpNightly > 0) {
@@ -2195,6 +2218,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
     }
   } catch (e) {
     console.warn('[trip-flow] 항공 실시간 조회 실패 — 추정 폴백:', e?.message);
+    trackEvent('api_fail_flights');
   }
   // 왕복 1인가를 인원수만큼 곱해 그룹 총액 → 도착·출발에 절반씩 분배 (추정 폴백은 기존 공식)
   const _pax = _peopleCount(t);

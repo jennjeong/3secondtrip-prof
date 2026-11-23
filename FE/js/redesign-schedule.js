@@ -1270,6 +1270,7 @@ async function _saveToAccount() {
     console.warn('[schedule] 계정 저장 실패', e?.status, e?.message);
     if (e?.status === 404 && g.savedScheduleId) { g.savedScheduleId = null; return _saveToAccount(); }
     saveState = 'error';
+    trackEvent('trip_save_fail');
     showToast(e?.status === 401 ? '로그인이 만료됐어요. 다시 로그인해 주세요' : '계정 저장에 실패했어요');
   }
   _paintSaveStatus(); _persist();
@@ -1341,7 +1342,7 @@ function _openShareSheet() {
       catch (e) { if (e?.name === 'AbortError') return; }
     }
     try { await navigator.clipboard.writeText(link); showToast('보기 전용 링크를 복사했어요'); _closeSheet(); }
-    catch (_) { window.prompt('이 링크를 복사해 공유하세요', link); }
+    catch (_) { trackEvent('trip_share_fail'); window.prompt('이 링크를 복사해 공유하세요', link); }
   };
   sheet.querySelector('.sheet-body').replaceChildren(
     el('section', { class: 'share-sec', 'aria-labelledby': 'shareViewH' }, [

@@ -151,3 +151,15 @@ body { font-size: 15px; line-height: 1.55; }
 .rv-stars, .review-item .rv-stars, .review-preview .rv-stars, .mlc-stars { color: #B7791F !important; }
 .star-row .star { color: #C9CED6; }
 .star-row .star.is-on, .star-row .star.hov { color: #B7791F; }
+
+/* 확대를 허용했으므로 iPhone 이 입력칸을 누를 때 자동 확대하지 않도록 16px */
+@media (max-width: 767px) { input, select, textarea, .form-input { font-size: 16px !important; } }
+
+/* 확대 200%(폭 약 195px)에서도 가로로 넘치지 않게 — 버튼 줄·별점은 줄바꿈 */
+.tool-actions, .roadmap-cta-row, #roadmapDetailPage .roadmap-cta-row, .star-row, .mlc-actions, .schedule-actions { flex-wrap: wrap; }
+#roadmapDetailPage .roadmap-cta-row .btn { flex: 1 1 auto; }
+.btn { white-space: normal; }
+@media (max-width: 299px) { .tool-form, .tool-actions { grid-template-columns: 1fr; } }
+.tool-row { grid-template-columns: 1fr auto var(--touch); }
+.tool-remove { width: var(--touch); height: var(--touch); }
+.tool-check { min-height: var(--touch); }

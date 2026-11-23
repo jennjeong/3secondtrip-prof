@@ -3,7 +3,7 @@
 모든 엔드포인트는 get_current_admin 의존성을 통해 보호됨.
 JWT + is_admin=True 인 사용자만 호출 가능.
 """
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, desc
@@ -19,12 +19,66 @@ from app.models.blog import Blog
 from app.models.feedback import Feedback
 from app.routers.dependencies import get_current_admin
 
+from app.models.event_count import EventCount
+from app.core.config import settings
+
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 # ════════════════════════════════════════════════════════════════
 # 📊  대시보드 통계
 # ════════════════════════════════════════════════════════════════
+@router.get("/ops")
+def get_ops_summary(days: int = 7, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+    """운영 요약 — 외부 서비스 연결 상태와 최근 N일 이벤트 합계로 만든 비율.
+
+    이벤트는 날짜·이름별 개수만 저장하므로 개인 여행 정보는 들어 있지 않다.
+    """
+    days = max(1, min(int(days or 7), 90))
+    since = date.today() - timedelta(days=days - 1)
+    rows = (db.query(EventCount.name, func.sum(EventCount.count))
+              .filter(EventCount.day >= since).group_by(EventCount.name).all())
+    n = {name: int(total or 0) for name, total in rows}
+
+    def rate(part, whole):
+        return round(part / whole, 3) if whole else None
+
+    started = n.get("trip_generate_start", 0)
+    done = n.get("trip_generate_done", 0)
+    failed = n.get("trip_generate_fail", 0)
+    priced = n.get("gen_price_live", 0) + n.get("gen_price_estimated", 0)
+    saves = n.get("trip_saved", 0) + n.get("trip_save_fail", 0)
+    shares = n.get("trip_shared", 0)
+    return {
+        "days": days,
+        "config": {
+            "places": bool(settings.google_maps_server_key),
+            "maps_browser_key": bool(getattr(settings, "google_maps_browser_key", "")),
+            "live_flights_hotels": bool(settings.serpapi_api_key),
+            "ai_summary": bool(settings.openai_api_key),
+        },
+        "generation": {
+            "started": started, "done": done, "failed": failed,
+            "fail_rate": rate(failed, started),
+            "time": {
+                "under_10s": n.get("gen_time_under10", 0),
+                "10_to_30s": n.get("gen_time_10to30", 0),
+                "over_30s": n.get("gen_time_over30", 0),
+            },
+            "estimated_price_rate": rate(n.get("gen_price_estimated", 0), priced),
+            "sample_places_rate": rate(n.get("gen_places_fallback", 0), done),
+        },
+        "provider_failures": {
+            "places": n.get("api_fail_places", 0),
+            "flights": n.get("api_fail_flights", 0),
+            "hotels": n.get("api_fail_hotels", 0),
+        },
+        "save": {"ok": n.get("trip_saved", 0), "failed": n.get("trip_save_fail", 0), "fail_rate": rate(n.get("trip_save_fail", 0), saves)},
+        "share": {"ok": shares, "copy_failed": n.get("trip_share_fail", 0)},
+        "client_errors": n.get("client_error", 0),
+    }
+
+
 @router.get("/stats")
 def get_admin_stats(db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
     """전체 통계: 가입자/일정/콘텐츠 수, provider 분포, 인기 도시 등."""

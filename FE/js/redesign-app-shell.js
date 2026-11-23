@@ -22,12 +22,6 @@ function _countErrors() {
   window.addEventListener('unhandledrejection', report);
 }
 
-function _loadVercelAnalytics() {
-  const s = document.createElement('script');
-  s.defer = true;
-  s.src = '/_vercel/insights/script.js';
-  document.head.appendChild(s);
-}
 
 export function initAppShell() {
   window.addEventListener('appinstalled', () => trackEvent('app_installed'));
@@ -36,5 +30,6 @@ export function initAppShell() {
   }
   if (_isLocal()) return;
   _countErrors();
-  _loadVercelAnalytics();
+  // 방문 분석은 자체 이벤트(/api/events)로만 한다. Vercel Web Analytics 는 프로젝트에서
+  // 켜져 있지 않아 /_vercel/insights/script.js 가 404·MIME 오류를 냈으므로 불러오지 않는다.
 }

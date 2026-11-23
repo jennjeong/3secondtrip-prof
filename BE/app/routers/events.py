@@ -20,6 +20,11 @@ EventName = Literal[
     "app_installed", "client_error",
     "trip_generate_start", "trip_generate_done", "trip_generate_fail",
     "trip_saved", "collab_revoked",
+    # 운영 지표 — 개수만 센다
+    "gen_time_under10", "gen_time_10to30", "gen_time_over30",
+    "gen_price_live", "gen_price_estimated", "gen_places_fallback",
+    "api_fail_places", "api_fail_flights", "api_fail_hotels",
+    "trip_save_fail", "trip_share_fail",
 ]
 _limit = RateLimiter(per_ip=60, total=1200)
 

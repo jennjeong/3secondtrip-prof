@@ -1,26 +1,41 @@
 /* 3초 여행 — Redesign Main bootstrap */
 
 import { handleOAuthCallbackToken, getAccessToken } from './redesign-api-adapter.js';
-import { initNavigation, navigate, onNavChange } from './redesign-navigation.js';
+import { initNavigation, navigate, onNavChange, getCurrent } from './redesign-navigation.js';
 import { initAuth, refreshCurrentUser } from './redesign-auth.js';
 import { initRoadmaps, renderHomeRoadmaps, renderExplore } from './redesign-roadmaps.js';
 import { initTripFlow } from './redesign-trip-flow.js';
 import { initSchedule, renderSchedule, importSharedTripFromURL } from './redesign-schedule.js';
-import { initBooking } from './redesign-booking.js';
 import { initBlog } from './redesign-blog.js';
 import { initFeedback } from './redesign-feedback.js';
 import { initReviews, renderReviewPreview, renderReviewSection } from './redesign-reviews.js';
 import { initSurvey, renderSurvey } from './redesign-survey.js';
 import { initLanguage } from './redesign-ui.js';
-import { showToast } from './redesign-ui.js';
+import { showToast, initDialogs } from './redesign-ui.js';
 import { initCalendar } from './redesign-calendar.js';
 import { initSettings } from './redesign-settings.js';
-import { initMap, renderMap } from './redesign-map.js';
 import { initMyPages } from './redesign-my-pages.js';
 import { initSubscription } from './redesign-subscription.js';
-import { initTripTools } from './redesign-trip-tools.js';
 import { initCollab } from './redesign-collab.js';
 import { initAppShell } from './redesign-app-shell.js';
+
+/** 결과 화면에서만 쓰는 지도·여행 도구(날씨·환율·내보내기)·예약 모듈은 필요할 때 불러온다.
+ *  첫 화면(홈)에 필요한 코드만 먼저 받게 해 휴대폰에서 더 빨리 뜨게 한다. */
+let _resultModules = null;
+function _loadResultModules() {
+  if (!_resultModules) {
+    _resultModules = Promise.all([
+      import('./redesign-map.js'),
+      import('./redesign-trip-tools.js'),
+      import('./redesign-booking.js'),
+    ]).then(([map, tools, booking]) => {
+      map.initMap(appState);
+      tools.initTripTools(appState);
+      booking.initBooking(appState);
+    }).catch((e) => { _resultModules = null; console.warn('[main] 결과 화면 모듈을 불러오지 못했어요', e?.message); });
+  }
+  return _resultModules;
+}
 
 /** Shared app state (mutable, observable via custom events) */
 export const appState = {
@@ -144,17 +159,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   initRoadmaps(appState);
   initTripFlow(appState);
   initSchedule(appState);
-  initBooking(appState);
   initBlog(appState);
   initFeedback(appState);
   initReviews(appState);
   initSurvey(appState);
-  initMap(appState);
   initMyPages(appState);
   initSubscription(appState);
-  initTripTools(appState);
   initCollab(appState, renderSchedule);
   initAppShell();
+  initDialogs();
 
   // 휴대폰 키보드가 올라오면 입력칸(과 그 아래 오류 문구)이 화면 안에 남도록 가운데로 옮긴다.
   if (matchMedia('(pointer: coarse)').matches) {
@@ -189,8 +202,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderExplore();
         break;
       case 'schedule':
-        renderSchedule();      // emits redesign:schedule-changed → map module renders
+        renderSchedule();      // 목록을 먼저 그리고
         renderReviewSection();
+        _loadResultModules().then(() => { if (getCurrent() === 'schedule') renderSchedule(); });   // 지도·도구가 준비되면 다시
         break;
       case 'survey':
         renderSurvey();
@@ -199,6 +213,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         break;
     }
   });
+
+  // 결과 화면으로 바로 들어온 경우, 그리고 첫 화면이 다 그려진 뒤 미리 받아 두기
+  if (getCurrent() === 'schedule') _loadResultModules().then(renderSchedule);
+  else (window.requestIdleCallback || ((f) => setTimeout(f, 1500)))(() => setTimeout(_loadResultModules, 2500));
 
   // 8) Persist schedule mutations.  schedule.js dispatches this after every
   //    renderSchedule() call, which covers: day chip click, edit save,

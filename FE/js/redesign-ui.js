@@ -241,3 +241,68 @@ export function setMultiActive(container, attr, values, classes = 'is-active') {
   if (!container) return;
   container.querySelectorAll(`[${attr}]`).forEach(b => b.classList.toggle(classes, values.includes(b.getAttribute(attr))));
 }
+
+/* ============ 모달·시트 공통 접근성 ============
+ * 바닥 시트(role=dialog, aria-modal)가 열리면 안으로 초점을 옮기고, Tab 은 시트 안에서만 돌며,
+ * Esc 로 닫고, 닫히면 연 버튼으로 초점을 되돌린다.  각 시트 모듈을 고치지 않고 한곳에서 맞춘다. */
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const openers = new WeakMap();
+
+function _visibleDialogs() {
+  // 바닥 시트는 position: fixed 라 offsetParent 가 늘 null — 실제로 그려졌는지로 판단한다.
+  return [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].filter(d => !d.hidden && d.getClientRects().length > 0);
+}
+
+function _onOpen(d) {
+  const from = document.activeElement;
+  if (from && !d.contains(from)) openers.set(d, from);
+  requestAnimationFrame(() => {
+    if (d.contains(document.activeElement)) return;      // 시트가 직접 초점을 둔 경우
+    const head = d.querySelector('h2, h3');
+    if (head) { if (!head.hasAttribute('tabindex')) head.setAttribute('tabindex', '-1'); head.focus({ preventScroll: true }); }
+    else d.querySelector(FOCUSABLE)?.focus({ preventScroll: true });
+  });
+}
+
+function _onClose(d) {
+  const back = openers.get(d);
+  openers.delete(d);
+  requestAnimationFrame(() => {
+    const a = document.activeElement;
+    if (a && a !== document.body && !d.contains(a)) return;   // 다른 곳으로 이미 이동
+    if (back && back.isConnected && back.getClientRects().length > 0) back.focus({ preventScroll: true });
+  });
+}
+
+export function initDialogs() {
+  const watch = (d) => {
+    if (d.__dialogWatched) return;
+    d.__dialogWatched = true;
+    let open = !d.hidden;
+    new MutationObserver(() => {
+      const now = !d.hidden;
+      if (now === open) return;
+      open = now;
+      (now ? _onOpen : _onClose)(d);
+    }).observe(d, { attributes: true, attributeFilter: ['hidden'] });
+  };
+  document.querySelectorAll('[role="dialog"][aria-modal="true"]').forEach(watch);
+
+  document.addEventListener('keydown', (e) => {
+    const list = _visibleDialogs();
+    const d = list[list.length - 1];
+    if (!d) return;
+    if (e.key === 'Escape') {
+      const close = d.querySelector('.sheet-head .icon-btn, [id$="Close"]');
+      if (close) { e.preventDefault(); close.click(); }
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const items = [...d.querySelectorAll(FOCUSABLE)].filter(x => x.getClientRects().length > 0);
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (!d.contains(document.activeElement)) { e.preventDefault(); first.focus(); return; }
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+}
