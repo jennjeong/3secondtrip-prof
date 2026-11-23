@@ -229,12 +229,12 @@ function _savedCard(s) {
 
 /* ============ 2) MY ROADMAPS ============ */
 export async function renderMyRoadmaps() {
-  if (_requireLogin('myRoadmapsEmpty', '내 로드맵을 보려면 로그인 해주세요')) return;
+  if (_requireLogin('myRoadmapsEmpty', '공개한 여행 코스를 보려면 로그인해 주세요')) return;
   try {
     const rows = await api.getRoadmaps?.({ mine: 'true' }) ?? [];
     _showState('myRoadmapsList', 'myRoadmapsEmpty', rows, _roadmapCard);
   } catch (e) {
-    showToast('로드맵을 불러오지 못했어요');
+    showToast('여행 코스를 불러오지 못했어요');
     console.warn('[my-roadmaps]', e);
   }
 }

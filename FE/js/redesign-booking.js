@@ -266,9 +266,9 @@ function _buildItems(g) {
     d.activities.forEach((a, ai) => {
       const cat = a.category;
       if (cat === '식사' && _needsRes(a)) {
-        out.push({ id:`r-${di}-${ai}`, cat:'restaurant', name: a.name, desc:`Day ${di+1} · ${a.time||''}`, price: a.cost || 35000, required:true, estimated: !a.cost, url: _googleMapsUrl(`${a.name} ${city}`) });
+        out.push({ id:`r-${di}-${ai}`, cat:'restaurant', name: a.name, desc:`${di+1}일차 · ${a.time||''}`, price: a.cost || 35000, required:true, estimated: !a.cost, url: _googleMapsUrl(`${a.name} ${city}`) });
       } else if (cat === '액티비티' && _needsRes(a)) {
-        out.push({ id:`a-${di}-${ai}`, cat:'activity', name: a.name, desc:`Day ${di+1} · ${a.time||''}`, price: a.cost || 50000, required:true, estimated: !a.cost, url: _googleMapsUrl(`${a.name} ${city}`) });
+        out.push({ id:`a-${di}-${ai}`, cat:'activity', name: a.name, desc:`${di+1}일차 · ${a.time||''}`, price: a.cost || 50000, required:true, estimated: !a.cost, url: _googleMapsUrl(`${a.name} ${city}`) });
       } else if (cat === '관광' || cat === '카페' || cat === '쇼핑') {
         // Extra options — exclude hotel/flight, include transport when relevant
         if (di === 0 && ai === 1) {

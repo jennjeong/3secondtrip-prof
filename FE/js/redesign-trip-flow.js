@@ -908,7 +908,7 @@ function _refreshSummary() {
   s.innerHTML = `
     <strong>${escapeHtml(t.cityName || '도시 미선택')}</strong> · ${escapeHtml(t.days || '-')}일 ·
     <strong>${escapeHtml(t.concept || '컨셉 미선택')}</strong><br/>
-    예산 <strong>${escapeHtml(t.budget||0)}만원</strong> (${escapeHtml(t.budgetLevel || '-')}) · ${escapeHtml(t.currency)}<br/>
+    예산 <strong>${escapeHtml(t.budget||0)}만원</strong> (${escapeHtml({ '낮음': '추천 예산보다 낮아요', '보통': '추천 예산과 비슷해요', '높음': '추천 예산보다 여유 있어요' }[t.budgetLevel] || '추천 예산 계산 전')}) · ${escapeHtml(t.currency)}<br/>
     동행 ${escapeHtml(_companionLabel(t.companion))} · 스타일 ${escapeHtml(t.styles.length ? t.styles.join(', ') : '-')}<br/>
     ✈ ${escapeHtml(routeLbl)} · ${escapeHtml(clsLbl)}<br/>
     ✈ ${escapeHtml(airlines)}<br/>

@@ -156,6 +156,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   initCollab(appState, renderSchedule);
   initAppShell();
 
+  // 휴대폰 키보드가 올라오면 입력칸(과 그 아래 오류 문구)이 화면 안에 남도록 가운데로 옮긴다.
+  if (matchMedia('(pointer: coarse)').matches) {
+    const keepVisible = (t) => {
+      if (!t?.matches?.('input:not([type=checkbox]):not([type=radio]), textarea, select')) return;
+      const err = t.closest('.form-row, .trip-flow-field')?.querySelector('.form-error:not([hidden]), [role="alert"]:not([hidden])');
+      (err || t).scrollIntoView({ block: 'center', behavior: 'smooth' });
+    };
+    document.addEventListener('focusin', (e) => setTimeout(() => keepVisible(e.target), 320));
+    window.visualViewport?.addEventListener('resize', () => keepVisible(document.activeElement));
+  }
+
   // 5) Initial paint
   renderHomeRoadmaps();
   renderReviewPreview();

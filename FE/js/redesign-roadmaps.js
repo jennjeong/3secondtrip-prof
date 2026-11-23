@@ -300,20 +300,23 @@ function _daysLabel(d) {
 }
 
 function _cardEl(m, opts = {}) {
-  const card = el('button', {
-    type: 'button',
-    class: 'roadmap-card',
-    dataset: { roadmapId: m.id },
-    style: { background: m.gradient },
-  }, [
+  // 사진(없으면 같은 크기의 브랜드 배경) 영역은 비율을 고정하고, 글은 아래 본문 영역에 둔다.
+  const media = el('div', { class: 'rc-media', style: { background: m.gradient }, 'aria-hidden': 'true' }, [
     el('div', { class: 'rc-top' }, [
       m.isSample ? el('span', { class: 'rc-sample' }, '예시') : null,
       opts.reason ? el('span', { class: 'rc-reason' }, opts.reason) : null,
     ].filter(Boolean)),
+  ]);
+  const card = el('button', {
+    type: 'button',
+    class: 'roadmap-card',
+    dataset: { roadmapId: m.id },
+  }, [
+    media,
     el('div', { class: 'rc-bottom' }, [
       el('div', { class: 'rc-place' }, [m.city, m.country].filter(Boolean).join(' · ')),
       el('div', { class: 'rc-title' }, m.title),
-      el('div', { class: 'rc-info' }, `${_daysLabel(m.days)} · ${m.concept}`),
+      el('div', { class: 'rc-info' }, [el('span', { class: 'nowrap' }, _daysLabel(m.days)), ' · ', el('span', { class: 'nowrap' }, m.concept)]),
       el('div', { class: 'rc-likes' }, [
         el('span', { 'aria-hidden': 'true' }, '♥ '),
         el('span', { class: 'sr-only' }, '좋아요 '),
@@ -321,7 +324,9 @@ function _cardEl(m, opts = {}) {
       ]),
     ]),
   ]);
-  _attachLandmarkImage(card, m.city, m.gradient);
+  _attachLandmarkImage(media, m.city, m.gradient);
+  // 화면 낭독기에는 예시 여부·추천 이유도 읽어 준다(사진 영역은 장식이라 숨김).
+  if (m.isSample || opts.reason) card.appendChild(el('span', { class: 'sr-only' }, [m.isSample ? '예시 코스' : '', opts.reason ? '추천 이유 ' + opts.reason : ''].filter(Boolean).join(' · ')));
   return card;
 }
 

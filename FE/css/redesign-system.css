@@ -1,0 +1,153 @@
+/* 3초 여행 — 디자인 기준(글자·여백·카드·버튼 상태)
+ *
+ * 다른 스타일시트 뒤에 불러와 화면 전체의 기준값을 한곳에서 맞춘다.
+ *  · 좌우 여백  모바일 16 · 태블릿 24 · 데스크톱 32
+ *  · 컨테이너  목록·홈 최대 1120 · 여행 만들기 폼 최대 720
+ *  · 섹션 간격  모바일 30 · 데스크톱 44 / 섹션 제목→첫 카드 14
+ *  · 카드 사이  모바일 12 · 데스크톱 18 / 카드 안 여백 14–16
+ *  · 글자  본문 15(줄높이 1.55) · 보조 12–14 · 카드 제목 16 · 섹션 제목 20 · 페이지 제목 22–28
+ *  · 누르는 곳 최소 44×44
+ */
+
+:root {
+  --c-text-mute: #6B727C;          /* 작은 회색 글자도 흰 배경에서 4.5:1 이상 */
+  --space-section: 30px;
+  --gap-card: 12px;
+  --radius-card: 16px;
+  --touch: 44px;
+}
+@media (max-width: 359px) { :root { --app-side-padding: 16px; } }
+@media (min-width: 768px) { :root { --app-side-padding: 24px; } }
+@media (min-width: 1024px) { :root { --app-side-padding: 32px; --space-section: 44px; --gap-card: 18px; } }
+
+/* ===== 글자 ===== */
+body { font-size: 15px; line-height: 1.55; }
+.page-title { font-size: clamp(22px, 5.6vw, 28px); line-height: 1.25; }
+.section-title { font-size: 20px; line-height: 1.3; }
+.hero-title { line-height: 1.2; }
+.page-sub, .section-sub, .form-hint, .tool-note { font-size: 13.5px; line-height: 1.55; }
+.nowrap { white-space: nowrap; }
+
+/* ===== 여백 ===== */
+.section-block { margin: var(--space-section) 0; }
+.section-head { margin-bottom: 14px; }
+.form-row { margin-bottom: 22px; }
+.form-label { display: block; margin-bottom: 7px; }
+
+/* 여행 만들기 폼은 읽기 좋은 폭(720)으로 가운데 */
+@media (min-width: 800px) {
+  #createTripPage .page-scroll { padding-inline: max(var(--app-side-padding), calc((100% - 720px) / 2)); }
+}
+
+/* ===== 로고 — 휴대폰에서는 작은 영문 태그라인을 잘라 내고 글자만 크게 ===== */
+@media (max-width: 767px) {
+  .topbar-brand-logo {
+    height: 26px; width: auto; max-height: none;
+    aspect-ratio: 742 / 120;
+    object-fit: cover; object-position: top;
+  }
+}
+
+/* ===== 여행 코스 카드 — 사진(고정 비율) + 읽기 쉬운 본문 ===== */
+.roadmap-grid {
+  gap: var(--gap-card);
+  /* 최대 4열, 카드 최소 136px — 휴대폰 2열, 아주 좁거나 확대하면 1열 */
+  grid-template-columns: repeat(auto-fill, minmax(max(min(100%, 136px), calc((100% - 3 * var(--gap-card)) / 4)), 1fr)) !important;
+}
+.roadmap-list {
+  display: grid !important;
+  gap: var(--gap-card);
+  /* 추천 목록 — 카드 최소 240px 기준으로 1·2·3열 */
+  grid-template-columns: repeat(auto-fill, minmax(max(min(100%, 240px), calc((100% - 2 * var(--gap-card)) / 3)), 1fr));
+  overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  scroll-snap-type: none;
+}
+.roadmap-card,
+.roadmap-list > .roadmap-card,
+#exploreGrid .roadmap-card:nth-child(5n+1) {
+  grid-column: auto !important;
+  aspect-ratio: auto !important;
+  height: auto !important;
+  flex: none !important;
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background: var(--c-surface) !important;
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  text-align: left;
+}
+.roadmap-card::before { display: none !important; }
+.roadmap-grid .roadmap-card { animation: none !important; }   /* 반쯤 투명하게 보이던 등장 효과 제거 */
+.rc-media {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  padding: 10px;
+  background-size: cover !important;
+  background-position: center !important;
+}
+.roadmap-list .rc-media { aspect-ratio: 16 / 9; }
+.rc-media .rc-top { display: flex; gap: 6px; flex-wrap: wrap; }
+.roadmap-card .rc-bottom { padding: 12px 14px 14px; gap: 3px; flex: 1; }
+.roadmap-card .rc-place { color: var(--c-text-soft); opacity: 1; font-size: 12.5px; font-weight: 600; }
+.roadmap-card .rc-title { color: var(--c-text); text-shadow: none; font-size: 16px; line-height: 1.3; }
+.roadmap-card .rc-info { color: var(--c-text-soft); opacity: 1; font-size: 13px; margin-top: 2px; }
+.roadmap-card .rc-bottom .rc-likes {
+  background: none !important; padding: 0; margin-top: auto; padding-top: 6px;
+  color: var(--c-text-soft); font-size: 12.5px; font-weight: 600;
+}
+.rc-sample, .rc-reason { font-size: 12px; }
+
+/* ===== 작은 글자 최소 크기와 대비 ===== */
+.tab-button, .tab-fab-button { font-size: 12px; }
+.tab-button { color: var(--c-text-soft); }
+.sample-badge, .edited-badge, .sc-flag, .schedule-card-meta-line .schedule-category,
+.schedule-price-tag, .form-label-meta, .book-estimate, .meta-pill { font-size: 12px; }
+
+/* ===== 누르는 곳 최소 44px ===== */
+.chip, .chip-mini, .section-more, .btn-text, .sort-tab, .edit-button, .move-btn,
+.search-submit, .setting-row, .sc-more summary, .view-toggle button, .star, .action-btn {
+  min-height: var(--touch);
+}
+.icon-btn, .move-btn, .star { min-width: var(--touch); }
+.section-more, .btn-text { display: inline-flex; align-items: center; }
+.sheet-head .icon-btn { width: var(--touch); height: var(--touch); }
+
+/* ===== 버튼 — 기본·선택·초점·비활성·로딩 ===== */
+.btn { min-height: var(--touch); }
+.btn:focus-visible, .chip:focus-visible, .action-btn:focus-visible, .btn-text:focus-visible,
+.roadmap-card:focus-visible, .day-chip:focus-visible, .search-submit:focus-visible {
+  outline: 2px solid var(--c-focus); outline-offset: 2px;
+}
+.btn:disabled, .btn[aria-disabled="true"], .action-btn:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; transform: none; }
+.btn[aria-busy="true"] { position: relative; color: transparent !important; pointer-events: none; }
+.btn[aria-busy="true"]::after {
+  content: ''; position: absolute; inset: 0; margin: auto; width: 18px; height: 18px;
+  border-radius: 50%; border: 2px solid currentColor; border-color: var(--c-text-soft) transparent var(--c-text-soft) transparent;
+  animation: btn-spin .8s linear infinite;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .btn[aria-busy="true"]::after { animation: none; } }
+.chip.is-active, .chip[aria-pressed="true"] { font-weight: 700; }
+
+/* ===== 시트 — 제목·닫기·내용·확정 같은 구조 ===== */
+.sheet-head h2, .sheet-head h3 { margin: 0; font-size: 17px; font-weight: 800; line-height: 1.3; }
+
+/* ===== 금액 행 — 항목 왼쪽, 숫자 오른쪽 정렬, 합계 강조 ===== */
+.money-row dd { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.money-row--total dt, .money-row--total dd { font-size: 16px; font-weight: 800; }
+
+/* 점검 후 보정 */
+:root { --c-text-mute: #646B75; }                       /* 연한 배경(#F5F6F8)에서도 4.5:1 이상 */
+.search-card .search-submit, .btn-edit { min-height: var(--touch); }
+.btn-edit { padding-inline: 16px; }
+/* 별점 — 흰 배경에서 그래픽 대비 3:1 이상 */
+.rv-stars, .review-item .rv-stars, .review-preview .rv-stars, .mlc-stars { color: #B7791F !important; }
+.star-row .star { color: #C9CED6; }
+.star-row .star.is-on, .star-row .star.hov { color: #B7791F; }
