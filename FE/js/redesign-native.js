@@ -79,6 +79,9 @@ export function initNative({ goBack } = {}) {
   kb?.addListener?.('keyboardWillShow', (info) => { root.style.setProperty('--kb', `${info.keyboardHeight || 0}px`); root.classList.add('kb-open'); });
   kb?.addListener?.('keyboardWillHide', () => { root.style.setProperty('--kb', '0px'); root.classList.remove('kb-open'); });
 
+  // 첫 화면이 그려진 뒤에 네이티브 시작 화면을 닫는다(웹 화면이 준비되기 전 빈 화면이 보이지 않게)
+  requestAnimationFrame(() => requestAnimationFrame(() => P().SplashScreen?.hide?.({ fadeOutDuration: 200 }).catch?.(() => {})));
+
   // 앱을 나갔다 돌아오면 — 화면 위치는 그대로 두고, 날짜가 바뀌었을 수 있으니 다시 그린다
   P().App?.addListener?.('resume', () => document.dispatchEvent(new CustomEvent('redesign:app-resume')));
 }

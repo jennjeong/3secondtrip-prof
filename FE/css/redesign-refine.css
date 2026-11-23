@@ -733,3 +733,79 @@ h1, h2, h3, .rc-title, .schedule-place-name, .mlc-title { word-break: keep-all; 
 /* 도착 도시 추천 — 고른 버튼에 검은 이중 테두리 대신 옅은 파랑 */
 #destQuick button.is-active { box-shadow: none !important; }
 #destQuick button:focus:not(:focus-visible) { outline: none; }
+
+/* =====================================================================
+ * 일정표 흐름형 — [시각] ─●─ [장소 카드]
+ * 순서 번호는 없애고, 시각은 카드 밖 왼쪽에. 점과 세로선이 장소를 이어 흐름으로 읽힌다.
+ * ===================================================================== */
+.timeline { background: none !important; border: 0 !important; border-radius: 0; overflow: visible; padding: 0 !important; margin-top: 16px; }
+.timeline .schedule-card {
+  grid-template-columns: 46px 22px minmax(0, 1fr) !important; grid-template-areas: "when rail main" ". rail actions";
+  column-gap: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; position: relative;
+}
+.timeline .schedule-card + .schedule-card { border-top: 0 !important; }
+.timeline .schedule-card .sc-num { display: none !important; }
+.timeline .schedule-card .sc-when { grid-area: when; padding-top: 15px; }
+.timeline .schedule-card .schedule-time { font-size: 14px; font-weight: 800; color: var(--r-text); letter-spacing: -0.01em; }
+/* 세로선과 점 */
+.timeline .schedule-card::before {
+  display: block !important; content: ''; position: absolute; left: 56px; top: 0; bottom: 0; width: 2px; background: var(--r-border);
+}
+.timeline .schedule-card::after {
+  display: block !important; content: ''; position: absolute; left: 51px; top: 18px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--r-surface); border: 2px solid var(--r-brand); box-sizing: border-box;
+}
+.timeline > .schedule-card:first-of-type::before, .timeline > .add-place-top + .schedule-card::before { top: 22px; }
+.timeline > .schedule-card:last-child::before { bottom: auto; height: 22px; }
+.timeline .schedule-card.is-visited::after { background: var(--r-ok); border-color: var(--r-ok); }
+.timeline .schedule-card:has(.pin-badge)::after { background: var(--r-brand); }
+/* 장소 카드 */
+.timeline .schedule-card .schedule-card-main {
+  grid-area: main; margin: 6px 0; padding: 12px 14px; gap: 4px;
+  background: var(--r-surface); border: 1px solid var(--r-border); border-radius: 14px;
+}
+.timeline .schedule-card.is-focused { background: none !important; }
+.timeline .schedule-card.is-focused .schedule-card-main { background: var(--r-brand-soft); border-color: var(--r-brand); }
+.timeline .schedule-card .schedule-place-name { font-size: 16px; }
+.timeline .schedule-card .schedule-cost { font-size: 15px; font-weight: 700; color: var(--r-text); }
+.timeline .schedule-card .schedule-card-actions { grid-area: actions; grid-column: auto !important; padding: 0 2px 4px; margin-top: 0 !important; }
+.timeline .schedule-card .schedule-card-actions:not(:has(> :is(.pin-btn, .visit-btn, .move-btn))) { display: none; }
+.timeline.is-edit .schedule-card .schedule-card-actions { display: flex !important; }
+/* 주소는 바로 보이게 */
+.timeline .sc-where { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; margin-top: 2px; }
+.timeline .sc-where .sc-addr { margin: 0; font-size: 13px; line-height: 1.45; color: var(--r-text-2); flex: 1 1 100%; overflow-wrap: anywhere; }
+.timeline .sc-where .sc-map-link { min-height: 32px; padding: 0; font-size: 13px; }
+/* 이동은 장소 사이의 짧은 한 줄 — 세로선이 이어진다 */
+.timeline .tl-move {
+  position: relative; margin: 0 0 0 68px !important; padding: 2px 0 !important; border: 0 !important; background: none !important;
+  font-size: 13px; color: var(--r-text-3);
+}
+.timeline .tl-move::before { content: ''; position: absolute; left: -12px; top: 0; bottom: 0; width: 2px; background: var(--r-border); }
+.timeline .add-place-top { margin: 0 0 8px 68px !important; width: calc(100% - 68px) !important; }
+
+/* =====================================================================
+ * 그림자 — 화면 위에 뜨는 시트·드롭다운·토스트만 남기고 모두 없앤다
+ * ===================================================================== */
+.app-main *:not(.city-suggestions):not(.place-suggestions):not(.toast),
+.app-topbar, .app-topbar *, .bottom-tab-nav, .bottom-tab-nav * { box-shadow: none !important; }
+.app-main *:focus-visible { box-shadow: none !important; }
+.form-input:focus, .budget-input-wrap:focus-within, .search-card:focus-within { box-shadow: none !important; border-color: var(--r-brand) !important; outline: 2px solid color-mix(in srgb, var(--r-brand) 25%, transparent); outline-offset: 0; }
+.search-card::after { display: none !important; }
+.day-chip.is-active { border-width: 1px; }
+.view-toggle button[aria-pressed="true"], .view-toggle button.is-active, .sort-tabs .sort-tab.is-active { border: 1px solid var(--r-border); }
+
+/* =====================================================================
+ * 금액 — 어떤 폭·글자 크기에서도 숫자가 잘리지 않게(줄어드는 쪽은 항목명)
+ * ===================================================================== */
+.money-row, .alt-row, .bd-row, .book-row, .sheet-total, .rd-cost { min-width: 0; }
+.money-row dt, .alt-row dt { min-width: 0; flex: 1 1 auto; }
+.money-row dd, .alt-row dd, .book-price, .rd-cost-num, .sub-price-num, .budget-alt-total, .hp-cost b {
+  flex: none; white-space: nowrap; overflow: visible !important; text-overflow: clip !important; max-width: none !important;
+  line-height: 1.3; font-variant-numeric: tabular-nums;
+}
+.budget-input-wrap .budget-input { line-height: 1.3; min-height: 1.3em; }
+@media (max-width: 359px) {
+  .money-rows--panel .money-row dd { font-size: 16px; }
+  .money-rows--panel .money-row--total dd { font-size: 17px; }
+}
+.timeline .schedule-card .schedule-card-actions { grid-column: 3 !important; grid-row: 2 !important; }

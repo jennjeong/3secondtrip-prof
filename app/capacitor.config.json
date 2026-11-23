@@ -11,7 +11,11 @@
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 0
+      "launchShowDuration": 3000,
+      "launchAutoHide": false,
+      "backgroundColor": "#F7F8FA",
+      "showSpinner": false,
+      "launchFadeOutDuration": 200
     },
     "Keyboard": {
       "resize": "none",

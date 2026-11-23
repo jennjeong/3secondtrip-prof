@@ -257,7 +257,7 @@ function _renderDayChips(g) {
   const d = g.days[activeDay];
   const line = $('#dayCostLine');
   const utc = utcLabel(utcOffsetMin(_tripTz(g), d?.date));
-  if (line) line.textContent = d ? `${activeDay + 1}일차 · ${g.hideCost ? '비용 숨김' : '예상 ' + _shortMoney(_dayTotal(d, activeDay), g)}${utc ? ` · 현지 시각 ${utc}` : ''}` : '';
+  if (line) line.textContent = d ? `${activeDay + 1}일차 · ${g.hideCost ? '비용 숨김' : '하루 약 ' + _shortMoney(_dayTotal(d, activeDay), g)}${utc ? ` · 현지 시각 ${utc}` : ''}` : '';
   // 긴 여행에서도 고른 날짜가 보이도록
   requestAnimationFrame(() => row.querySelector('.day-chip.is-active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
 }
@@ -546,14 +546,14 @@ function _renderTimeline(g) {
     else if (n.category === '숙박') {
       if (hotelNightly > 0) {
         const rooms = g.budgetPlan?.rooms || 1;
-        costText = `1박 예상 ${_shortMoney(hotelNightly, g)}${rooms > 1 ? ` (객실 ${rooms}개 합계)` : ''}`;
-        costTag = g.hotelPriceSource === 'serpapi' ? '실시간' : '추정';
+        costText = `1박 약 ${_shortMoney(hotelNightly, g)}${rooms > 1 ? ` (객실 ${rooms}개 합계)` : ''}`;
+        costTag = g.hotelPriceSource === 'serpapi' ? '실시간' : '';
       }
     } else if (_costUnknown(n)) {
       costText = '비용 미확인 · 합계에 포함 안 됨';
     } else if (c > 0) {
-      costText = '예상 ' + _shortMoney(c, g);
-      costTag = n.category === '이동' ? (g.flightPriceSource === 'serpapi' ? '실시간' : n.edited ? '직접 입력' : '추정') : (n.edited ? '직접 입력' : '추정');
+      costText = (n.edited ? '' : '약 ') + _shortMoney(c, g);
+      costTag = n.category === '이동' ? (g.flightPriceSource === 'serpapi' ? '실시간' : n.edited ? '직접 입력' : '') : (n.edited ? '직접 입력' : '');
     } else if (n.edited && Number(n.cost) === 0 && n.category !== '숙박') {
       costText = '무료';
     }
@@ -561,7 +561,7 @@ function _renderTimeline(g) {
     const flags = check.items[ai] || [];
     const details = [];
     if (n.address && n.address !== placeName) details.push(el('p', { class: 'sc-addr' }, n.address));
-    details.push(el('button', { type: 'button', class: 'btn-text sc-map-link', onclick: (e) => { e.stopPropagation(); _openMap(a); } }, 'Google 지도에서 열기 ↗'));
+    details.push(el('button', { type: 'button', class: 'btn-text sc-map-link', 'aria-label': `${placeName} Google 지도에서 열기`, onclick: (e) => { e.stopPropagation(); _openMap(a); } }, '지도 열기 ↗'));
 
     const card = el('article', {
       class: 'schedule-card' + (hasName ? '' : ' schedule-card--no-name') + (focusedAi === ai ? ' is-focused' : '') + (a.visited ? ' is-visited' : ''),
@@ -589,7 +589,7 @@ function _renderTimeline(g) {
           costTag ? el('span', { class: 'schedule-price-tag' + (costTag === '실시간' ? ' is-live' : '') }, ' · ' + costTag) : null,
         ]) : null,
         flags.length ? el('ul', { class: 'sc-flags' }, flags.map(f => el('li', { class: 'sc-flag sc-flag--' + f.lvl }, f.text))) : null,
-        el('details', { class: 'sc-more' }, [el('summary', {}, '주소·지도'), ...details]),
+        el('div', { class: 'sc-where' }, details),
       ]),
       el('div', { class: 'schedule-card-actions' }, [
         el('button', {
@@ -628,12 +628,13 @@ function _renderTimeline(g) {
     const next = day.activities[ai + 1];
     if (next) {
       let moveText;
-      if (_isFlight(a) || _isFlight(next)) moveText = _isFlight(next) ? '공항으로 이동 · 출국 2시간 전 도착 권장' : '공항에서 시내로 이동';
+      if (_isFlight(a) || _isFlight(next)) moveText = _isFlight(next) ? '공항으로 이동 · 출국 2시간 전 도착' : '공항 → 시내 이동';
       else {
         const km = _kmBetween(a, next);
         const min = _travelMinutes(a, next);
-        moveText = km == null ? `다음 장소까지 약 ${min}분 (위치 정보 없음 · 추정)`
-          : `${km < 1.2 ? '도보' : '대중교통·택시'} 약 ${min}분 · ${km < 1 ? Math.round(km * 1000) + 'm' : km.toFixed(1) + 'km'} (추정)`;
+        // 두 장소 사이의 짧은 한 줄 — ‘도보 약 5분 · 800m’
+        moveText = km == null ? `이동 약 ${min}분`
+          : `${km < 1.2 ? '도보' : '대중교통'} 약 ${min}분 · ${km < 1 ? Math.round(km * 1000) + 'm' : km.toFixed(1) + 'km'}`;
       }
       tl.appendChild(el('p', { class: 'tl-move' }, moveText));
     }
