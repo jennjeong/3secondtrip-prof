@@ -37,7 +37,9 @@ export function renderSurvey() {
   const pane = $('#surveyPane');
   const prog = $('#surveyProgress');
   if (!pane || !prog) return;
-  // Progress
+  // Progress — 몇 번째 질문인지 글로도 알려 준다
+  const cnt = $('#surveyCount');
+  if (cnt) cnt.textContent = `${step + 1} / ${SECTIONS.length} 질문 · ${SECTIONS[step].title}`;
   prog.innerHTML = '';
   SECTIONS.forEach((s, i) => {
     const dot = el('div', { class: 'step-dot' + (i === step ? ' is-active' : (i < step ? ' is-done' : '')) }, String(i + 1));
@@ -54,10 +56,11 @@ export function renderSurvey() {
     const card = el('button', {
       type: 'button',
       class: 'choice-card' + (isActive ? ' is-active' : ''),
+      ariaPressed: String(isActive),
       onclick: () => {
         answers[s.id] = opt;
-        grid.querySelectorAll('.choice-card').forEach(c => c.classList.remove('is-active'));
-        card.classList.add('is-active');
+        grid.querySelectorAll('.choice-card').forEach(c => { c.classList.remove('is-active'); c.setAttribute('aria-pressed', 'false'); });
+        card.classList.add('is-active'); card.setAttribute('aria-pressed', 'true');
       },
     }, [
       el('span', { class: 'ch-emoji' }, _emojiFor(opt)),
@@ -87,6 +90,7 @@ function _done() {
   if (!answers[s.id]) { showToast('하나만 선택해 주세요'); return; }
   try { localStorage.setItem(KEY, JSON.stringify(answers)); } catch (_) {}
   appState.preferences = answers;
-  showToast('취향이 저장되었어요. 추천에 반영됩니다.');
+  const used = [answers.budget && '예산 선호 → 컨셉', (answers.pace || answers.food || answers.activity) && '페이스·음식·활동 → 세부 스타일'].filter(Boolean).join(', ');
+  showToast(`취향을 이 기기에 저장했어요 · 새 여행의 ‘스타일’ 단계에 미리 골라 둘게요 (${used}). 이동 선호는 아직 반영하지 않아요`, 4200);
   navigate('my');
 }

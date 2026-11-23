@@ -356,6 +356,7 @@
           <h4 class="step-subh" id="conceptH">여행 스타일 <span class="form-label-meta">1개 선택 · 필수</span></h4>
           <div class="concept-grid" id="conceptGrid" role="group" aria-labelledby="conceptH"></div>
           <p class="form-error" id="conceptError" role="alert" hidden></p>
+          <p class="pref-hint" id="prefHint" hidden>취향 분석 결과로 미리 골라 뒀어요 · 바꿔도 돼요</p>
           <h4 class="step-subh" id="styleH">세부 스타일 <span class="form-label-meta">선택 · 여러 개 가능</span></h4>
           <div class="chip-row chip-wrap" id="styleChips" role="group" aria-labelledby="styleH"></div>
           <p class="form-hint" id="styleHint" aria-live="polite">‘여유로운 일정’과 ‘빽빽한 일정’은 둘 중 하나만 고를 수 있어요.</p>
@@ -691,10 +692,10 @@
 
         <div class="booking-cta" id="bookingCta" hidden>
           <div>
-            <p class="bcta-title">예약 준비하기</p>
-            <p class="bcta-sub">외부 예약 사이트 링크와 참고 가격을 모아 봐요</p>
+            <p class="bcta-title">예약 후보</p>
+            <p class="bcta-sub" id="bookingCtaSub">외부 사이트에서 찾고, 후보를 저장하고, 예약을 마치면 표시해 두세요</p>
           </div>
-          <button type="button" class="btn btn-primary" id="openBookingBtn">예약 보기</button>
+          <button type="button" class="btn btn-primary" id="openBookingBtn">후보 보기</button>
         </div>
 
         <section class="section-block" id="reviewSection" hidden>
@@ -793,18 +794,17 @@
         <div class="sub-grid" id="subGrid">
           <!-- ① Free -->
           <article class="sub-card" data-plan="free">
-            <div class="sub-badge">7일 무료</div>
-            <h3 class="sub-name">Free</h3>
+            <div class="sub-badge">지금 이용 중</div>
+            <h3 class="sub-name">무료 (출시 전)</h3>
             <div class="sub-price">
               <span class="sub-price-num">0<span class="sub-price-unit">원</span></span>
-              <span class="sub-price-sub">7일간 모든 기능</span>
+              <span class="sub-price-sub">결제 정보 없이 이용</span>
             </div>
             <ul class="sub-features">
-              <li>✓ 일정 만들기 무제한 (7일)</li>
-              <li>✓ 실측 동선 · 지도</li>
-              <li>✓ Places 자동완성</li>
-              <li>✓ 일정 저장 (최대 3개)</li>
-              <li class="sub-features-mute">7일 후 회당 결제 또는 월 구독 필요</li>
+              <li>✓ 일정 만들기 — 현재 횟수 제한 없음</li>
+              <li>✓ 지도 · 동선 보기</li>
+              <li>✓ 계정에 일정 저장 — 현재 개수 제한 없음</li>
+              <li class="sub-features-mute">유료 요금제가 생겨도 미리 알리고, 동의 없이 결제되지 않아요</li>
             </ul>
             <button type="button" class="sub-cta" data-plan-cta="free">현재 사용중</button>
           </article>
@@ -815,7 +815,7 @@
             <h3 class="sub-name">회당 결제</h3>
             <div class="sub-price">
               <span class="sub-price-num">1,900<span class="sub-price-unit">원~</span></span>
-              <span class="sub-price-sub">건당 결제</span>
+              <span class="sub-price-sub">예정가 · 바뀔 수 있어요</span>
             </div>
             <div class="payg-options" id="paygOptions">
               <label class="payg-option">
@@ -844,9 +844,8 @@
               </label>
             </div>
             <ul class="sub-features">
-              <li>✓ 일정 만들기</li>
-              <li>✓ 실측 동선 기본</li>
-              <li>✓ 일정 저장 (최대 3개)</li>
+              <li>✓ 일정 만들기 (묶음 횟수만큼)</li>
+              <li class="sub-features-mute">저장 개수 등 세부 조건은 출시 때 정해요</li>
             </ul>
             <button type="button" class="sub-cta" data-plan-cta="payg">결제하기</button>
           </article>
@@ -857,16 +856,12 @@
             <h3 class="sub-name">Standard</h3>
             <div class="sub-price">
               <span class="sub-price-num">5,900<span class="sub-price-unit">원/월</span></span>
-              <span class="sub-price-sub">모든 기능 무제한</span>
+              <span class="sub-price-sub">예정가 · 바뀔 수 있어요</span>
             </div>
             <ul class="sub-features">
-              <li>✓ 일정 만들기 무제한</li>
-              <li>✓ 실측 동선 · 지도</li>
-              <li>✓ Places 자동완성</li>
-              <li>✓ <strong>저장 무제한</strong></li>
-              <li>✓ <strong>예약 딥링크</strong></li>
-              <li>✓ <strong>광고 제거</strong></li>
-              <li class="sub-features-mute">언제든 해지 · 연 39,900원 (43% 할인)</li>
+              <li>✓ 일정 만들기 · 저장 무제한 (예정)</li>
+              <li>✓ 실시간 항공·숙소 요금 조회 (예정)</li>
+              <li class="sub-features-mute">무료 체험 기간 · 연간 요금 · 해지 조건은 출시 때 이 화면에 안내해요</li>
             </ul>
             <button type="button" class="sub-cta sub-cta--primary" data-plan-cta="standard">구독하기</button>
           </article>
@@ -883,9 +878,9 @@
         </div>
 
         <div class="sub-footnote">
-          <p>· 결제는 첫 7일 무료 체험 종료 후 시작됩니다.</p>
-          <p>· 구독은 마이 → 구독 · 멤버십에서 언제든지 해지할 수 있어요.</p>
-          <p>· 가격은 부가세 포함입니다. 결제는 Apple/Google/카카오페이/네이버페이로 안전하게 처리됩니다.</p>
+          <p>· 지금은 결제를 받지 않고, 결제 수단도 연결돼 있지 않아요. 무료 체험이나 자동 갱신도 없어요.</p>
+          <p>· 위 유료 요금제의 가격·횟수·결제 주기·해지 조건은 출시 전 예정안이라 바뀔 수 있어요.</p>
+          <p>· 출시하면 결제 전에 가격, 결제 주기, 체험 기간, 갱신·해지 방법을 이 화면과 결제 단계에서 먼저 보여 드려요.</p>
         </div>
       </div>
     </section>
@@ -898,6 +893,7 @@
           <h2 class="auth-title">3초 여행</h2>
           <p class="auth-sub" id="authSub">소셜 계정으로 빠르게 시작</p>
         </div>
+        <p class="auth-notice" id="authNotice" role="status" hidden></p>
 
         <div class="social-stack">
           <button type="button" class="social-btn social-btn--kakao" data-oauth-provider="kakao">
@@ -949,6 +945,26 @@
           </div>
           <button type="submit" class="btn btn-primary btn-gradient btn-block" id="authSubmit">로그인</button>
           <button type="button" class="btn btn-ghost btn-block" id="authToggle">이메일 회원가입</button>
+          <button type="button" class="link-btn auth-forgot" id="authForgot" hidden>비밀번호를 잊었어요</button>
+        </form>
+
+        <form class="auth-form" id="resetForm" hidden novalidate>
+          <h3 class="auth-reset-title" id="resetTitle">비밀번호 재설정</h3>
+          <div class="form-row" id="resetEmailRow">
+            <label class="form-label" for="resetEmail">가입한 이메일</label>
+            <input class="form-input" type="email" id="resetEmail" autocomplete="email" placeholder="you@example.com"/>
+          </div>
+          <div class="form-row" id="resetPwRow" hidden>
+            <label class="form-label" for="resetPw">새 비밀번호</label>
+            <input class="form-input" type="password" id="resetPw" autocomplete="new-password" placeholder="영문·숫자 포함 8자 이상"/>
+          </div>
+          <div class="form-row" id="resetPw2Row" hidden>
+            <label class="form-label" for="resetPw2">새 비밀번호 확인</label>
+            <input class="form-input" type="password" id="resetPw2" autocomplete="new-password"/>
+          </div>
+          <p class="form-hint" id="resetMsg" role="status" aria-live="polite"></p>
+          <button type="submit" class="btn btn-primary btn-block" id="resetSubmit">재설정 링크 받기</button>
+          <button type="button" class="btn btn-ghost btn-block" id="resetBack">로그인으로 돌아가기</button>
         </form>
       </div>
     </section>
@@ -997,7 +1013,7 @@
           </div>
           <div class="form-actions">
             <button type="button" class="btn btn-ghost" id="blogDraft">초안 저장</button>
-            <button type="submit" class="btn btn-primary btn-gradient">발행</button>
+            <button type="submit" class="btn btn-primary btn-gradient" id="blogPublish">발행</button>
           </div>
         </form>
         <p class="form-hint" id="blogStatus"></p>
@@ -1032,9 +1048,18 @@
           </div>
           <div class="form-row">
             <label class="form-label" for="fbScreenshot">스크린샷 (선택)</label>
-            <input class="form-input" type="file" id="fbScreenshot" accept="image/*"/>
+            <input class="form-input" type="file" id="fbScreenshot" accept="image/jpeg,image/png,image/webp" aria-describedby="fbShotHint"/>
+            <p class="form-hint" id="fbShotHint">이미지 1장 · 보내기 전에 줄여서 700KB 이하로 보내요</p>
+            <div class="fb-preview" id="fbPreview" hidden>
+              <img id="fbPreviewImg" alt="첨부할 스크린샷 미리보기"/>
+              <div class="fb-preview-meta">
+                <span id="fbPreviewInfo"></span>
+                <button type="button" class="btn btn-ghost" id="fbRemoveShot">첨부 삭제</button>
+              </div>
+            </div>
           </div>
-          <button type="submit" class="btn btn-primary btn-gradient btn-block">전송</button>
+          <p class="form-hint" id="fbDraftNote" aria-live="polite"></p>
+          <button type="submit" class="btn btn-primary btn-gradient btn-block" id="fbSend">전송</button>
         </form>
         <p class="form-hint" id="feedbackStatus"></p>
       </div>
@@ -1045,8 +1070,9 @@
       <div class="page-scroll">
         <div class="page-header">
           <h2 class="page-title">취향 분석</h2>
-          <p class="page-sub" id="surveySub">간단한 질문으로 더 정확한 추천을</p>
+          <p class="page-sub" id="surveySub">5가지 질문 · 결과는 새 여행 만들기의 ‘스타일’ 단계에 미리 골라 둬요</p>
         </div>
+        <p class="survey-count" id="surveyCount" aria-live="polite"></p>
         <div class="step-progress" id="surveyProgress" aria-label="설문 진행"></div>
         <div id="surveyPane"></div>
         <div class="step-nav">
@@ -1156,26 +1182,52 @@
   <aside class="bottom-sheet" id="bookingSheet" role="dialog" aria-modal="true" aria-labelledby="bookingSheetTitle" hidden>
     <div class="sheet-handle"></div>
     <header class="sheet-head">
-      <h2 id="bookingSheetTitle">예약 준비</h2>
+      <h2 id="bookingSheetTitle">예약 후보</h2>
       <button type="button" class="icon-btn" id="bookingClose" aria-label="닫기">×</button>
     </header>
-    <div class="sheet-filters" id="bookingFilters">
-      <button type="button" class="chip is-active" data-book-cat="all">전체</button>
-      <button type="button" class="chip" data-book-cat="flight">항공</button>
-      <button type="button" class="chip" data-book-cat="hotel">숙소</button>
-      <button type="button" class="chip" data-book-cat="restaurant">맛집</button>
-      <button type="button" class="chip" data-book-cat="activity">액티비티</button>
-      <button type="button" class="chip" data-book-cat="transport">교통</button>
-      <button type="button" class="chip" data-book-cat="airport">공항이동</button>
+    <div class="sheet-filters" id="bookingFilters" role="group" aria-label="종류별로 보기">
+      <button type="button" class="chip is-active" data-book-cat="all" aria-pressed="true">전체</button>
+      <button type="button" class="chip" data-book-cat="flight" aria-pressed="false">항공</button>
+      <button type="button" class="chip" data-book-cat="hotel" aria-pressed="false">숙소</button>
+      <button type="button" class="chip" data-book-cat="restaurant" aria-pressed="false">맛집</button>
+      <button type="button" class="chip" data-book-cat="activity" aria-pressed="false">액티비티</button>
+      <button type="button" class="chip" data-book-cat="transport" aria-pressed="false">교통</button>
+      <button type="button" class="chip" data-book-cat="airport" aria-pressed="false">공항이동</button>
     </div>
-    <p class="book-notice">3초 여행에서는 결제·예약을 하지 않아요. 링크는 외부 사이트로 이동하고, 금액은 참고용이라 실제 가격·판매 여부는 그 사이트에서 확인해 주세요.</p>
+    <p class="book-notice">3초 여행에서는 결제·예약을 하지 않아요. <strong>외부에서 찾기</strong>로 예약 사이트를 열고, 마음에 드는 항목은 <strong>후보로 저장</strong>, 직접 예약을 마쳤다면 <strong>예약했어요</strong>로 표시해 두세요. 금액은 참고용이에요.</p>
+    <p class="book-saved" id="bookingSaved" role="status" hidden></p>
     <div class="sheet-body" id="bookingList"></div>
     <footer class="sheet-foot">
-      <div class="sheet-total">
-        <span>선택 항목 참고 합계</span>
+      <div class="sheet-total" aria-live="polite">
+        <span><span id="bookingCount">선택 0개</span> · 참고 합계</span>
         <strong id="bookingTotal">0원</strong>
       </div>
-      <button type="button" class="btn btn-primary btn-gradient btn-block" id="bookingConfirm">예약 준비 목록에 저장</button>
+      <p class="book-hint" id="bookingHint">후보로 저장할 항목을 체크해 주세요.</p>
+      <button type="button" class="btn btn-primary btn-gradient btn-block" id="bookingConfirm" aria-disabled="true" aria-describedby="bookingHint">후보로 저장</button>
+    </footer>
+  </aside>
+
+  <!-- ============ 비회원 저장 방법 안내 ============ -->
+  <div class="sheet-backdrop" id="saveChoiceBackdrop" hidden></div>
+  <aside class="bottom-sheet" id="saveChoiceSheet" role="dialog" aria-modal="true" aria-labelledby="saveChoiceTitle" aria-describedby="saveChoiceDesc" hidden>
+    <div class="sheet-handle"></div>
+    <header class="sheet-head">
+      <h2 id="saveChoiceTitle">일정 저장 방법</h2>
+      <button type="button" class="icon-btn" id="saveChoiceClose" aria-label="닫기">×</button>
+    </header>
+    <div class="sheet-body save-choice" id="saveChoiceDesc">
+      <div class="save-opt is-current">
+        <p class="save-opt-title">이 기기 <span class="save-opt-tag">지금 저장돼 있어요</span></p>
+        <p>로그인 없이 이 브라우저에 자동으로 저장돼요. 다른 기기에서는 볼 수 없고, 브라우저 데이터를 지우거나 설정의 ‘이 기기 데이터 초기화’를 하면 사라져요.</p>
+      </div>
+      <div class="save-opt">
+        <p class="save-opt-title">계정 <span class="save-opt-tag">로그인 필요</span></p>
+        <p>다른 기기에서도 보고, 마이 › 저장한 일정에 남아요. 로그인을 마치면 이 일정을 바로 계정에 저장해요.</p>
+      </div>
+    </div>
+    <footer class="sheet-foot">
+      <button type="button" class="btn btn-primary btn-block" id="saveChoiceLogin">로그인하고 계정에 저장</button>
+      <button type="button" class="btn btn-ghost btn-block" id="saveChoiceLocal">이 기기에만 둘게요</button>
     </footer>
   </aside>
 
@@ -1271,27 +1323,48 @@
     </header>
     <div class="sheet-body">
       <div class="setting-list">
-        <button type="button" class="setting-row" id="settingLangRow">
-          <span>언어</span>
-          <span class="setting-value" id="settingLangLabel">🇰🇷 한국어</span>
-        </button>
-        <div class="setting-sub" id="settingLangList" hidden></div>
+        <div class="setting-row setting-row--block" role="radiogroup" aria-labelledby="themeLabel">
+          <span id="themeLabel">화면 테마</span>
+          <div class="seg" id="themeSeg">
+            <label><input type="radio" name="theme" value="system"/><span>시스템</span></label>
+            <label><input type="radio" name="theme" value="light"/><span>라이트</span></label>
+            <label><input type="radio" name="theme" value="dark"/><span>다크</span></label>
+          </div>
+          <p class="setting-note" id="themeNote"></p>
+        </div>
 
-        <label class="setting-row setting-row--toggle">
-          <span>다크 모드 (시스템 설정 따름)</span>
-          <input type="checkbox" id="settingDark" />
-        </label>
-        <label class="setting-row setting-row--toggle">
-          <span>알림 받기</span>
-          <input type="checkbox" id="settingNoti" checked />
-        </label>
+        <div class="setting-row setting-row--block">
+          <span>알림</span>
+          <p class="setting-note" id="notiNote">확인 중…</p>
+        </div>
+
+        <div class="setting-row setting-row--block">
+          <span>언어</span>
+          <p class="setting-note">한국어 · 다른 언어는 아직 번역이 없어 준비 중이에요.</p>
+        </div>
+
         <button type="button" class="setting-row" data-my-nav="feedback">
           <span>피드백 보내기</span><span class="setting-arrow">›</span>
         </button>
-        <button type="button" class="setting-row" id="settingReset">
-          <span style="color:var(--c-danger)">로컬 데이터 초기화</span>
+        <button type="button" class="setting-row" id="settingReset" aria-expanded="false" aria-controls="resetPanel">
+          <span style="color:var(--c-danger)">이 기기 데이터 초기화</span>
           <span class="setting-arrow">›</span>
         </button>
+        <div class="reset-panel" id="resetPanel" hidden>
+          <p class="reset-lead">이 브라우저에 저장된 3초 여행 데이터를 지워요. 되돌릴 수 없어요.</p>
+          <p class="reset-h">지워지는 것</p>
+          <ul class="reset-list" id="resetList"></ul>
+          <p class="reset-h">지워지지 않는 것</p>
+          <ul class="reset-list">
+            <li>계정에 저장한 일정·후기·블로그 — 다시 로그인하면 볼 수 있어요</li>
+            <li>함께 편집 중인 공유 일정의 내용 — 다른 사람은 계속 볼 수 있어요</li>
+          </ul>
+          <p class="reset-warn" id="resetWarn" hidden></p>
+          <div class="reset-actions">
+            <button type="button" class="btn btn-ghost" id="resetCancel">취소</button>
+            <button type="button" class="btn btn-danger" id="resetConfirm">모두 지우기</button>
+          </div>
+        </div>
       </div>
       <p class="form-hint" style="text-align:center;margin-top:14px">3초 여행 · v1.1</p>
     </div>

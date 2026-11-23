@@ -27,6 +27,18 @@ export function initBlog(state) {
   $('#blogForm')?.addEventListener('submit', (e) => { e.preventDefault(); _publish(); });
 
   _restoreDraft();
+  _paintGuest();
+  document.addEventListener('redesign:auth-ready', _paintGuest);
+}
+
+/** 비회원은 발행할 수 없으니, 할 수 있는 일(로그인하고 발행)을 주 버튼으로 보여 준다. */
+function _paintGuest() {
+  const guest = !appState?.currentUser;
+  const btn = $('#blogPublish');
+  if (btn) btn.textContent = guest ? '로그인하고 발행' : '발행';
+  const st = $('#blogStatus');
+  if (st && guest && !st.dataset.touched) st.textContent = '발행하려면 로그인이 필요해요. 쓰던 글은 초안으로 이 기기에 남아요.';
+  else if (st && !guest && !st.dataset.touched) st.textContent = '';
 }
 
 function _renderTags() {
@@ -74,8 +86,21 @@ async function _publish() {
   const p = _payload();
   if (!p.title) { showToast('제목을 입력해 주세요'); return; }
   if (!p.body || p.body.length < 20) { showToast('본문을 좀 더 작성해 주세요 (20자 이상)'); return; }
-  $('#blogStatus').textContent = '발행 중...';
-  const res = await api.saveBlog(p);
+  const st = $('#blogStatus'); st.dataset.touched = '1';
+  if (!appState?.currentUser) {
+    _saveDraft();
+    navigate('auth', { meta: { return: 'blog' } });
+    return;
+  }
+  st.textContent = '발행 중...';
+  let res = null;
+  try { res = await api.saveBlog(p); }
+  catch (e) {
+    _saveDraft();
+    st.textContent = e?.status === 401 ? '로그인이 만료됐어요. 다시 로그인하면 이어서 발행할 수 있어요. 초안은 저장했어요.'
+      : '발행하지 못했어요. 초안은 이 기기에 저장했어요. 잠시 뒤 다시 시도해 주세요.';
+    return;
+  }
   if (res) {
     $('#blogStatus').textContent = '발행 완료! 마이페이지에서 확인하세요.';
     showToast('블로그가 발행되었어요');

@@ -2,7 +2,7 @@
 
 import { handleOAuthCallbackToken, getAccessToken } from './redesign-api-adapter.js';
 import { initNavigation, navigate, onNavChange, getCurrent } from './redesign-navigation.js';
-import { initAuth, refreshCurrentUser } from './redesign-auth.js';
+import { initAuth, refreshCurrentUser, handleAuthReturn, captureAuthHash } from './redesign-auth.js';
 import { initRoadmaps, renderHomeRoadmaps, renderExplore } from './redesign-roadmaps.js';
 import { initTripFlow } from './redesign-trip-flow.js';
 import { initSchedule, renderSchedule, importSharedTripFromURL } from './redesign-schedule.js';
@@ -145,6 +145,7 @@ function updateDeviceClass() {
 document.addEventListener('DOMContentLoaded', async () => {
   // 1) OAuth callback — capture token before anything else
   handleOAuthCallbackToken();
+  captureAuthHash();   // #login_error / #reset_token — 첫 화면 이동 전에 꺼내 둔다
 
   // 1.5) Device-class hint for optional behavior (CSS still owns layout)
   updateDeviceClass();
@@ -168,7 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 4) Init feature modules
   initCalendar();
-  initSettings();
+  initSettings(appState);
   initAuth(appState);
   initRoadmaps(appState);
   initTripFlow(appState);
@@ -182,6 +183,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initCollab(appState, renderSchedule);
   initAppShell();
   initDialogs();
+  // 소셜 로그인 취소·실패(#login_error), 비밀번호 재설정 링크(#reset_token) 처리
+  handleAuthReturn();
 
   // 휴대폰 키보드가 올라오면 입력칸(과 그 아래 오류 문구)이 화면 안에 남도록 가운데로 옮긴다.
   if (matchMedia('(pointer: coarse)').matches) {

@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     # ── 서버 오류 알림 (Discord 웹훅 주소, 없으면 보내지 않음) ─────────
     error_webhook_url: str = ""
 
+    # 비밀번호 재설정 메일 (Resend) — 둘 다 있어야 운영에서 기능이 켜진다
+    resend_api_key: str = ""
+    mail_from: str = ""
+
     # ── PII 컬럼 암호화 (Fernet 키 / .env DB_ENCRYPTION_KEY) ─────────
     db_encryption_key: str = ""
 

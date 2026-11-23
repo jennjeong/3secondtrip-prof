@@ -1,4 +1,5 @@
 """Auth 라우터 — Google / Kakao / Apple OAuth + JWT 발급."""
+import functools
 import json
 import logging
 from urllib.parse import urlencode
@@ -34,6 +35,32 @@ def _redirect_with_token(token: str) -> RedirectResponse:
     return resp
 
 
+def _redirect_with_error(reason: str) -> RedirectResponse:
+    """OAuth 취소·실패 시 JSON 오류 화면 대신 앱으로 돌려보낸다.
+    reason: cancelled | state | failed — 프론트가 안내 문구를 고른다."""
+    resp = RedirectResponse(
+        f"{settings.frontend_origin}{settings.frontend_callback_path}#login_error={reason}", status_code=302)
+    resp.delete_cookie(STATE_COOKIE, path="/")
+    return resp
+
+
+def _friendly_callback(fn):
+    """콜백에서 생긴 오류를 앱으로 되돌리는 리다이렉트로 바꾼다."""
+    @functools.wraps(fn)
+    async def wrapper(*args, **kwargs):
+        if kwargs.get("error") or not kwargs.get("code"):
+            return _redirect_with_error("cancelled")
+        try:
+            return await fn(*args, **kwargs)
+        except HTTPException as e:
+            detail = str(e.detail or "")
+            return _redirect_with_error("state" if "state" in detail.lower() else "failed")
+        except Exception:
+            logger.exception("[oauth] callback failed")
+            return _redirect_with_error("failed")
+    return wrapper
+
+
 def _set_state_cookie(response: RedirectResponse, state: str) -> RedirectResponse:
     response.set_cookie(STATE_COOKIE, state, httponly=True, samesite="lax", max_age=600, path="/")
     return response
@@ -64,7 +91,9 @@ async def google_login():
 
 
 @router.get("/google/callback")
-async def google_callback(request: Request, code: str, state: str, db: Session = Depends(get_db)):
+@_friendly_callback
+async def google_callback(request: Request, code: str | None = None, state: str | None = None,
+                         error: str | None = None, db: Session = Depends(get_db)):
     _check_state(request, state)
     try:
         token_resp = await oauth.google_exchange_code(code)
@@ -97,7 +126,9 @@ async def kakao_login():
 
 
 @router.get("/kakao/callback")
-async def kakao_callback(request: Request, code: str, state: str, db: Session = Depends(get_db)):
+@_friendly_callback
+async def kakao_callback(request: Request, code: str | None = None, state: str | None = None,
+                         error: str | None = None, db: Session = Depends(get_db)):
     _check_state(request, state)
     try:
         token_resp = await oauth.kakao_exchange_code(code)
@@ -130,12 +161,14 @@ async def apple_login():
 
 
 @router.post("/apple/callback")
+@_friendly_callback
 async def apple_callback_post(
     request: Request,
-    code: str = Form(...),
-    state: str = Form(...),
+    code: str | None = Form(None),
+    state: str | None = Form(None),
     user: str | None = Form(None),     # Apple 첫 로그인 시 form_post 로 보냄
     id_token: str | None = Form(None),
+    error: str | None = Form(None),
     db: Session = Depends(get_db),
 ):
     _check_state(request, state)
@@ -163,9 +196,10 @@ async def apple_callback_post(
 
 
 @router.get("/apple/callback")
-async def apple_callback_get(request: Request, code: str, state: str, db: Session = Depends(get_db)):
+async def apple_callback_get(request: Request, code: str | None = None, state: str | None = None,
+                             error: str | None = None, db: Session = Depends(get_db)):
     """일부 환경에서 GET 콜백을 사용할 경우 — POST 와 동일 흐름. state 필수."""
-    return await apple_callback_post(request, code=code, state=state, user=None, id_token=None, db=db)
+    return await apple_callback_post(request, code=code, state=state, user=None, id_token=None, error=error, db=db)
 
 
 # ============ USER INFO + LOGOUT ============
@@ -199,7 +233,9 @@ async def naver_login():
 
 
 @router.get("/naver/callback")
-async def naver_callback(request: Request, code: str, state: str, db: Session = Depends(get_db)):
+@_friendly_callback
+async def naver_callback(request: Request, code: str | None = None, state: str | None = None,
+                         error: str | None = None, db: Session = Depends(get_db)):
     _check_state(request, state)
     try:
         token_resp = await oauth.naver_exchange_code(code, state)

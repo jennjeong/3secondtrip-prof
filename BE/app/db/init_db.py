@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.db.database import Base, engine
 
 # 모델 import — Base.metadata 에 등록되도록
-from app.models import user, trip, schedule, booking, roadmap, blog, review, feedback, survey, trip_place   # noqa: F401
+from app.models import user, trip, schedule, booking, roadmap, blog, review, feedback, survey, trip_place, password_reset, feedback_attachment   # noqa: F401
 
 
 def _ensure_sqlite_dir() -> None:

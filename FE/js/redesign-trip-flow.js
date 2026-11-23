@@ -155,6 +155,7 @@ function _buildConcepts() {
       dataset: { conceptKey: c.key },
       onclick: () => {
         appState.trip.concept = c.key;
+        appState.trip._prefApplied = false; const ph = $('#prefHint'); if (ph) ph.hidden = true;
         setActiveByData(grid, 'data-concept-key', c.key);
         const err = $('#conceptError'); if (err) err.hidden = true;
         _refreshBudget(); // concept doesn't change suggestion but keeps UI fresh
@@ -1041,6 +1042,23 @@ function _dateError(t) {
   return '';
 }
 
+/** 취향 분석 결과를 새 여행의 '스타일' 단계에 미리 골라 둔다(사용자가 바꿀 수 있음).
+ *  반영: 예산 선호 → 여행 컨셉, 여행 페이스·음식·활동 → 세부 스타일.  이동 선호는 아직 반영하지 않는다. */
+export const PREF_APPLIED_TO = '새 여행 만들기 › 스타일 단계 (컨셉 · 세부 스타일)';
+function _applyPreferences(t) {
+  const p = appState?.preferences || {};
+  const concept = { '절약': '가성비', '균형': '균형', '프리미엄': '프리미엄' }[p.budget];
+  const styles = new Set();
+  if (p.pace === '느긋하게') styles.add('여유로운 일정');
+  if (p.pace === '빡빡하게') styles.add('빽빽한 일정');
+  if (p.food === '로컬 맛집' || p.food === '유명 맛집') styles.add('맛집 중심');
+  const act = { '자연': '자연 중심', '쇼핑': '쇼핑 중심', '사진': '사진 명소', '문화': '유명 관광지' }[p.activity];
+  if (act) styles.add(act);
+  t._prefApplied = !!(concept || styles.size);
+  if (concept) t.concept = concept;
+  if (styles.size) t.styles = [...styles];
+}
+
 function _resetTripState() {
   // 트립 상태 초기화 — 홈에서 "새 여행 만들기" 진입 시 깨끗한 폼을 보장.
   if (!appState?.trip) return;
@@ -1066,6 +1084,7 @@ function _resetTripState() {
   t.flight = { route: 'any', classType: 'any', airlines: [] };
   t.hotelP = { types: [], locations: [], amenities: [] };
   // (currency 는 사용자 선택이라 유지)
+  _applyPreferences(t);
   step = 1;
 
   // UI 입력 필드 비우기
@@ -1101,6 +1120,7 @@ function _resetTripState() {
 }
 
 function _applyState() {
+  const ph = $('#prefHint'); if (ph) ph.hidden = !appState.trip?._prefApplied;
   const t = appState.trip;
   // 출발·도착 — 확정된 도시(공항 포함)를 되살리고, 검색 중이던 글자는 글자대로 둔다.
   const oc0 = t.origin ? findCity(x => x.key === t.origin) : (t.originName ? findCity(x => x.name === t.originName) : null);
@@ -2208,8 +2228,10 @@ async function _generateScheduleInner(t, btn, startedAt) {
   // ── 1) SerpApi 실시간 호텔 요금 (해당 도시·날짜·인원의 실제 1박가) ──
   //   check_out 이 check_in 보다 뒤이고, 둘 다 있어야 호출 (SerpApi 요구사항).
   let _serpNightly = null;
+  let _hotelLiveTried = false;   // 실시간 조회를 시도했는데 값을 못 받았는지 구분
   try {
     if (features.liveHotels && plan.includeHotel && t.startDate && t.endDate && t.endDate > t.startDate) {
+      _hotelLiveTried = true;
       const adults = people;
       // 사용자가 고른 성급(2~5)을 SerpApi hotel_class 필터로 전달 → 보여줄 호텔 등급·가격대 일치
       const _starMap = { luxury: '5', upscale: '4', midscale: '3', budget: '2' };
@@ -2285,11 +2307,13 @@ async function _generateScheduleInner(t, btn, startedAt) {
   // 항공권 — 실시간(SerpApi Google Flights) 우선, 실패/미지원 시 추정 공식 폴백.
   let _flightPerPax = null;          // 1인 왕복가
   let _flightSource = 'estimate';
+  let _flightLiveTried = false;
   let _flightMeta   = null;          // { airline, flightCode, stops }
   try {
     const depIata = t.departureAirport || _CITY_IATA[t.origin];   // 사용자가 고른 출발 공항 우선
     const arrIata = t.arrivalAirport || _CITY_IATA[t.city];       // 사용자가 고른 도착 공항 우선
     if (features.liveFlights && plan.includeFlight && depIata && arrIata && depIata !== arrIata && t.startDate && t.endDate && t.endDate > t.startDate) {
+      _flightLiveTried = true;
       const fres = await _withTimeout(api.searchFlights({
         departure_id: depIata, arrival_id: arrIata,
         outbound_date: t.startDate, return_date: t.endDate,
@@ -2528,6 +2552,9 @@ async function _generateScheduleInner(t, btn, startedAt) {
     } : null,
     hotelPriceSource: _hotelPriceSource,   // 'serpapi' | 'estimate'
     flightPriceSource: _flightSource,      // 'serpapi' | 'estimate'
+    // 실시간 조회를 시도했지만 실패 → 화면에 '조회 실패 · 추정가'로 알린다
+    flightLiveFailed: _flightLiveTried && _flightSource !== 'serpapi',
+    hotelLiveFailed: _hotelLiveTried && _hotelPriceSource !== 'serpapi',
     sources,
     budgetPlan,
     generationMs: Date.now() - startedAt,

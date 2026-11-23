@@ -387,3 +387,106 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus, h3[tabindex="-1"]:focus, .page
   .budget-alts:not([hidden]) { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
   .budget-alts .budget-alts-title { grid-column: 1 / -1; }
 }
+
+/* ===== 데스크톱 3차: 첫 화면에 인기 코스의 도시·기간까지 보이게 ===== */
+@media (min-width: 1024px) {
+  #homePage .hero-card { min-height: 0 !important; padding: 28px 40px; }
+  #homePage .hero-card h1, #homePage .hero-title { font-size: clamp(30px, 2.6vw, 38px); }
+  #homePage .search-card { margin-top: 12px; }
+  #homePage .home-subh { margin-top: 14px; }
+  #homePage .section-block:first-of-type { margin-top: 28px; }
+  .roadmap-grid .rc-media { aspect-ratio: 16 / 7; }
+}
+/* 높이가 낮은 데스크톱 창(노트북 1366×768 등) */
+@media (min-width: 1024px) and (max-height: 820px) {
+  #homePage .hero-card .hero-preview, #homePage .hero-greet { display: none !important; }
+  #homePage .hero-card { padding: 22px 36px !important; }
+  #homePage .home-subh { margin-top: 10px; }
+}
+
+/* 데스크톱·태블릿: 시트와 입력 양식이 화면 끝까지 늘어나지 않게 */
+@media (min-width: 768px) {
+  .bottom-sheet { max-width: 640px; border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+  #bookingSheet { max-width: 760px; }
+  .wizard-body, #createPage .page-scroll > form, .auth-form, #feedbackForm { max-width: 640px; margin-left: auto; margin-right: auto; }
+}
+
+/* ===== 예약 후보 시트 ===== */
+#bookingFilters { flex-wrap: wrap; white-space: normal; overflow: visible; row-gap: 8px; }
+.book-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 8px 10px; align-items: start; }
+.book-row.is-selected { background: var(--c-surface-2); border-radius: 12px; }
+.book-check-label { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; cursor: pointer; }
+.book-check { -webkit-appearance: checkbox !important; appearance: auto !important; width: 22px; height: 22px; accent-color: var(--c-text); cursor: pointer; margin: 0; opacity: 1 !important; position: static !important; }
+.book-badge { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--c-surface-2); color: var(--c-text-soft); vertical-align: 1px; }
+.book-badge.is-booked { background: #E7F6EC; color: #17663A; }
+.book-actions { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 6px; }
+.book-actions .book-link { margin-top: 0; min-height: 44px; display: inline-flex; align-items: center; }
+.book-mark { min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--c-border, #E5E7EB); background: var(--c-surface); font-size: 13px; font-weight: 600; color: var(--c-text); cursor: pointer; }
+.book-mark.is-on { background: #E7F6EC; border-color: #BFE5CC; color: #17663A; }
+.book-ref { display: grid; gap: 4px; margin-top: 6px; max-width: 260px; }
+.book-ref label { font-size: 12px; color: var(--c-text-soft); }
+.book-saved { margin: 0 18px 10px; font-size: 13px; font-weight: 600; color: var(--c-text); }
+.book-hint { margin: 0 0 8px; font-size: 12.5px; color: var(--c-text-soft); text-align: center; }
+.book-hint.is-nudge { color: #B42318; font-weight: 600; }
+#bookingConfirm[aria-disabled="true"] { opacity: .5; }
+@media (max-width: 379px) {
+  .book-row { grid-template-columns: 44px minmax(0, 1fr); }
+  .book-row .book-price { grid-column: 2; text-align: left; }
+  .book-row .book-price .book-estimate { text-align: left; }
+}
+@media (prefers-color-scheme: dark) {
+  :root.allow-dark .book-badge.is-booked, :root.allow-dark .book-mark.is-on { background: #12361F; color: #8FE0AE; border-color: #1E5A33; }
+}
+
+/* ===== 비회원 저장 안내 · 로그인 안내 · 비밀번호 재설정 ===== */
+.save-choice { display: grid; gap: 10px; padding: 4px 18px 12px; }
+.save-opt { border: 1px solid var(--c-border, #E5E7EB); border-radius: 14px; padding: 12px 14px; font-size: 13.5px; line-height: 1.55; color: var(--c-text-soft); }
+.save-opt p { margin: 0; }
+.save-opt.is-current { background: var(--c-surface-2); }
+.save-opt-title { font-size: 15px; font-weight: 700; color: var(--c-text) !important; margin-bottom: 4px !important; }
+.save-opt-tag { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--c-surface); border: 1px solid var(--c-border, #E5E7EB); color: var(--c-text-soft); margin-left: 6px; vertical-align: 1px; }
+#saveChoiceSheet .sheet-foot { display: grid; gap: 8px; }
+.auth-notice { margin: 0 auto 14px; max-width: 640px; padding: 10px 14px; border-radius: 12px; background: var(--c-surface-2); font-size: 13.5px; line-height: 1.5; color: var(--c-text); }
+.auth-notice.is-error { background: #FEF3F2; color: #B42318; }
+.auth-forgot { display: block; margin: 6px auto 0; min-height: 44px; font-size: 13.5px; color: var(--c-text-soft); text-decoration: underline; background: none; border: 0; cursor: pointer; }
+.auth-reset-title { font-size: 17px; font-weight: 700; margin: 0 0 6px; }
+@media (prefers-color-scheme: dark) { :root.allow-dark .auth-notice.is-error { background: #3A1512; color: #FDA29B; } }
+.social-btn.is-off { opacity: .55; } .social-off { font-weight: 500; font-size: 12.5px; }
+
+/* ===== 설정: 테마(시스템/라이트/다크) · 알림 상태 · 초기화 안내 ===== */
+:root.theme-dark {
+  --c-bg:        #111418;
+  --c-surface:   #1A1E24;
+  --c-surface-2: #22272E;
+  --c-border:    #2E343C;
+  --c-divider:   #262B32;
+  --c-text:      #EEF2F6;
+  --c-text-soft: #A9B1BB;
+  --c-text-mute: #7A828C;
+}
+:root.theme-dark .book-badge.is-booked, :root.theme-dark .book-mark.is-on { background: #12361F; color: #8FE0AE; border-color: #1E5A33; }
+:root.theme-dark .auth-notice.is-error { background: #3A1512; color: #FDA29B; }
+.setting-row--block { display: grid !important; gap: 8px; align-items: start; justify-items: stretch; justify-content: stretch !important; cursor: default; }
+.setting-row--block > * { width: 100%; }
+.setting-note { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--c-text-soft); }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 12px; background: var(--c-surface-2); }
+.seg label { position: relative; display: flex; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span { flex: 1; min-height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 9px; font-size: 13.5px; font-weight: 600; color: var(--c-text-soft); }
+.seg input:checked + span { background: var(--c-surface); color: var(--c-text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.seg input:focus-visible + span { outline: 2px solid var(--c-text); outline-offset: 2px; }
+.reset-panel { margin: 4px 0 8px; padding: 14px; border-radius: 14px; border: 1px solid var(--c-border, #E5E7EB); background: var(--c-surface); font-size: 13px; line-height: 1.55; }
+.reset-lead { margin: 0 0 8px; font-weight: 600; color: var(--c-text); }
+.reset-h { margin: 10px 0 4px; font-size: 12px; font-weight: 700; color: var(--c-text-soft); }
+.reset-list { margin: 0; padding-left: 18px; color: var(--c-text); }
+.reset-list li + li { margin-top: 2px; }
+.reset-warn { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; background: #FEF3F2; color: #B42318; font-weight: 600; }
+:root.theme-dark .reset-warn { background: #3A1512; color: #FDA29B; }
+.reset-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.btn-danger { background: #B42318; color: #fff; border: 0; min-height: 44px; border-radius: 12px; font-weight: 700; }
+.pref-hint { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--c-surface-2); font-size: 13px; color: var(--c-text); }
+.survey-count { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--c-text-soft); }
+.fb-preview { margin-top: 8px; display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: center; padding: 8px; border: 1px solid var(--c-border, #E5E7EB); border-radius: 12px; }
+.fb-preview img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; background: var(--c-surface-2); }
+.fb-preview-meta { display: grid; gap: 6px; font-size: 12.5px; color: var(--c-text-soft); min-width: 0; overflow-wrap: anywhere; }
+.fb-preview-meta .btn { justify-self: start; min-height: 44px; }

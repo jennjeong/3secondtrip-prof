@@ -31,6 +31,22 @@ class PasswordSignupRequest(BaseModel):
         return v
 
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str = Field(min_length=16, max_length=200)
+    password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def _pw_complexity(cls, v: str) -> str:
+        if not _PW_RE.match(v):
+            raise ValueError("비밀번호는 8자 이상이며 영문/숫자를 각각 포함해야 합니다.")
+        return v
+
+
 class PasswordLoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)

@@ -1,17 +1,17 @@
-/* 3초 여행 — Redesign Booking
- * Bottom-sheet booking modal.  Preserves the original filter behavior:
- *   - Flight items deduped as a single round-trip
- *   - Hotel deduped to one item
- *   - Restaurant / activity filtered by required_reservation flag
- *   - Airport transfer always available
- *   - "Extra options" excludes hotel/flight, includes restaurant/transport
- *   - Price right-aligned, category label vertically centered.
+/* 3초 여행 — 예약 후보
  *
- * 예약 제휴사가 없어 앱 안에서 바로 결제하지 않는다.  항목마다 실제 검색
- * 페이지 링크를 달고, 일정의 실제 값이 아닌 금액은 '예상가'로 표시한다.
+ * 3초 여행은 결제·예약을 하지 않는다.  이 시트는 세 가지를 분리해서 다룬다.
+ *   1) 외부에서 찾기  — 항목별 실제 검색 페이지(새 창)
+ *   2) 후보로 저장    — 고른 항목을 이 여행(g.bookingCandidates)에 남긴다
+ *   3) 예약했어요     — 사용자가 외부에서 직접 예약을 마쳤다고 표시(예약번호는 선택)
+ * 실시간 조회값이 아닌 금액은 모두 '추정가'로 표시하고, 편명·좌석·객실은
+ * 확정값처럼 보여 주지 않는다.  후보는 일정과 함께 기기·계정에 저장된다.
+ *
+ * 기존 규칙 유지: 항공 왕복 1건 + 가격대 대안, 숙소 대안, 예약이 필요한
+ * 식당·액티비티만, 공항 이동 왕복, 교통패스.
  */
 
-import { api, trackEvent } from './redesign-api-adapter.js';
+import { trackEvent } from './redesign-api-adapter.js';
 import { el, $, formatCurrency, showToast } from './redesign-ui.js';
 
 const CATS = {
@@ -27,7 +27,17 @@ let appState = null;
 let items = [];
 let selected = new Set();
 let activeFilter = 'all';
-let airlineType = 'all'; // all | full-service | low-cost
+
+function _store() {
+  const g = appState?.generated;
+  if (!g) return {};
+  if (!g.bookingCandidates || typeof g.bookingCandidates !== 'object') g.bookingCandidates = {};
+  return g.bookingCandidates;
+}
+function _changed() {
+  document.dispatchEvent(new CustomEvent('redesign:trip-changed'));
+  document.dispatchEvent(new CustomEvent('redesign:booking-changed'));
+}
 
 export function initBooking(state) {
   appState = state;
@@ -41,21 +51,34 @@ export function initBooking(state) {
     const c = e.target.closest?.('[data-book-cat]');
     if (!c) return;
     activeFilter = c.dataset.bookCat;
-    $('#bookingFilters').querySelectorAll('.chip').forEach(x => x.classList.toggle('is-active', x === c));
+    $('#bookingFilters').querySelectorAll('.chip').forEach(x => {
+      const on = x === c;
+      x.classList.toggle('is-active', on);
+      x.setAttribute('aria-pressed', String(on));
+    });
+    c.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     _renderList();
   });
 
-  $('#bookingConfirm')?.addEventListener('click', async () => {
+  $('#bookingConfirm')?.addEventListener('click', () => {
     const chosen = items.filter(it => selected.has(it.id));
-    if (chosen.length === 0) { showToast('선택된 항목이 없어요'); return; }
-    try {
-      await api.saveBooking({ items: chosen, total: _total(), city: appState.generated?.city });
-      showToast(`${chosen.length}건을 예약 준비 목록에 저장했어요. 실제 예약은 각 사이트에서 해 주세요`, 3200);
-      _close();
-    } catch (e) {
-      console.error('[booking] save failed', e);
-      showToast(e?.status === 401 ? '로그인하면 예약 준비 목록을 저장할 수 있어요' : '저장하지 못했어요. 잠시 뒤 다시 시도해 주세요');
-    }
+    if (chosen.length === 0) { _paintFoot(true); return; }
+    const store = _store();
+    const now = new Date().toISOString();
+    chosen.forEach(it => {
+      const prev = store[it.id];
+      store[it.id] = {
+        cat: it.cat, name: it.name, price: it.price, estimated: !!it.estimated,
+        status: prev?.status === 'booked' ? 'booked' : 'candidate',
+        ref: prev?.ref || '', savedAt: prev?.savedAt || now,
+      };
+    });
+    _changed();
+    trackEvent('booking_candidates_saved');
+    const where = appState.generated?.savedScheduleId ? '이 기기와 계정' : '이 기기';
+    showToast(`${chosen.length}개를 예약 후보로 저장했어요 · ${where}에 일정과 함께 보관돼요`, 3200);
+    selected = new Set();
+    _renderList(); _paintFoot();
   });
 }
 
@@ -65,9 +88,12 @@ function _open() {
   items = _buildItems(appState.generated);
   selected = new Set();
   activeFilter = 'all';
-  $('#bookingFilters').querySelectorAll('.chip').forEach(x => x.classList.toggle('is-active', x.dataset.bookCat === 'all'));
+  $('#bookingFilters').querySelectorAll('.chip').forEach(x => {
+    const on = x.dataset.bookCat === 'all';
+    x.classList.toggle('is-active', on); x.setAttribute('aria-pressed', String(on));
+  });
   _renderList();
-  _updateTotal();
+  _paintFoot();
   $('#bookingBackdrop').hidden = false;
   $('#bookingSheet').hidden = false;
   requestAnimationFrame(() => {
@@ -146,13 +172,16 @@ function _buildItems(g) {
       userDesc.push(flight.airlines.slice(0, 3).join('/') + (flight.airlines.length > 3 ? '+' : ''));
     } else if (flight.classType === 'lcc') userDesc.push('저가 항공');
     else if (flight.classType === 'fsc') userDesc.push('대형 항공');
-    if (flightInfoStr) userDesc.push(flightInfoStr.split(' · ').slice(0, 2).join(' · '));
+    // 편명은 실시간 조회로 받은 값일 때만 '조회된 항공편'으로 보여 준다(확정 아님).
+    if (flightInfoStr && g.flightPriceSource === 'serpapi') userDesc.push('조회된 항공편 ' + flightInfoStr.split(' · ').slice(0, 2).join(' · '));
+    userDesc.push('편명·좌석은 예약 사이트에서 확인');
     flightOptions.push({
       id: 'flt-pick', cat: 'flight',
       name: `${originLabel} ⇄ ${city} 왕복 (선택 옵션)`,
       desc: userDesc.join(' · ') || '추천 항공편',
       price: actualFlightPrice, required: true, sub: '★ 일정 선택 기준',
-      estimated: g.flightPriceSource !== 'serpapi', url: flightUrl,
+      estimated: g.flightPriceSource !== 'serpapi', live: g.flightPriceSource === 'serpapi',
+      liveFailed: !!g.flightLiveFailed, url: flightUrl,
     });
   }
   // 2) 가격대 별 대안 3개 (저가/중간/대형)
@@ -168,7 +197,7 @@ function _buildItems(g) {
     flightOptions.push({
       id: opt.id, cat: 'flight',
       name: `${originLabel} ⇄ ${city} 왕복 (${opt.name})`,
-      desc: opt.desc, price: p, required: false, estimated: true, url: flightUrl,
+      desc: opt.desc, price: p, required: false, estimated: true, liveFailed: !!g.flightLiveFailed, url: flightUrl,
     });
   });
   // 예산 필터 — flightBudgetCap 초과 항목은 숨김 (단, 사용자 선택은 유지)
@@ -222,6 +251,7 @@ function _buildItems(g) {
   ];
   if (locLabels.length)  userDescParts.push(locLabels.slice(0, 2).join('/'));
   if (amenLabels.length) userDescParts.push(amenLabels.slice(0, 3).join('·'));
+  userDescParts.push('객실·잔여는 예약 사이트에서 확인');
   const userHotelName = typeLabels.length
     ? `${city} ${typeLabels.slice(0, 2).join('/')}`
     : (hotelNameFromTrip || `${city} 시내 호텔`);
@@ -232,7 +262,8 @@ function _buildItems(g) {
     price: userPerNight * nights,
     perNight: userPerNight, nights, hotelPref,
     required: true, sub: '★ 일정 선택 기준',
-    estimated: g.hotelPriceSource !== 'serpapi', url: _hotelUrl(g, userHotelName),
+    estimated: g.hotelPriceSource !== 'serpapi', live: g.hotelPriceSource === 'serpapi',
+    liveFailed: !!g.hotelLiveFailed, url: _hotelUrl(g, userHotelName),
   });
   // 2) 가격대별 대안 (저렴·중간·고급)
   const altHotels = [
@@ -292,6 +323,7 @@ function _renderList() {
   const wrap = $('#bookingList');
   if (!wrap) return;
   wrap.innerHTML = '';
+  _paintSummary();
 
   const groups = {};
   items.forEach(it => {
@@ -309,7 +341,7 @@ function _renderList() {
   }
 
   Object.keys(groups).sort((a, b) => (CATS[a]?.order || 99) - (CATS[b]?.order || 99)).forEach(catKey => {
-    const sec = el('div', { class: 'book-section' }, [
+    const sec = el('section', { class: 'book-section', ariaLabel: CATS[catKey]?.label || catKey }, [
       el('h4', {}, CATS[catKey]?.label || catKey),
       ...groups[catKey].map(it => _rowEl(it)),
     ]);
@@ -317,42 +349,118 @@ function _renderList() {
   });
 }
 
-function _rowEl(it) {
-  const cb = el('button', {
-    type: 'button',
-    class: 'book-cb' + (selected.has(it.id) ? ' is-checked' : ''),
-    ariaPressed: String(selected.has(it.id)),
-    onclick: () => {
-      if (selected.has(it.id)) selected.delete(it.id); else selected.add(it.id);
-      cb.classList.toggle('is-checked');
-      _updateTotal();
-    },
-  }, selected.has(it.id) ? '✓' : '');
+/** 저장된 후보·예약 완료 개수를 시트 위쪽에 알려 준다. */
+function _paintSummary() {
+  const box = $('#bookingSaved');
+  if (!box) return;
+  const all = Object.values(_store());
+  const booked = all.filter(x => x.status === 'booked').length;
+  const cand = all.length - booked;
+  box.hidden = all.length === 0;
+  box.textContent = all.length ? `저장한 후보 ${cand}개 · 예약했다고 표시한 항목 ${booked}개` : '';
+}
 
-  return el('div', { class: 'book-row' }, [
+function _priceKind(it) {
+  if (!it.estimated) return it.live ? '실시간 조회가' : '일정에 넣은 금액';
+  return it.liveFailed ? '조회 실패 · 추정가' : '추정가';
+}
+
+function _rowEl(it) {
+  const st = _store()[it.id];
+  const cbId = `bk-${it.id}`;
+  const cb = el('input', {
+    type: 'checkbox', id: cbId, class: 'book-check',
+    checked: selected.has(it.id),
+    onchange: (e) => {
+      if (e.target.checked) selected.add(it.id); else selected.delete(it.id);
+      row.classList.toggle('is-selected', e.target.checked);
+      _paintFoot();
+    },
+  });
+  const label = el('label', { class: 'book-check-label', for: cbId }, [
+    cb,
+    el('span', { class: 'sr-only' }, `${it.name} 후보로 선택, ${_priceKind(it)} ${formatCurrency(it.price, 'KRW')}`),
+  ]);
+
+  const badge = st ? el('span', { class: 'book-badge' + (st.status === 'booked' ? ' is-booked' : '') },
+    st.status === 'booked' ? '예약했다고 표시함' : '후보 저장됨') : null;
+
+  const actions = el('div', { class: 'book-actions' }, [
+    it.url ? el('a', {
+      class: 'book-link', href: it.url, target: '_blank',
+      rel: it.url.includes('aid=') ? 'noopener noreferrer sponsored' : 'noopener noreferrer',
+      ariaLabel: `${it.name} 외부 사이트에서 찾기 (새 창)`,
+      onclick: () => trackEvent('booking_link_clicked'),
+    }, '외부에서 찾기 ↗') : el('span', { class: 'book-desc' }, '연결된 예약처 없음'),
+    el('button', {
+      type: 'button', class: 'book-mark' + (st?.status === 'booked' ? ' is-on' : ''),
+      ariaPressed: String(st?.status === 'booked'),
+      ariaLabel: st?.status === 'booked' ? `${it.name} 예약 완료 표시 취소` : `${it.name} 외부에서 예약을 마쳤다고 표시`,
+      onclick: () => _toggleBooked(it),
+    }, st?.status === 'booked' ? '예약 표시 취소' : '예약했어요'),
+  ]);
+
+  const refBox = st?.status === 'booked' ? el('div', { class: 'book-ref' }, [
+    el('label', { for: `ref-${it.id}` }, '예약번호 (선택)'),
+    el('input', {
+      id: `ref-${it.id}`, class: 'form-input', type: 'text', maxLength: 40, value: st.ref || '',
+      placeholder: '예약 사이트의 번호', autocomplete: 'off',
+      onchange: (e) => { st.ref = e.target.value.trim(); _changed(); },
+    }),
+  ]) : null;
+
+  const row = el('div', { class: 'book-row' + (selected.has(it.id) ? ' is-selected' : '') }, [
+    label,
     el('div', { class: 'book-info' }, [
-      el('span', { class: 'book-cat-label' }, CATS[it.cat]?.label || it.cat),
-      el('div', { class: 'book-name' }, it.name),
+      el('div', { class: 'book-name' }, [it.name, badge ? ' ' : null, badge]),
       el('div', { class: 'book-desc' }, it.desc || ''),
-      it.url ? el('a', {
-        class: 'book-link', href: it.url, target: '_blank', rel: it.url.includes('aid=') ? 'noopener noreferrer sponsored' : 'noopener noreferrer',
-        onclick: () => trackEvent('booking_link_clicked'),
-      }, it.url.includes('aid=') ? '제휴 사이트에서 찾아보기 (새 창) ↗' : '외부 사이트에서 찾아보기 (새 창) ↗')
-        : el('span', { class: 'book-desc' }, '연결된 예약처가 없어요 · 직접 찾아 주세요'),
+      actions,
+      refBox,
     ]),
-    el('div', { style: { display:'flex', alignItems:'center', gap:'10px' } }, [
-      el('div', { class: 'book-price' }, [
-        formatCurrency(it.price, 'KRW'),
-        el('div', { class: 'book-estimate' }, it.estimated ? '참고용 예상가' : '일정에 넣은 금액'),
-      ]),
-      cb,
+    el('div', { class: 'book-price' }, [
+      formatCurrency(it.price, 'KRW'),
+      el('div', { class: 'book-estimate' }, _priceKind(it)),
     ]),
   ]);
+  return row;
+}
+
+function _toggleBooked(it) {
+  const store = _store();
+  const st = store[it.id];
+  if (st?.status === 'booked') {
+    st.status = 'candidate';
+    showToast('예약 완료 표시를 지웠어요 · 후보로 남겨 둘게요');
+  } else {
+    store[it.id] = {
+      cat: it.cat, name: it.name, price: it.price, estimated: !!it.estimated,
+      status: 'booked', ref: st?.ref || '', savedAt: st?.savedAt || new Date().toISOString(),
+      bookedAt: new Date().toISOString(),
+    };
+    trackEvent('booking_marked_booked');
+    showToast('예약했다고 표시했어요 · 실제 예약 내역은 예약한 사이트에서 확인해 주세요', 3200);
+  }
+  _changed();
+  _renderList();
+  // 다시 그린 뒤 같은 버튼으로 초점을 돌려준다
+  requestAnimationFrame(() => $(`#bookingList input#bk-${CSS.escape(it.id)}`)?.closest('.book-row')?.querySelector('.book-mark')?.focus());
 }
 
 function _total() {
   return items.filter(it => selected.has(it.id)).reduce((s, it) => s + (it.price || 0), 0);
 }
-function _updateTotal() {
-  $('#bookingTotal').textContent = formatCurrency(_total(), 'KRW');
+function _paintFoot(nudge = false) {
+  const n = selected.size;
+  const t = $('#bookingTotal'); if (t) t.textContent = formatCurrency(_total(), 'KRW');
+  const c = $('#bookingCount'); if (c) c.textContent = `선택 ${n}개`;
+  const btn = $('#bookingConfirm');
+  if (btn) {
+    btn.setAttribute('aria-disabled', String(n === 0));
+    btn.textContent = n ? `${n}개 후보로 저장` : '후보로 저장';
+  }
+  const hint = $('#bookingHint');
+  if (hint) {
+    hint.hidden = n > 0;
+    hint.classList.toggle('is-nudge', !!nudge && n === 0);
+  }
 }

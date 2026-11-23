@@ -10,6 +10,7 @@
  */
 
 import { navigate } from './redesign-navigation.js';
+import { setPendingIntent, peekPendingIntent, clearPendingIntent } from './redesign-auth.js';
 import { api, trackEvent } from './redesign-api-adapter.js';
 import {
   el, $, $$, formatCurrency, showToast,
@@ -79,6 +80,9 @@ export function initSchedule(state) {
     _pick(e.detail.ai, 'map');
   });
   document.addEventListener('redesign:auth-ready', () => _paintSaveStatus());
+  // 예약 후보를 바꾸면 계정에 저장된 일정에도 반영한다
+  document.addEventListener('redesign:booking-changed', () => _queueSync());
+  _initSaveChoice();
   $('#btnSave')?.addEventListener('click', _toggleSave);
   $('#openBookingBtn')?.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('redesign:open-booking'));
@@ -1341,11 +1345,7 @@ function _paintSaveStatus() {
 async function _toggleSave() {
   const g = appState.generated;
   if (!g) { showToast('저장할 일정이 없어요'); return; }
-  if (!appState.currentUser) {
-    showToast('로그인하면 계정에 저장할 수 있어요. 지금 일정은 이 기기에 저장돼 있어요', 3200);
-    navigate('auth', { meta: { return: 'schedule' } });
-    return;
-  }
+  if (!appState.currentUser) { _openSaveChoice(); return; }
   if (g.savedScheduleId) {
     if (!confirm('계정에 저장한 이 일정을 저장 목록에서 뺄까요?\n이 기기에서는 그대로 볼 수 있고, 다시 저장하면 되살아나요.')) return;
     try {
@@ -1395,6 +1395,48 @@ function _queueSync() {
   if (JSON.stringify(_payload(g)) === lastSyncedJson) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(_saveToAccount, 3000);
+}
+
+/* ============ 비회원 저장 — 저장 방법 안내 + 로그인 뒤 이어서 저장 ============ */
+function _openSaveChoice() {
+  const bd = $('#saveChoiceBackdrop'), sh = $('#saveChoiceSheet');
+  if (!bd || !sh) return;
+  bd.hidden = false; sh.hidden = false;
+  requestAnimationFrame(() => { bd.classList.add('is-visible'); sh.classList.add('is-visible'); $('#saveChoiceLogin')?.focus(); });
+}
+function _closeSaveChoice() {
+  const bd = $('#saveChoiceBackdrop'), sh = $('#saveChoiceSheet');
+  if (!bd || !sh) return;
+  bd.classList.remove('is-visible'); sh.classList.remove('is-visible');
+  setTimeout(() => { bd.hidden = true; sh.hidden = true; }, 250);
+}
+function _initSaveChoice() {
+  $('#saveChoiceClose')?.addEventListener('click', _closeSaveChoice);
+  $('#saveChoiceBackdrop')?.addEventListener('click', _closeSaveChoice);
+  $('#saveChoiceLocal')?.addEventListener('click', () => {
+    _closeSaveChoice();
+    showToast('이 기기에 저장돼 있어요 · 같은 브라우저에서 언제든 다시 열 수 있어요', 3000);
+  });
+  $('#saveChoiceLogin')?.addEventListener('click', () => {
+    const g = appState.generated;
+    setPendingIntent({ action: 'save-trip', tripKey: g?.createdAt || null });
+    _closeSaveChoice();
+    navigate('auth', { meta: { return: 'schedule' } });
+  });
+  // 로그인을 마치면(이메일·소셜 모두) 하려던 저장을 이어서 한다.
+  document.addEventListener('redesign:auth-ready', () => {
+    const intent = peekPendingIntent();
+    if (!intent || intent.action !== 'save-trip' || !appState.currentUser) return;
+    clearPendingIntent();
+    const g = appState.generated;
+    if (!g || (intent.tripKey && g.createdAt && intent.tripKey !== g.createdAt)) {
+      showToast('로그인했어요. 저장하려던 일정을 찾지 못했어요');
+      return;
+    }
+    navigate('schedule', { replace: true });
+    if (g.savedScheduleId) { showToast('로그인했어요 · 이 일정은 이미 계정에 저장돼 있어요'); return; }
+    _saveToAccount();
+  });
 }
 
 function _persist() {

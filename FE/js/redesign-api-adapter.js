@@ -84,6 +84,21 @@ export function startSocialLogin(provider) {
 /** Read ?token= or #token= from URL after OAuth redirect.
  * Saves to localStorage and rewrites the URL so the token doesn't linger.
  */
+/**
+ * URL 해시에서 한 번만 쓰는 값(#login_error=…, #reset_token=…)을 꺼내고 주소에서 지운다.
+ * 토큰·오류 코드가 주소창·방문 기록에 남지 않게 한다.
+ */
+export function takeHashParam(name) {
+  if (!window.location.hash) return null;
+  const hp = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const v = hp.get(name);
+  if (v == null) return null;
+  hp.delete(name);
+  const rem = hp.toString();
+  try { window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search + (rem ? '#' + rem : '')); } catch (_) {}
+  return v;
+}
+
 export function handleOAuthCallbackToken() {
   let token = null;
   if (window.location.hash) {
@@ -203,8 +218,12 @@ export const api = {
   // 서버에 연결된 외부 기능(실시간 항공·숙소 요금, AI 요약). 결과는 한 번만 받아 둔다.
   // 예전 서버처럼 이 주소가 없으면 모두 켜진 것으로 보고, 실패하면 각 호출의 대체 처리가 맡는다.
   features: () => (_featuresPromise ||= apiRequest('/api/features')
-    .then(f => ({ liveFlights: !!f.live_flights, liveHotels: !!f.live_hotels, ai: !!f.ai_summary, checkedAt: new Date().toISOString() }))
-    .catch(() => ({ liveFlights: true, liveHotels: true, ai: true, checkedAt: null }))),
+    .then(f => ({ liveFlights: !!f.live_flights, liveHotels: !!f.live_hotels, ai: !!f.ai_summary,
+                  passwordReset: !!f.password_reset, oauth: f.oauth || null, checkedAt: new Date().toISOString() }))
+    .catch(() => ({ liveFlights: true, liveHotels: true, ai: true, passwordReset: false, checkedAt: null }))),
+  // 비밀번호 재설정 — 가입 여부와 상관없이 같은 응답(202)
+  requestPasswordReset: (email) => apiRequest('/users/password-reset/request', { method: 'POST', body: JSON.stringify({ email }) }),
+  confirmPasswordReset: (token, password) => apiRequest('/users/password-reset/confirm', { method: 'POST', body: JSON.stringify({ token, password }) }),
 
   // ===== SerpApi Google Hotels proxy — real nightly prices, server-side key =====
   // Tolerant: 404 (no results) / 501 → null so the trip flow falls back to estimate.

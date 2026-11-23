@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/events", tags=["events"])
 
 EventName = Literal[
     "trip_step_city", "trip_step_dates", "trip_step_concept", "trip_step_budget", "trip_created",
-    "trip_shared", "trip_exported", "collab_started", "booking_opened", "booking_link_clicked",
+    "trip_shared", "trip_exported", "collab_started", "booking_opened", "booking_link_clicked", "booking_candidates_saved", "booking_marked_booked",
     "app_installed", "client_error",
     "trip_generate_start", "trip_generate_done", "trip_generate_fail",
     "trip_saved", "collab_revoked",

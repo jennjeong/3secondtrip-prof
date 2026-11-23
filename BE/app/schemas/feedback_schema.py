@@ -9,7 +9,10 @@ _STATUS = {"new", "in_progress", "resolved", "closed"}
 class FeedbackCreate(BaseModel):
     feedback_type: str = "etc"
     title: Optional[str] = Field(default=None, max_length=255)
-    content: str = Field(min_length=1)
+    content: str = Field(min_length=1, max_length=5000)
+    # 스크린샷(선택) — base64.  디코딩 후 700KB 이하, JPEG/PNG/WebP 만
+    attachment_b64: Optional[str] = Field(default=None, max_length=1_000_000)
+    attachment_mime: Optional[str] = Field(default=None, max_length=32)
 
     @field_validator("feedback_type")
     @classmethod
@@ -37,5 +40,6 @@ class FeedbackPublic(BaseModel):
     feedback_type: str
     title: Optional[str] = None
     content: str
+    has_attachment: bool = False
     status: str
     created_at: Optional[datetime] = None
