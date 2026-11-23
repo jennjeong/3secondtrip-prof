@@ -163,3 +163,45 @@ body { font-size: 15px; line-height: 1.55; }
 .tool-row { grid-template-columns: 1fr auto var(--touch); }
 .tool-remove { width: var(--touch); height: var(--touch); }
 .tool-check { min-height: var(--touch); }
+
+/* 경비 기록 */
+.exp-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; margin: 8px 0 10px; }
+.exp-field .form-label { margin-bottom: 4px; font-size: 13px; }
+.exp-row small { color: var(--c-text-soft); font-size: 12px; }
+.exp-cats { margin-top: 10px; }
+.exp-settle { margin-top: 10px; font-size: 14px; }
+.exp-settle p { margin: 2px 0; }
+.exp-settle-h { font-weight: 700; }
+@media (max-width: 299px) { .exp-form { grid-template-columns: 1fr; } }
+
+/* 여행 중 보기 */
+.now-next { margin: 0 0 12px; padding: 12px 14px; border-radius: 14px; background: var(--c-text); color: var(--c-bg); }
+.now-next[hidden] { display: none; }
+.nn-head { margin: 0 0 8px; font-size: 13px; opacity: .85; }
+.nn-head strong { opacity: 1; }
+.nn-row { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; }
+.nn-label { flex: 0 0 auto; font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.16); }
+.nn-place { display: flex; flex-direction: column; min-width: 0; }
+.nn-place strong { overflow-wrap: anywhere; }
+.nn-place small { font-size: 12.5px; opacity: .8; }
+.nn-done { margin: 4px 0; }
+.nn-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.now-next .btn-soft { background: rgba(255,255,255,.14); color: inherit; border-color: transparent; }
+.now-next .btn-text { color: inherit; text-decoration: underline; }
+
+/* 고정·다녀옴 */
+.pin-btn, .visit-btn {
+  min-height: var(--touch); min-width: var(--touch); padding: 0 10px; border-radius: 10px;
+  border: 1px solid var(--c-border); background: var(--c-surface); font-size: 12.5px; font-weight: 700; color: var(--c-text-soft);
+}
+.pin-btn.is-on, .visit-btn.is-on { background: var(--c-text); color: var(--c-bg); border-color: var(--c-text); }
+.pin-badge, .visited-badge { font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--c-surface-2); color: var(--c-text); }
+.schedule-card.is-visited { background: var(--c-surface-2); }
+.schedule-card.is-visited .schedule-place-name { color: var(--c-text-soft); }
+
+/* 오프라인 안내 */
+.offline-banner {
+  margin: 0; padding: 8px var(--app-side-padding); font-size: 13px; line-height: 1.5;
+  background: #F6EFD9; color: #4A3A0B; text-align: center;
+}
+.offline-banner[hidden] { display: none; }

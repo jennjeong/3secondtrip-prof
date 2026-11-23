@@ -1832,8 +1832,69 @@ function _addMinutes(hhmm, mins) {
 /** Public — re-run the same generation using the current trip parameters
  *  (city / days / concept / budget).  Used by the "다시 만들기" button on
  *  the schedule page so users don't have to re-walk the 4-step flow. */
+// 다시 만들기 때 남길 '고정' 장소 — [{ di, a }]
+let _pinnedCarry = [];
+let _regenerating = false;   // '다시 만들기'일 때만 true — 새 여행 만들기와 구분한다
+
+/** 화면의 일정과 여행 만들기 입력값이 다르면(저장한 일정·공유받은 일정을 연 경우) 일정에서 입력값을 되살린다. */
+function _syncTripFromGenerated(g) {
+  const t = appState.trip;
+  const first = g.days[0]?.date, last = g.days.at(-1)?.date;
+  if (t.cityName === g.city && t.startDate === first && t.endDate === last) return;
+  const c = findCity(x => x.name === g.city);
+  const o = g.originName ? findCity(x => x.name === g.originName) : null;
+  Object.assign(t, {
+    cityName: g.city, city: c?.key || '', country: g.country || c?.country || '', cityTier: c?.tier, cityFlag: c?.flag,
+    originName: g.originName || '', origin: o?.key || '', originCountry: o?.country,
+    startDate: first, endDate: last, days: g.days.length,
+    concept: g.concept || t.concept, styles: Array.isArray(g.styles) ? [...g.styles] : (t.styles || []),
+    companion: g.companion || t.companion || 'couple',
+    budget: Math.round((g.budget || 0) / 10000) || t.budget,
+    currency: g.currency || t.currency || 'KRW',
+  });
+  if (g.people) { t.adults = Math.max(1, g.people); t.children = 0; }
+  if (g.budgetPlan?.rooms) { t.rooms = g.budgetPlan.rooms; t._roomsTouched = true; }
+  if (g.flight) t.flight = { ...g.flight, airlines: [...(g.flight.airlines || [])] };
+  if (g.hotelPref) t.hotelP = { ...g.hotelPref };
+  if (g.budgetPlan) { t.includeFlight = g.budgetPlan.includeFlight !== false; t.includeHotel = g.budgetPlan.includeHotel !== false; }
+}
+
 export async function regenerateSchedule() {
-  return _generateSchedule();
+  const g = appState.generated;
+  if (g?.days?.length) _syncTripFromGenerated(g);
+  _pinnedCarry = [];
+  g?.days?.forEach((d, di) => d.activities.forEach(a => { if (a.pinned) _pinnedCarry.push({ di, a: JSON.parse(JSON.stringify(a)) }); }));
+  _regenerating = true;
+  try { return await _generateSchedule(); }
+  finally { _pinnedCarry = []; _regenerating = false; }
+}
+
+/** 고정한 장소를 같은 날짜·시간에 되돌려 놓는다.
+ *  그 날 시간이 가장 가까운 일반 장소(공항·숙소 제외)를 대신하고, 같은 장소가 다른 곳에 또 있으면 뺀다. */
+function _mergePinned(generated, pins) {
+  if (!pins.length) return 0;
+  const toMin = (t) => { const [h, m] = String(t || '12:00').split(':').map(Number); return (h | 0) * 60 + (m | 0); };
+  const key = (a) => a.placeId || String(a.name || '').trim();
+  const pinnedKeys = new Set(pins.map(p => key(p.a)));
+  generated.days.forEach(d => { d.activities = d.activities.filter(a => a.category === '이동' || a.category === '숙박' || !pinnedKeys.has(key(a))); });
+  let kept = 0;
+  pins.forEach(({ di, a }) => {
+    const day = generated.days[Math.min(di, generated.days.length - 1)];
+    if (!day) return;
+    const acts = day.activities;
+    let best = -1, gap = Infinity;
+    acts.forEach((x, i) => {
+      if (x.category === '이동' || x.category === '숙박' || x.pinned) return;
+      const g2 = Math.abs(toMin(x.time) - toMin(a.time));
+      if (g2 < gap) { gap = g2; best = i; }
+    });
+    if (best >= 0 && gap <= 90) acts.splice(best, 1);       // 비슷한 시간대의 새 장소 하나를 대신한다
+    let at = acts.findIndex(x => toMin(x.time) > toMin(a.time));
+    if (at < 0) at = acts.length;
+    acts.splice(at, 0, { ...a, pinned: true });
+    kept += 1;
+  });
+  return kept;
 }
 
 /* ============ 생성 진행 화면 ============ */
@@ -2442,6 +2503,9 @@ async function _generateScheduleInner(t, btn, startedAt) {
     generationMs: Date.now() - startedAt,
     version: 2,
   };
+  const keptPins = _mergePinned(generated, _pinnedCarry);
+  // 다시 만들어도 계정에 저장한 일정이면 같은 저장 항목을 이어서 고친다.
+  if (_regenerating && appState.generated?.savedScheduleId) generated.savedScheduleId = appState.generated.savedScheduleId;
   appState.generated = generated;
   appState.expenses = {};
   t._draft = false;                      // 일정이 만들어졌으니 임시 저장은 끝
@@ -2453,7 +2517,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
   } else if (!plan.fits) {
     showToast('일정을 만들었어요. 예산보다 많이 들어서 맞출 방법을 함께 보여 드려요.');
   } else {
-    showToast('일정을 만들었어요');
+    showToast(keptPins ? `일정을 다시 만들었어요. 고정한 장소 ${keptPins}곳은 그대로 남겼어요` : '일정을 만들었어요');
   }
   navigate('schedule');
 }

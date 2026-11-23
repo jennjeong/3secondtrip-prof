@@ -78,6 +78,8 @@
     <div class="topbar-spacer" aria-hidden="true"></div>
   </header>
 
+  <p class="offline-banner" id="offlineBanner" role="status" aria-live="polite" hidden></p>
+
   <!-- ============== MAIN PAGES ============== -->
   <main id="appMain" class="app-main" role="main">
 
@@ -593,6 +595,8 @@
         </div>
         <p class="save-status" id="saveStatus" role="status" aria-live="polite" hidden></p>
         <p class="shared-banner" id="sharedBanner" hidden>공유받은 일정이에요. 여기서 고쳐도 보낸 사람의 일정은 바뀌지 않아요.</p>
+
+        <section class="now-next" id="nowNext" aria-label="여행 중 — 지금과 다음 장소" aria-live="polite" hidden></section>
 
         <section class="budget-panel" id="budgetPanel" hidden aria-labelledby="budgetPanelH">
           <h3 class="sr-only" id="budgetPanelH">예산과 예상 지출</h3>

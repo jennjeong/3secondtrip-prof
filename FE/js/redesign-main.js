@@ -106,6 +106,20 @@ function saveAppState() {
   } catch (_) { /* quota / private mode — ignore */ }
 }
 
+/** 오프라인 안내 — 연결이 끊기면 이 기기에 저장된 일정을 보여 준다는 것과 마지막 저장 시각을 알린다. */
+function paintOffline() {
+  const bar = document.getElementById('offlineBanner');
+  if (!bar) return;
+  if (navigator.onLine !== false) { bar.hidden = true; return; }
+  let at = null;
+  try { at = JSON.parse(localStorage.getItem(STATE_KEY) || '{}').savedAt || null; } catch (_) {}
+  const when = at ? new Date(at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  bar.textContent = appState.generated
+    ? `인터넷 연결이 없어요. 이 기기에 저장된 일정·주소·준비물을 보여 드려요${when ? ` (마지막 저장 ${when})` : ''}. 지도·날씨·계정 저장은 연결되면 다시 돼요.`
+    : '인터넷 연결이 없어요. 연결되면 일정을 만들 수 있어요.';
+  bar.hidden = false;
+}
+
 function restoreAppState() {
   try {
     const raw = localStorage.getItem(STATE_KEY);
@@ -223,6 +237,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   //    delete, add place, drag-and-drop reorder, touch-drag reorder.
   document.addEventListener('redesign:schedule-changed', saveAppState);
   document.addEventListener('redesign:trip-changed', saveAppState);   // 작성 중인 여행 임시 저장
+  window.addEventListener('online', () => { paintOffline(); showToast('다시 연결됐어요'); });
+  window.addEventListener('offline', paintOffline);
+  paintOffline();
 
   // 8.5) Surface friendly errors
   window.addEventListener('unhandledrejection', (e) => {

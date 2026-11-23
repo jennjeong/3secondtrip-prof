@@ -42,7 +42,11 @@ function _readStore() {
 }
 function _tripData(g) {
   const d = _readStore()[_tripKey(g)] || {};
-  return { expenses: Array.isArray(d.expenses) ? d.expenses : [], checked: Array.isArray(d.checked) ? d.checked : [] };
+  return {
+    expenses: Array.isArray(d.expenses) ? d.expenses : [],
+    checked: Array.isArray(d.checked) ? d.checked : [],
+    members: Array.isArray(d.members) && d.members.length ? d.members : ['나'],
+  };
 }
 function _saveTripData(g, data) {
   const store = _readStore();
@@ -175,30 +179,90 @@ async function _loadRate(g, key) {
 }
 
 /* ============ 경비 ============ */
+const EXP_CATS = ['식비', '교통', '숙소', '입장·체험', '쇼핑', '기타'];
+
+/** 정산 — 각자 낸 돈과 똑같이 나눈 몫의 차이로 '누가 누구에게 얼마'를 만든다. */
+export function settle(expenses, members) {
+  const names = members.length ? members : ['나'];
+  const total = expenses.reduce((s, x) => s + x.amount, 0);
+  const share = total / names.length;
+  const bal = Object.fromEntries(names.map(n => [n, -share]));
+  expenses.forEach(x => { const p = names.includes(x.paidBy) ? x.paidBy : names[0]; bal[p] += x.amount; });
+  const give = names.filter(n => bal[n] < -0.5).map(n => ({ n, v: -bal[n] })).sort((a, b) => b.v - a.v);
+  const get = names.filter(n => bal[n] > 0.5).map(n => ({ n, v: bal[n] })).sort((a, b) => b.v - a.v);
+  const moves = [];
+  let i = 0, j = 0;
+  while (i < give.length && j < get.length) {
+    const v = Math.min(give[i].v, get[j].v);
+    moves.push({ from: give[i].n, to: get[j].n, amount: Math.round(v) });
+    give[i].v -= v; get[j].v -= v;
+    if (give[i].v < 0.5) i++;
+    if (get[j].v < 0.5) j++;
+  }
+  return { total, share: Math.round(share), moves };
+}
+
+function _csvCell(v) {
+  const s = String(v ?? '');
+  // 수식으로 해석되지 않게 막고, 쉼표·따옴표·줄바꿈은 따옴표로 감싼다.
+  const safe = /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
+  return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+}
+
+function _downloadCsv(g, data) {
+  const rows = [['날짜', '항목', '분류', '낸 사람', '금액(원)']];
+  data.expenses.forEach(x => rows.push([x.date || '', x.name, x.cat || '기타', x.paidBy || '나', x.amount]));
+  const st = settle(data.expenses, data.members);
+  rows.push([], ['합계', '', '', '', st.total], ['1인당', '', '', '', st.share]);
+  st.moves.forEach(m => rows.push(['정산', `${m.from} → ${m.to}`, '', '', m.amount]));
+  const csv = '﻿' + rows.map(r => r.map(_csvCell).join(',')).join('\r\n');   // BOM — 엑셀에서 한글이 깨지지 않게
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = el('a', { href: url, download: `3초여행-경비-${g.city}.csv` });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  trackEvent('trip_exported');
+  showToast('경비 기록을 CSV 파일로 저장했어요');
+}
+
 function _expenseEl(g) {
+  const wrap = el('div', { class: 'exp' });
   const list = el('div', { class: 'tool-list' });
-  const summary = el('p', { class: 'tool-note' });
-  const name = el('input', { class: 'form-input', type: 'text', placeholder: '항목 (예: 점심)', maxLength: 40, ariaLabel: '경비 항목' });
-  const amount = el('input', { class: 'form-input', type: 'number', min: '1', placeholder: '금액(원)', inputMode: 'numeric', ariaLabel: '경비 금액' });
+  const byCat = el('dl', { class: 'money-rows exp-cats' });
+  const settleBox = el('div', { class: 'exp-settle' });
+  const summary = el('p', { class: 'tool-note', role: 'status' });
+  const name = el('input', { class: 'form-input', type: 'text', placeholder: '예: 점심', maxLength: 40, id: 'expName' });
+  const amount = el('input', { class: 'form-input', type: 'number', min: '1', placeholder: '원', inputMode: 'numeric', id: 'expAmount' });
+  const cat = el('select', { class: 'form-input', id: 'expCat' }, EXP_CATS.map(c => el('option', { value: c }, c)));
+  const payer = el('select', { class: 'form-input', id: 'expPayer' });
+  const membersInput = el('input', { class: 'form-input', type: 'text', id: 'expMembers', placeholder: '예: 나, 민지, 준호', maxLength: 120 });
 
   const paint = () => {
-    const { expenses } = _tripData(g);
-    list.textContent = '';
-    expenses.forEach((x, i) => list.appendChild(el('div', { class: 'tool-row' }, [
-      el('span', {}, x.name),
-      el('span', {}, formatCurrency(x.amount, 'KRW')),
+    const d = _tripData(g);
+    membersInput.value = d.members.join(', ');
+    payer.replaceChildren(...d.members.map(m => el('option', { value: m }, m)));
+    list.replaceChildren(...d.expenses.map((x, i) => el('div', { class: 'tool-row exp-row' }, [
+      el('span', {}, [x.name, el('small', {}, ` ${x.cat || '기타'} · ${x.paidBy || d.members[0]} 냄`)]),
+      el('span', { class: 'nowrap' }, formatCurrency(x.amount, 'KRW')),
       el('button', {
-        type: 'button', class: 'tool-remove', ariaLabel: `${x.name} 삭제`,
+        type: 'button', class: 'tool-remove', 'aria-label': `${x.name} 지우기`,
         onclick: () => {
-          const d = _tripData(g);
-          d.expenses.splice(i, 1);
-          _saveTripData(g, d);
-          paint();
+          if (!confirm(`‘${x.name}’ 기록을 지울까요?`)) return;
+          const n = _tripData(g); n.expenses.splice(i, 1); _saveTripData(g, n); paint();
         },
       }, '×'),
     ])));
-    const spent = expenses.reduce((s, x) => s + x.amount, 0);
-    summary.textContent = `쓴 돈 ${formatCurrency(spent, 'KRW')}` + (g.budget ? ` · 예산 ${formatCurrency(g.budget, g.currency)} 중 ${Math.round(spent / g.budget * 100)}%` : '');
+    const sums = {};
+    d.expenses.forEach(x => { const c = x.cat || '기타'; sums[c] = (sums[c] || 0) + x.amount; });
+    byCat.replaceChildren(...Object.entries(sums).sort((a, b) => b[1] - a[1]).map(([c, v]) =>
+      el('div', { class: 'money-row' }, [el('dt', {}, c), el('dd', {}, formatCurrency(v, 'KRW'))])));
+    byCat.hidden = !d.expenses.length;
+    const st = settle(d.expenses, d.members);
+    summary.textContent = `쓴 돈 ${formatCurrency(st.total, 'KRW')}` + (g.budget ? ` · 예산 ${formatCurrency(g.budget, 'KRW')} 중 ${Math.round(st.total / g.budget * 100)}%` : '');
+    settleBox.replaceChildren(...(d.members.length > 1 && d.expenses.length ? [
+      el('p', { class: 'exp-settle-h' }, `똑같이 나누면 1인당 ${formatCurrency(st.share, 'KRW')}`),
+      ...(st.moves.length ? st.moves.map(m => el('p', {}, `${m.from} → ${m.to} ${formatCurrency(m.amount, 'KRW')}`)) : [el('p', {}, '정산할 금액이 없어요')]),
+    ] : []));
+    exportBtn.disabled = !d.expenses.length;
   };
 
   const add = el('button', {
@@ -207,18 +271,35 @@ function _expenseEl(g) {
       const value = Math.round(Number(amount.value));
       if (!name.value.trim() || !Number.isFinite(value) || value <= 0 || value > 1e10) {
         showToast('항목과 금액을 입력해 주세요');
+        (name.value.trim() ? amount : name).focus();
         return;
       }
       const d = _tripData(g);
-      d.expenses.push({ name: name.value.trim(), amount: value });
+      d.expenses.push({ name: name.value.trim(), amount: value, cat: cat.value, paidBy: payer.value || d.members[0], date: new Date().toISOString().slice(0, 10) });
       _saveTripData(g, d);
       name.value = ''; amount.value = '';
       paint();
+      name.focus();
     },
   }, '추가');
+  membersInput.addEventListener('change', () => {
+    const names = [...new Set(membersInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean))].slice(0, 12);
+    const d = _tripData(g); d.members = names.length ? names : ['나']; _saveTripData(g, d); paint();
+  });
+  const exportBtn = el('button', { type: 'button', class: 'btn btn-soft', onclick: () => _downloadCsv(g, _tripData(g)) }, 'CSV로 내보내기');
 
+  const field = (id, label, input) => el('div', { class: 'exp-field' }, [el('label', { class: 'form-label', for: id }, label), input]);
+  wrap.append(
+    field('expMembers', '함께 쓰는 사람 (쉼표로 구분)', membersInput),
+    el('div', { class: 'exp-form' }, [
+      field('expName', '항목', name), field('expAmount', '금액(원)', amount),
+      field('expCat', '분류', cat), field('expPayer', '낸 사람', payer),
+    ]),
+    add, list, summary, byCat, settleBox, el('div', { class: 'tool-actions' }, [exportBtn]),
+    el('p', { class: 'tool-note' }, '경비 기록은 이 기기에만 저장돼요.'),
+  );
   paint();
-  return el('div', {}, [el('div', { class: 'tool-form' }, [name, amount, add]), list, summary]);
+  return wrap;
 }
 
 /* ============ 준비물 ============ */

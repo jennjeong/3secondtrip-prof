@@ -39,18 +39,19 @@ export function initSchedule(state) {
   $('#btnRegen')?.addEventListener('click', async () => {
     // 다시 만들기 전에 바뀌는 범위와 사라지는 편집을 알려 준다.
     const g0 = appState.generated;
-    const edited = g0 ? g0.days.reduce((n, d) => n + d.activities.filter(a => a.edited || a.memo).length, 0) : 0;
-    const msg = `같은 조건(도시·날짜·예산·스타일)으로 ${g0?.days.length || ''}일 전체 일정을 새로 만들어요.`
-      + (edited ? `\n직접 고치거나 메모를 단 장소 ${edited}곳도 새 장소로 바뀌어요.` : '')
+    const pinned = g0 ? g0.days.reduce((n, d) => n + d.activities.filter(a => a.pinned).length, 0) : 0;
+    const edited = g0 ? g0.days.reduce((n, d) => n + d.activities.filter(a => !a.pinned && (a.edited || a.memo)).length, 0) : 0;
+    const msg = `같은 조건(도시·날짜·예산·스타일)으로 ${g0?.days.length || ''}일 일정을 새로 만들어요.`
+      + (pinned ? `\n📌 고정한 장소 ${pinned}곳은 같은 날짜·시간에 그대로 남겨요.` : '\n남기고 싶은 장소는 먼저 ‘고정’을 눌러 두세요.')
+      + (edited ? `\n고정하지 않고 직접 고치거나 메모를 단 장소 ${edited}곳은 새 장소로 바뀌어요.` : '')
       + '\n\n장소 하나만 바꾸려면 취소하고 그 장소의 [편집 › 비슷한 곳 추천]을 써 보세요.';
     if (!confirm(msg)) return;
     // Have current trip params (city / days / concept / budget) → regen in place.
-    if (appState.trip?.cityName && appState.trip?.days) {
+    if (appState.generated?.days?.length || (appState.trip?.cityName && appState.trip?.days)) {
       const btn = $('#btnRegen');
       if (btn) btn.disabled = true;
       try {
-        await regenerateSchedule();
-        showToast('새 일정이 생성됐어요');
+        await regenerateSchedule();   // 완료 안내(고정 장소 포함)는 trip-flow 가 띄운다
       } catch (e) {
         showToast('재생성 실패: ' + (e?.message || 'unknown'));
       } finally {
@@ -127,7 +128,7 @@ export function renderSchedule() {
   const sub = $('#scheduleSub');
 
   const hasG = !!g;
-  ['#scheduleActions', '#scheduleDayRow', '#scheduleSplit', '#dayChecks', '#saveStatus', '#viewToggle'].forEach(sel => { const n = $(sel); if (n) n.hidden = !hasG; });
+  ['#scheduleActions', '#scheduleDayRow', '#scheduleSplit', '#dayChecks', '#saveStatus', '#viewToggle', '#nowNext'].forEach(sel => { const n = $(sel); if (n) n.hidden = !hasG; });
   if (!g) {
     const panel = $('#budgetPanel'); if (panel) panel.hidden = true;
     const sb = $('#sharedBanner'); if (sb) sb.hidden = true;
@@ -163,6 +164,7 @@ export function renderSchedule() {
 
   if (g.hideCost) { const panel = $('#budgetPanel'); if (panel) panel.hidden = true; }
   else _renderBudgetPanel(g);
+  _renderNowNext(g);
   _renderDayChips(g);
   _renderAiSummary(g);
   _renderTimeline(g);
@@ -408,7 +410,7 @@ function _renderTimeline(g) {
     details.push(el('button', { type: 'button', class: 'btn-text sc-map-link', onclick: (e) => { e.stopPropagation(); _openMap(a); } }, 'Google 지도에서 열기 ↗'));
 
     const card = el('article', {
-      class: 'schedule-card' + (hasName ? '' : ' schedule-card--no-name') + (focusedAi === ai ? ' is-focused' : ''),
+      class: 'schedule-card' + (hasName ? '' : ' schedule-card--no-name') + (focusedAi === ai ? ' is-focused' : '') + (a.visited ? ' is-visited' : ''),
       draggable: 'false',
       tabIndex: -1,
       dataset: { di: String(activeDay), ai: String(ai), placeId: n.placeId || n.id || '', movable: movable ? '1' : '0' },
@@ -421,6 +423,8 @@ function _renderTimeline(g) {
           n.category ? el('span', { class: 'schedule-category' }, n.category) : null,
           a.sample ? el('span', { class: 'sample-badge', title: '실제 검색 결과가 없어 넣은 예시 장소예요' }, '예시 장소') : null,
           a.edited ? el('span', { class: 'edited-badge' }, '직접 수정') : null,
+          a.pinned ? el('span', { class: 'pin-badge' }, '📌 고정') : null,
+          a.visited ? el('span', { class: 'visited-badge' }, '✓ 다녀옴') : null,
         ]),
         el('h3', { class: 'schedule-place-name', id: `scName${ai}` }, placeName),
         n.memo ? el('p', { class: 'schedule-place-subinfo schedule-memo' }, '메모 · ' + n.memo) : null,
@@ -436,6 +440,17 @@ function _renderTimeline(g) {
           type: 'button', class: 'edit-button', 'aria-label': `${placeName} 편집`,
           onclick: (e) => { e.stopPropagation(); _openEdit(activeDay, ai); },
         }, '편집'),
+        ...(movable && !g.sharedView ? [el('button', {
+          type: 'button', class: 'pin-btn' + (a.pinned ? ' is-on' : ''), 'aria-pressed': String(!!a.pinned),
+          'aria-label': `${placeName} ${a.pinned ? '고정 풀기' : '고정 — 다시 만들어도 남겨요'}`,
+          title: '다시 만들기를 해도 이 장소를 남겨요',
+          onclick: (e) => { e.stopPropagation(); a.pinned = !a.pinned; renderSchedule(); showToast(a.pinned ? '고정했어요. 다시 만들어도 이 장소는 남아요' : '고정을 풀었어요'); },
+        }, a.pinned ? '📌 고정됨' : '고정')] : []),
+        ...(_tripStarted(g) && !g.sharedView ? [el('button', {
+          type: 'button', class: 'visit-btn' + (a.visited ? ' is-on' : ''), 'aria-pressed': String(!!a.visited),
+          'aria-label': `${placeName} 다녀옴 ${a.visited ? '표시 지우기' : '표시'}`,
+          onclick: (e) => { e.stopPropagation(); _toggleVisited(activeDay, ai); },
+        }, a.visited ? '✓ 다녀옴' : '다녀옴')] : []),
         ...(editMode && movable ? [
           el('button', { type: 'button', class: 'move-btn', 'aria-label': `${placeName} 위로 이동`, disabled: !movables[ai - 1] || null,
             onclick: (e) => { e.stopPropagation(); _moveActivity(ai, ai - 1, false); _focusCard(ai - 1, '위'); } }, '▲'),
@@ -467,6 +482,58 @@ function _renderTimeline(g) {
       tl.appendChild(el('p', { class: 'tl-move' }, moveText));
     }
   });
+}
+
+
+/* ============ 여행 중 보기 ============
+ * 오늘이 여행 날짜에 들어 있으면 '지금 → 다음 장소'를 보여 주고, 다녀온 곳을 표시하게 한다.
+ * 시각은 이 기기의 시계를 기준으로 한다(현지에 도착하면 휴대폰이 현지 시간으로 바뀐다). */
+function _todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function _tripStarted(g) { return !!g.days[0]?.date && _todayIso() >= g.days[0].date; }
+
+function _toggleVisited(di, ai) {
+  const a = appState.generated?.days[di]?.activities[ai];
+  if (!a) return;
+  a.visited = !a.visited;
+  renderSchedule();
+  showToast(a.visited ? `‘${_short(a.name)}’ 다녀왔어요` : '다녀옴 표시를 지웠어요');
+}
+
+function _renderNowNext(g) {
+  const box = $('#nowNext');
+  if (!box) return;
+  const today = _todayIso();
+  const di = g.days.findIndex(d => d.date === today);
+  if (di < 0 || g.sharedView) { box.hidden = true; return; }
+  const acts = g.days[di].activities;
+  const nowD = new Date();
+  const nowMin = nowD.getHours() * 60 + nowD.getMinutes();
+  let cur = -1;
+  acts.forEach((a, i) => { if (_timeToMin(a.time) <= nowMin) cur = i; });
+  const next = acts.findIndex((a, i) => i > cur && !a.visited);
+  const line = (label, a, extra) => el('div', { class: 'nn-row' }, [
+    el('span', { class: 'nn-label' }, label),
+    el('span', { class: 'nn-place' }, [el('strong', {}, getSchedulePlaceName(a)), el('small', {}, [a.time, a.category, extra].filter(Boolean).join(' · '))]),
+  ]);
+  const rows = [];
+  if (cur >= 0) rows.push(line('지금', acts[cur], acts[cur].visited ? '다녀옴' : ''));
+  if (next >= 0) {
+    const mins = _timeToMin(acts[next].time) - nowMin;
+    rows.push(line('다음', acts[next], mins > 0 ? `약 ${mins >= 60 ? Math.floor(mins / 60) + '시간 ' : ''}${mins % 60}분 뒤` : '지금 출발'));
+  } else rows.push(el('p', { class: 'nn-done' }, '오늘 일정을 모두 마쳤어요.'));
+  const actions = [];
+  if (cur >= 0 && !acts[cur].visited) actions.push(el('button', { type: 'button', class: 'btn btn-soft', onclick: () => _toggleVisited(di, cur) }, '지금 장소 다녀왔어요'));
+  if (activeDay !== di) actions.push(el('button', { type: 'button', class: 'btn-text', onclick: () => { activeDay = di; renderSchedule(); } }, `${di + 1}일차 일정 보기`));
+  const done = acts.filter(a => a.visited).length;
+  box.replaceChildren(
+    el('p', { class: 'nn-head' }, [el('strong', {}, `여행 중 · ${di + 1}일차`), ` · 다녀온 곳 ${done}/${acts.length} · ${String(nowD.getHours()).padStart(2, '0')}:${String(nowD.getMinutes()).padStart(2, '0')} 기준`]),
+    ...rows,
+    actions.length ? el('div', { class: 'nn-actions' }, actions) : null,
+  );
+  box.hidden = false;
 }
 
 /* ============ 목록 ↔ 지도 연결 ============ */
@@ -1296,6 +1363,7 @@ function _shareData(g, opts) {
   const copy = JSON.parse(JSON.stringify(_payload(g)));
   delete copy.aiSummary;
   copy.days.forEach(d => d.activities.forEach(a => {
+    delete a.visited; delete a.pinned;
     if (!opts.memo) delete a.memo;
     if (!opts.cost) { delete a.cost; if (a.flightMeta) { delete a.flightMeta.roundTripKRW; delete a.flightMeta.oneWayKRW; } }
   }));
