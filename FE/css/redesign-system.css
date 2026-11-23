@@ -205,3 +205,6 @@ body { font-size: 15px; line-height: 1.55; }
   background: #F6EFD9; color: #4A3A0B; text-align: center;
 }
 .offline-banner[hidden] { display: none; }
+
+/* 화면 전환 때 초점을 받는 제목은 누를 수 있는 요소가 아니므로 초점 테두리를 그리지 않는다 */
+h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus, h3[tabindex="-1"]:focus, .page-title[tabindex="-1"]:focus { outline: none; box-shadow: none; }

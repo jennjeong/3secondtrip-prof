@@ -138,7 +138,7 @@ function _render() {
       ariaLabel: `${year}년 ${month+1}월 ${d}일 ${WEEKDAY[dow]}요일`
         + (isToday ? ', 오늘' : '') + (isStart ? ', 출발일' : '') + (isEnd ? ', 귀국일' : '')
         + (isPast ? ', 선택할 수 없음' : ''),
-      ariaDisabled: String(isPast),
+      'aria-disabled': isPast ? 'true' : null,   // 고를 수 있는 날에는 속성을 붙이지 않는다
       ariaPressed: String(!!(isStart || isEnd)),
       tabIndex: isPast ? -1 : 0,
       onclick: () => { if (!isPast) _pickDate(date); },
