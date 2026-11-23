@@ -86,6 +86,8 @@ async function _submit() {
   };
   const key = JSON.stringify(payload);
   if (key === lastSentKey) { showToast('이미 등록한 후기예요'); return; }
+  // 공개 후기는 다른 여행자에게 보이므로 게시 전에 한 번 확인한다.
+  if (payload.is_public && !confirm(`이 후기를 공개로 게시할까요?\n다른 여행자가 볼 수 있어요(닉네임·도시·별점·내용). 메모·경비·일정 세부는 올라가지 않아요.`)) return;
 
   const btn = $('#reviewForm [type="submit"]');
   sending = true;

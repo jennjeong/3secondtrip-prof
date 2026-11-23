@@ -1,7 +1,9 @@
 from typing import Optional
 """Reviews router — login-required write, public read for is_public=True."""
 import json
-from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -23,7 +25,16 @@ def _to_public(r: Review) -> ReviewPublic:
 
 
 @router.post("", response_model=ReviewPublic, status_code=201)
-def create_review(payload: ReviewCreate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+def create_review(payload: ReviewCreate, response: Response, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    # 새로고침·재전송으로 같은 후기가 두 번 올라가지 않게 — 10분 안의 같은 내용이면 그 후기를 돌려준다.
+    since = datetime.utcnow() - timedelta(minutes=10)
+    dup = (db.query(Review).filter(Review.user_id == current.id, Review.rating == payload.rating,
+                                   Review.content == payload.content, Review.city == payload.city,
+                                   Review.created_at >= since).first())
+    if dup:
+        response.status_code = 200
+        response.headers["X-Duplicate"] = "1"
+        return _to_public(dup)
     r = Review(
         user_id=current.id, trip_id=payload.trip_id, schedule_id=payload.schedule_id,
         rating=payload.rating, content=payload.content,

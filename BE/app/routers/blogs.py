@@ -1,7 +1,9 @@
 """Blogs router — public read for visibility=public, login-required write."""
 import json
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -23,7 +25,15 @@ def _to_public(b: Blog) -> BlogPublic:
 
 
 @router.post("", response_model=BlogPublic, status_code=201)
-def create_blog(payload: BlogCreate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+def create_blog(payload: BlogCreate, response: Response, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    # 같은 글을 10분 안에 다시 보내면(새로고침·재전송) 새로 만들지 않고 그 글을 돌려준다.
+    since = datetime.utcnow() - timedelta(minutes=10)
+    dup = (db.query(Blog).filter(Blog.user_id == current.id, Blog.title == payload.title, Blog.body == payload.body,
+                                 Blog.created_at >= since).first())
+    if dup:
+        response.status_code = 200
+        response.headers["X-Duplicate"] = "1"
+        return _to_public(dup)
     b = Blog(
         user_id=current.id, title=payload.title,
         tags_json=json.dumps(payload.tags or [], ensure_ascii=False),

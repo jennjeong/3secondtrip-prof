@@ -610,3 +610,24 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus, h3[tabindex="-1"]:focus, .page
   .city-marquee { mask-image: none !important; -webkit-mask-image: none !important; }
 }
 .dc-drop { margin: 2px 0 6px; min-height: 44px; }
+
+/* PDF(인쇄): 다크 테마여도 흰 종이에 검은 글자, 여백 */
+@media print {
+  @page { margin: 14mm 12mm; }
+  html, body { background: #fff !important; color: #000 !important; }
+  #printSheet, #printSheet * { color: #000 !important; background: transparent !important; }
+  #printSheet .ps-addr, #printSheet .ps-sub, #printSheet .ps-cat { color: #444 !important; }
+  #printSheet .ps-day { break-inside: auto; }
+  #printSheet h2 { break-after: avoid-page; }
+}
+.exp-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.exp-undo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; padding: 8px 12px; border-radius: 10px; background: var(--c-surface-2); font-size: 13.5px; }
+.exp-undo[hidden] { display: none; }
+.tool-edit { min-height: 44px; min-width: 44px; padding: 0 8px; background: none; border: 0; color: var(--c-text-soft); font-weight: 600; text-decoration: underline; cursor: pointer; }
+
+/* 달력 일요일 — 흰 바탕 5.6:1, 다크 바탕 5.9:1 */
+.cal-cell.is-sun, .cal-w-sun { color: #C42B1C; }
+:root.theme-dark .cal-cell.is-sun, :root.theme-dark .cal-w-sun { color: #F97066; }
+@media (prefers-color-scheme: dark) {
+  :root.allow-dark .cal-cell.is-sun, :root.allow-dark .cal-w-sun { color: #F97066; }
+}

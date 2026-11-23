@@ -92,6 +92,7 @@ async function _publish() {
     navigate('auth', { meta: { return: 'blog' } });
     return;
   }
+  if (p.visibility === 'public' && !confirm('이 글을 공개로 발행할까요?\n누구나 볼 수 있어요. 링크 공개나 비공개로 바꾸려면 취소하고 공개 범위를 골라 주세요.')) { st.textContent = '발행을 취소했어요. 쓴 글은 그대로 있어요.'; return; }
   st.textContent = '발행 중...';
   let res = null;
   try { res = await api.saveBlog(p); }

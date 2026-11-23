@@ -2687,6 +2687,9 @@ async function _generateScheduleInner(t, btn, startedAt) {
   const keptPins = _mergePinned(generated, _pinnedCarry);
   // 다시 만들어도 계정에 저장한 일정이면 같은 저장 항목을 이어서 고친다.
   if (_regenerating && appState.generated?.savedScheduleId) generated.savedScheduleId = appState.generated.savedScheduleId;
+  // 다시 만들어도 같은 여행 — 경비·준비물·예약 후보가 따라오도록 여행 번호와 예약 후보를 넘긴다.
+  if (_regenerating && appState.generated?.tripUid) generated.tripUid = appState.generated.tripUid;
+  if (_regenerating && appState.generated?.bookingCandidates) generated.bookingCandidates = appState.generated.bookingCandidates;
   appState.generated = generated;
   appState.expenses = {};
   t._draft = false;                      // 일정이 만들어졌으니 임시 저장은 끝
