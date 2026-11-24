@@ -2690,14 +2690,10 @@ body.is-typing .bottom-tab-nav { display: none; }
   .hero-route { opacity: .55; width: 110px; height: 154px; }
 }
 
-/* 도시 바로가기 — 멈춤 버튼 */
+/* 도시 바로가기 — 손가락을 대고 있거나 마우스를 올리면 멈춘다 */
 .city-section .section-head { margin-bottom: 0; }
 .city-section .city-marquee { margin-top: 4px; margin-bottom: 0; }
-.city-marquee.is-paused .city-marquee-track { animation-play-state: paused; }
-.marquee-pause { font-variant-numeric: tabular-nums; }
-@media (prefers-reduced-motion: reduce) {
-  .marquee-pause { display: none; }
-}
+.city-marquee:active .city-marquee-track { animation-play-state: paused; }
 
 /* 탐색 — 결과 수와 정렬 */
 .explore-bar {
@@ -2710,7 +2706,6 @@ body.is-typing .bottom-tab-nav { display: none; }
 }
 .explore-count { margin: 0; font-size: 14px; font-weight: 700; color: var(--c-text); }
 .explore-bar .sort-tabs { margin: 0; flex: 0 0 auto; width: 168px; }
-.sort-tabs--2::before { width: calc((100% - 12px) / 2) !important; }
 #exploreFilters { gap: 8px; margin-top: 12px; }
 
 /* 코스 카드 — 도시·국가 → 제목 → 기간·스타일 → 좋아요 */

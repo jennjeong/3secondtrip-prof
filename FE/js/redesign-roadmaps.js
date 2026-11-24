@@ -109,8 +109,6 @@ export function initRoadmaps(state) {
       _goExplore();
       return;
     }
-    const pause = e.target.closest?.('#marqueePause');
-    if (pause) _toggleMarquee();
   });
 
   // 정렬
@@ -410,19 +408,6 @@ export function renderHomeRoadmaps() {
 }
 
 /* ============ 도시 바로가기 ============ */
-let marqueePaused = false;
-function _toggleMarquee(force) {
-  marqueePaused = typeof force === 'boolean' ? force : !marqueePaused;
-  const wrap = document.getElementById('cityMarquee');
-  wrap?.classList.toggle('is-paused', marqueePaused);
-  const b = document.getElementById('marqueePause');
-  if (b) {
-    b.setAttribute('aria-pressed', String(marqueePaused));
-    b.textContent = marqueePaused ? '▶ 움직이기' : '❚❚ 멈추기';
-  }
-  try { localStorage.setItem('tst_marquee_paused', marqueePaused ? '1' : '0'); } catch (_) {}
-}
-
 // 끊김 없이 돌도록 같은 묶음을 두 번 놓고, 두 번째는 화면에서만 보이게(키보드·낭독 제외) 한다.
 function _renderCityMarquee() {
   const sec = document.getElementById('citySection');
@@ -439,9 +424,7 @@ function _renderCityMarquee() {
       'aria-label': copy ? null : `${city} 여행 코스 보기`,
     }, city)));
   wrap.replaceChildren(el('div', { class: 'city-marquee-track' }, [group(false), group(true)]));
-  let saved = false;
-  try { saved = localStorage.getItem('tst_marquee_paused') === '1'; } catch (_) {}
-  _toggleMarquee(saved);
+  try { localStorage.removeItem('tst_marquee_paused'); } catch (_) {}  // 예전 멈춤 버튼이 남긴 값
 }
 
 /* ============ 탐색 ============ */
