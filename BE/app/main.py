@@ -106,4 +106,4 @@ def maps_config():
     HTTP referrer at GCP Console — that's the security boundary.  The
     server-side key (Routes/Places) is NEVER returned here.
     """
-    return {"browserKey": settings.google_maps_browser_key or ""}
+    return {"browserKey": settings.google_maps_browser_key or "", "mapId": settings.google_maps_map_id or ""}

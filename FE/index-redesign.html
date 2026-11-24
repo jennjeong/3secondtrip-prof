@@ -164,7 +164,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           </div>
           <div class="hero-text">
             <p class="hero-greet" id="homeGreet">오늘은 어디로 떠나볼까요?</p>
-            <h1 class="hero-title"><span>나만의 여행 일정을</span><br/><span>빠르게</span></h1>
+            <h1 class="hero-title"><span>나만의 여행 일정을</span> <br/><span>빠르게</span></h1>
             <p class="hero-sub">여행지, 날짜, 예산에 맞춰 하루씩 일정을 짜보세요</p>
           </div>
           <button type="button" class="hero-cta" data-nav-to="create-trip">
@@ -184,7 +184,10 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <button type="submit" class="search-submit" id="homeSearchSubmit">검색</button>
         </form>
 
-        <h2 class="home-subh" id="homeStyleH">여행 스타일로 찾기</h2>
+        <div class="home-subh-row">
+          <h2 class="home-subh" id="homeStyleH">여행 스타일로 찾기</h2>
+          <button type="button" class="section-more" id="homeAllStyles">전체 스타일 →</button>
+        </div>
         <div class="chip-row chip-wrap home-styles" role="group" aria-labelledby="homeStyleH">
           <button type="button" class="chip" data-quick-concept="가성비">가성비</button>
           <button type="button" class="chip" data-quick-concept="힐링">힐링</button>
@@ -206,7 +209,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <header class="section-head">
             <h2 id="cityH" class="section-title">도시 바로가기</h2>
           </header>
-          <nav class="city-marquee" id="cityMarquee" aria-labelledby="cityH"></nav>
+          <div class="city-marquee" id="cityMarquee" role="group" aria-labelledby="cityH"></div>
         </section>
 
         <section class="section-block" id="recoSection" aria-labelledby="recoH" hidden>

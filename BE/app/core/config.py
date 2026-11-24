@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     # ── Google Maps Platform ─────────────────────────────────────────
     google_maps_server_key: str = ""
     google_maps_browser_key: str = ""
+    # 지도 ID(선택) — 있으면 앱이 고급 마커(AdvancedMarkerElement)를 쓴다. GCP 지도 관리에서 만든 JavaScript 지도 ID
+    google_maps_map_id: str = ""
 
     # ── SerpApi — Google Hotels (실시간 1박 요금, server-side only) ───
     serpapi_api_key: str = ""

@@ -669,46 +669,56 @@ function _toggleVisited(di, ai) {
 /** 일정의 현지 시간대 — 예전 일정은 도시로 찾는다. */
 function _tripTz(g) { return g.timeZone || timeZoneFor(g.city, g.country); }
 
+/** 화면에 쓸 수 있는 글자만 — null·undefined·'null'·빈 문자열은 '' 로 */
+function _txt(v) {
+  if (v == null) return '';
+  const t = String(v).trim();
+  return (t === 'null' || t === 'undefined' || t === 'NaN') ? '' : t;
+}
 function _renderNowNext(g) {
   const box = $('#nowNext');
   if (!box) return;
   const hide = () => { box.hidden = true; box.replaceChildren(); };
-  // '지금'은 여행지 현지 시각으로 판단한다(휴대폰이 한국 시간이어도).
+  // '지금'은 여행지 현지 시각으로 판단한다(휴대폰이 한국 시간이어도). 여행 기간 밖이면 보이지 않는다.
   const tz = _tripTz(g);
   const now = nowIn(tz);
-  const di = g.days.findIndex(d => d.date === now?.iso);
+  const di = (g.days || []).findIndex(d => d?.date === now?.iso);
   if (di < 0 || g.sharedView || !Number.isFinite(now?.min)) { hide(); return; }
   const acts = g.days[di].activities || [];
-  // 시각과 이름이 모두 있는 장소만 — 빈 값이나 'null' 을 그리지 않는다.
-  const named = (a) => { const n = getSchedulePlaceName(a); return n && n !== 'Place name not available' && n !== 'null' ? n : ''; };
-  const items = acts.map((a, i) => ({ a, i, m: _timeToMin(a.time), n: named(a) }))
-    .filter(x => x.a.time && Number.isFinite(x.m) && x.n);
+  // 시각과 이름이 모두 있는 장소만 — 빈 값이나 'null' 을 그리지 않는다(이전 저장 일정·빈 필드 포함).
+  const named = (a) => { const n = _txt(getSchedulePlaceName(a)); return n && n !== 'Place name not available' ? n : ''; };
+  const items = acts.map((a, i) => ({ a, i, t: _txt(a?.time), n: named(a) }))
+    .map(x => ({ ...x, m: _timeToMin(x.t) }))
+    .filter(x => x.t && Number.isFinite(x.m) && x.n);
   if (!items.length) { hide(); return; }
   const nowMin = now.min;
   const cur = [...items].reverse().find(x => x.m <= nowMin) || null;
-  const next = items.find(x => (!cur || x.i > cur.i) && !x.a.visited) || null;
+  const next = items.find(x => (!cur || x.i > cur.i) && !x.a.visited && x.m > nowMin) || null;
+  const row = (label, name, meta) => el('div', { class: 'nn-row' }, [
+    el('span', { class: 'nn-label' }, label),
+    el('span', { class: 'nn-name', title: name }, name),
+    meta ? el('span', { class: 'nn-meta' }, meta) : null,
+  ]);
   const rows = [];
-  if (cur) rows.push(el('div', { class: 'nn-row' }, [
-    el('span', { class: 'nn-label' }, '지금'),
-    el('span', { class: 'nn-place' }, [el('strong', {}, cur.n), el('small', {}, [cur.a.time, cur.a.visited ? '다녀옴' : ''].filter(Boolean).join(' · '))]),
-  ]));
+  if (cur) rows.push(row('지금', cur.n, cur.a.visited ? '다녀옴' : cur.t));
   if (next) {
     const mins = next.m - nowMin;
-    const when = mins > 0 ? `${mins >= 60 ? Math.floor(mins / 60) + '시간 ' : ''}${mins % 60 ? (mins % 60) + '분' : ''} 뒤`.replace(/^ /, '') : '지금 출발';
-    rows.push(el('div', { class: 'nn-row' }, [
-      el('span', { class: 'nn-label' }, '다음'),
-      el('span', { class: 'nn-place' }, [el('strong', {}, next.n), el('small', {}, `현지 ${next.a.time} · ${when}`)]),
-    ]));
-  } else if (cur) rows.push(el('p', { class: 'nn-done' }, '오늘 남은 일정이 없어요.'));
+    const h = Math.floor(mins / 60), mm = mins % 60;
+    const left = mins > 0 ? [h ? `${h}시간` : '', mm ? `${mm}분` : ''].filter(Boolean).join(' ') + ' 뒤' : '';
+    rows.push(row('다음', next.n, [next.t, left].filter(Boolean).join(' · ')));
+  }
   if (!rows.length) { hide(); return; }
-  const actions = [];
-  if (activeDay !== di) actions.push(el('button', { type: 'button', class: 'btn-text', onclick: () => { activeDay = di; renderSchedule(); } }, `${di + 1}일차 일정 보기`));
-  const done = acts.filter(a => a.visited).length;
-  box.replaceChildren(
-    el('p', { class: 'nn-head' }, [el('strong', {}, `여행 중 · ${di + 1}일차`), now.hhmm ? ` · 현지 ${now.hhmm}` : '', ` · 다녀온 곳 ${done}/${acts.length}`]),
+  const done = !next && cur ? el('p', { class: 'nn-done' }, '오늘 남은 일정이 없어요.') : null;
+  const head = [`여행 중 · ${di + 1}일차`, _txt(now.hhmm) ? `현지 ${now.hhmm}` : ''].filter(Boolean).join(' · ');
+  // replaceChildren 은 null 을 글자 "null" 로 넣으므로 빈 항목은 반드시 걸러 낸다.
+  box.replaceChildren(...[
+    el('div', { class: 'nn-head' }, [
+      el('strong', {}, head),
+      activeDay !== di ? el('button', { type: 'button', class: 'btn-text nn-go', onclick: () => { activeDay = di; renderSchedule(); } }, `${di + 1}일차 보기`) : null,
+    ]),
     ...rows,
-    actions.length ? el('div', { class: 'nn-actions' }, actions) : null,
-  );
+    done,
+  ].filter(Boolean));
   box.hidden = false;
 }
 
@@ -820,11 +830,11 @@ function _money(krw, g) {
 }
 
 /** 금액 한 칸 — 원화는 ‘149만 8천 원’, 정확한 금액은 title 과 화면 낭독용으로 함께 둔다. */
-function _amountRow(label, krw, g, cls) {
+function _amountRow(label, krw, g, cls, note) {
   const short = g?.fx?.rate ? _money(krw, g) : _shortMoney(krw, g);
   const exact = _money(krw, g);
   return el('div', { class: 'money-row' + (cls ? ' ' + cls : '') }, [
-    el('dt', {}, label),
+    el('dt', {}, note ? [label, el('small', { class: 'money-note' }, note)] : label),
     el('dd', { title: exact }, [short, el('span', { class: 'sr-only' }, ` (${exact})`)]),
   ]);
 }
@@ -855,7 +865,7 @@ function _renderBudgetPanel(g) {
   const rows = $('#budgetPanelRows');
   rows.replaceChildren(
     _amountRow('입력 예산', budget, g),
-    _amountRow('예상 총액', bd.total, g, 'money-row--total'),
+    _amountRow('예상 총액', bd.total, g, 'money-row--total', [g.people ? `${g.people}명 전체` : '', _priceKind(g)].filter(Boolean).join(' · ')),
     diff < 0
       ? _amountRow('예산 초과', -diff, g, 'money-row--over')
       : _amountRow('남는 금액', diff, g, 'money-row--under'),
@@ -890,7 +900,7 @@ function _renderBudgetPanel(g) {
   const ul = $('#budgetNotices');
   ul.replaceChildren(...notes.map(t => el('li', {}, t)));
   const why = $('#budgetWhyMeta');
-  if (why) why.textContent = [g.people ? `${g.people}명 전체` : '', _priceKind(g), bd.unknown ? `비용 미확인 ${bd.unknown}곳 제외` : ''].filter(Boolean).join(' · ');
+  if (why) { why.textContent = bd.unknown ? `비용 미확인 ${bd.unknown}곳은 합계에서 뺐어요` : ''; why.hidden = !bd.unknown; }
 
   // 예산 초과 시 대안 — 지금 일정의 실제 합계를 기준으로 다시 계산한다(예전에 저장한 일정도 같다).
   const alts = $('#budgetAlts');

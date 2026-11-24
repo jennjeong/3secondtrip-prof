@@ -770,3 +770,91 @@
 }
 #createTripPage .budget-input-wrap:focus-within .budget-input { border-bottom-color: var(--a-ink) !important; }
 #createTripPage .budget-input-wrap .bd-unit-fixed { grid-column: 3; justify-self: start; padding-bottom: 10px; }
+
+/* =====================================================================
+ * 4차 — 반응형 정리(데스크톱 상단 메뉴 / 모바일 하단 탭), 홈 폭, 여행 중 요약, 도시 바로가기
+ * 메뉴 전환 기준: 1024px(상단 메뉴 5개 + 여행 만들기가 로고와 한 줄에 들어가는 최소 폭)
+ * ===================================================================== */
+@media (min-width: 1024px) {
+  :root { --nav-h: 0px; }
+  .bottom-tab-nav { display: none !important; }            /* 화면·키보드·접근성 트리에서 모두 빠진다 */
+  .app-page > .page-scroll { padding-bottom: calc(32px + var(--safe-bottom, 0px)) !important; }
+  :root[data-page="roadmap-detail"] #roadmapDetailPage .page-scroll { padding-bottom: calc(96px + var(--safe-bottom, 0px)) !important; }
+  .topbar-spacer.topbar-actions { display: flex !important; }
+  /* 상단 메뉴 — 현재 화면 표시(글자 진하게 + 옅은 바탕), 여행 만들기는 대표 버튼 */
+  .topbar-nav a[aria-current="page"] { background: var(--a-neutral) !important; color: var(--r-text) !important; font-weight: 800; }
+  .topbar-nav a { min-height: 40px; display: inline-flex; align-items: center; padding: 0 12px; font-weight: 600; color: var(--r-text-2); }
+  /* 데스크톱에서는 일정·지도를 두 칸으로 함께 보여 주므로 전환 버튼을 숨긴다 */
+  #schedulePage .view-toggle { display: none !important; }
+}
+
+/* 홈 — 제목·버튼·검색·카드 같은 왼쪽 기준선, 데스크톱 제목은 한 줄 */
+#homePage .hero-text { max-width: none !important; }
+@media (min-width: 768px) {
+  #homePage .hero-title br { display: none; }
+  #homePage .hero-title { white-space: normal; text-wrap: balance; }
+  #homePage .search-card { max-width: 560px; }
+  #homePage .hero-card .hero-cta { width: auto !important; }
+}
+#homePage .hero-card .hero-sub { margin-top: 8px !important; }
+#homePage .hero-card .hero-cta { margin-top: 20px !important; }
+
+/* 홈 스타일 — 한 줄(넘치면 칩 영역 안에서 옆으로), 오른쪽 흐림으로 더 있음을 알림 + ‘전체 스타일’ */
+.home-subh-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 20px 0 6px; }
+.home-subh-row .home-subh { margin: 0 !important; }
+.home-subh-row .section-more { font-size: 13px !important; }
+#homePage .home-styles {
+  padding-right: 40px !important;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent) !important;
+          mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent) !important;
+}
+@media (min-width: 600px) {
+  #homePage .home-styles { -webkit-mask-image: none !important; mask-image: none !important; padding-right: var(--app-side-padding, 16px) !important; }
+}
+@media (min-width: 600px) { .home-subh-row .section-more { display: none; } }
+
+/* 도시 바로가기 — 도시마다 한 번, 움직이지 않는 칩(줄바꿈) */
+#homePage .city-marquee.city-chips {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0 !important; overflow: visible !important;
+  -webkit-mask-image: none !important; mask-image: none !important;
+}
+#homePage .city-chips .city-chip { flex: none; }
+
+/* 정렬(인기순·최신순) — 일정/지도 전환과 같은 분할 컨트롤 규격: 시각 40, 두 옵션 같은 폭 */
+#explorePage .sort-tabs { height: 40px; padding: 2px !important; box-sizing: border-box; border: 0 !important; background: var(--a-neutral) !important; border-radius: 10px !important; display: inline-grid !important; grid-template-columns: 1fr 1fr; width: 160px !important; }
+#explorePage .sort-tabs .sort-tab { min-height: 0 !important; height: 100%; padding: 0 !important; border-radius: 8px !important; font-weight: 700 !important; position: relative; }
+#explorePage .sort-tabs .sort-tab::after { content: ''; position: absolute; inset: -4px 0; }
+#explorePage .sort-tabs::before { top: 2px !important; bottom: 2px !important; left: 2px !important; width: calc((100% - 4px) / 2) !important; border: 0 !important; border-radius: 8px !important; }
+#explorePage .sort-tabs:has(.sort-tab:nth-of-type(2).is-active)::before { transform: translateX(100%) !important; }
+
+/* 여행 중 — 두 행 [지금/다음][장소 이름(최대 두 줄)][시각·남은 시간] */
+#schedulePage .now-next { padding: 10px 12px !important; display: flex !important; flex-direction: column; gap: 4px; }
+#schedulePage .now-next[hidden] { display: none !important; }
+#schedulePage .now-next .nn-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 2px !important; font-size: 13px; color: var(--r-text-2); }
+#schedulePage .now-next .nn-head strong { font-weight: 800; color: var(--r-text); }
+#schedulePage .now-next .nn-go { min-height: 32px !important; font-size: 13px !important; }
+#schedulePage .now-next .nn-row { display: grid !important; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: baseline; column-gap: 8px; padding: 4px 0 !important; }
+#schedulePage .now-next .nn-label { font-size: 13px; font-weight: 800; color: var(--r-text-2); }
+#schedulePage .now-next .nn-name {
+  font-size: 15px; font-weight: 700; color: var(--r-text); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+}
+#schedulePage .now-next .nn-meta { font-size: 13px; color: var(--r-text-2); white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+#schedulePage .now-next .nn-done { margin: 2px 0 0; font-size: 13px; color: var(--r-text-2); }
+/* 예산 — 예상 총액에 ‘2명 전체 · 추정 요금’을 붙여 둔다 */
+#schedulePage .money-rows--panel .money-row dt .money-note { display: block; margin-top: 2px; font-size: 12px; font-weight: 500; color: var(--r-text-3); }
+#schedulePage .budget-meta[hidden] { display: none !important; }
+/* 타임라인 — 지도 열기도 44 높이로 누를 수 있게 */
+.timeline .sc-where .sc-map-link { min-height: 44px !important; margin: -6px 0; }
+@media (min-width: 768px) { #homePage .search-card { margin-left: 0 !important; margin-right: auto !important; } }
+@media (min-width: 600px) { .home-subh-row .section-more { display: none !important; } }
+#schedulePage .now-next .nn-row { grid-template-columns: 40px minmax(0, 1fr) auto !important; }
+#schedulePage .now-next .nn-label { white-space: nowrap; }
+
+
+/* 데스크톱 — 로고·메뉴와 본문(제목·검색·카드)의 양끝 기준선을 같게 */
+@media (min-width: 1024px) { html body .app-topbar { padding-left: 16px !important; padding-right: 16px !important; } }
+@media (min-width: 1024px) {
+  .topbar-spacer.topbar-actions { width: auto !important; min-width: 0 !important; }
+  :root:not([data-page="my-blogs"]) .topbar-spacer.topbar-actions { display: none !important; }
+}

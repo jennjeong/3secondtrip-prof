@@ -44,6 +44,14 @@ let lastResolved = [];                 // [{ name, address, lat, lng, place_id, 
 let mapsLoaded = false;
 let mapsLoadingPromise = null;
 let scriptInjected = false;
+let mapId = '';                         // 서버 설정에 지도 ID 가 있으면 고급 마커(AdvancedMarkerElement)를 쓴다
+let pendingRender = false;              // 지도가 화면에 없을 때 받은 다시 그리기 요청
+
+/** 지도 영역이 지금 화면에 보이는가 — 목록만 볼 때(모바일)는 지도 SDK 를 내려받지 않는다. */
+function _mapVisible() {
+  const col = document.querySelector('#schedulePage .schedule-map-col');
+  return !!col && col.getClientRects().length > 0 && document.getElementById('schedulePage')?.classList.contains('is-active');
+}
 
 // Bumped from v2 → v3: v2 entries cached coords only (no name).  With the
 // new "real name stamp-back" we need a fresh cache layout.  Old v2 entries
@@ -82,6 +90,9 @@ export function initMap(state) {
 
   // External nav
   $('#scheduleMapOpenExt')?.addEventListener('click', openDayRouteInGoogleMaps);
+  // 화면이 넓어져 지도가 나타나면(목록 보기 → 데스크톱 두 칸) 미뤄 둔 지도를 그린다.
+  let _rz = 0;
+  window.addEventListener('resize', () => { clearTimeout(_rz); _rz = setTimeout(() => { if (pendingRender && _mapVisible()) renderDayRoute(activeDay); }, 200); });
   document.addEventListener('redesign:place-pick', (e) => {
     if (e.detail?.day === activeDay) _highlightMarker(e.detail.ai);
   });
@@ -90,16 +101,16 @@ export function initMap(state) {
   document.addEventListener('redesign:schedule-changed', (e) => {
     const d = e.detail || {};
     if (typeof d.activeDay === 'number') activeDay = d.activeDay;
-    // Only render if schedule page is active; otherwise wait for nav
-    if (document.getElementById('schedulePage')?.classList.contains('is-active')) {
-      renderDayRoute(activeDay);
-    }
+    // 지도 영역이 보일 때만 그린다(목록 보기에서는 미뤄 두었다가 ‘지도’를 누르면 그린다).
+    if (_mapVisible()) renderDayRoute(activeDay);
+    else pendingRender = true;
   });
 }
 
 /** Called from main.js on every nav to 'schedule'. */
 export function renderMap() {
-  renderDayRoute(activeDay);
+  if (_mapVisible()) renderDayRoute(activeDay);
+  else pendingRender = true;
 }
 
 /* ============================================================
@@ -107,6 +118,7 @@ export function renderMap() {
  * ============================================================ */
 export async function renderDayRoute(dayIdx) {
   activeDay = Math.max(0, Number(dayIdx) || 0);
+  pendingRender = false;
   const card  = $('#scheduleMapCard');
   const empty = $('#scheduleMapEmpty');
   const warn  = $('#scheduleMapWarning');
@@ -303,6 +315,7 @@ export function loadGoogleMapsScript() {
       if (res.ok) {
         const cfg = await res.json();
         key = cfg?.browserKey || '';
+        mapId = cfg?.mapId || '';
       }
     } catch (e) {
       lastErr = e;
@@ -327,7 +340,7 @@ export function loadGoogleMapsScript() {
         s.onerror = (e) => { scriptInjected = false; delete window[cbName]; reject(new Error('Maps script load failed')); };
         s.src = 'https://maps.googleapis.com/maps/api/js'
               + '?key=' + encodeURIComponent(key)
-              + '&libraries=geometry&v=quarterly&language=ko&region=KR'
+              + '&libraries=geometry,marker&v=quarterly&language=ko&region=KR&loading=async'
               + '&callback=' + cbName;
         document.head.appendChild(s);
       });
@@ -339,6 +352,8 @@ export function loadGoogleMapsScript() {
     if (loading) loading.hidden = true;
     return window.google.maps;
   })();
+  // 실패하면 다음 시도에서 다시 불러올 수 있게 비워 둔다(같은 스크립트를 두 번 넣지는 않는다).
+  mapsLoadingPromise.catch(() => { mapsLoadingPromise = null; if (loading) loading.hidden = true; });
   return mapsLoadingPromise;
 }
 
@@ -350,6 +365,7 @@ export async function initializeScheduleMap(dayNumber) {
   const canvas = $('#scheduleMapCanvas');
   if (!canvas) throw new Error('#scheduleMapCanvas not found');
   map = new google.maps.Map(canvas, {
+    ...(mapId ? { mapId } : {}),
     center: { lat: 37.5665, lng: 126.9780 },
     zoom: 11,
     mapTypeControl: false,
@@ -553,13 +569,19 @@ export function drawDayMarkers(mapInst, places) {
     const k = `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
     const dup = seen.get(k) || 0;
     seen.set(k, dup + 1);
-    const m = new google.maps.Marker({
-      position: { lat: p.lat + dup * 0.00012, lng: p.lng + dup * 0.00012 },
-      map: mapInst,
-      label: { text: String(num), color: '#ffffff', fontWeight: '900' },
-      title: `${num}. ${p.name}`,
-    });
+    const position = { lat: p.lat + dup * 0.00012, lng: p.lng + dup * 0.00012 };
+    const title = `${num}. ${p.name}`;
+    const adv = mapId && google.maps.marker?.AdvancedMarkerElement && google.maps.marker?.PinElement;
+    let m;
+    if (adv) {
+      const pin = new google.maps.marker.PinElement({ glyph: String(num), glyphColor: '#ffffff', background: '#1C222B', borderColor: '#1C222B' });
+      m = new google.maps.marker.AdvancedMarkerElement({ position, map: mapInst, title, content: pin.element, gmpClickable: true });
+      m.__pin = pin;
+    } else {
+      m = new google.maps.Marker({ position, map: mapInst, label: { text: String(num), color: '#ffffff', fontWeight: '900' }, title });
+    }
     m.__ai = num - 1;
+    m.__pos = position;
     m.addListener('click', () => {
       _highlightMarker(m.__ai);
       document.dispatchEvent(new CustomEvent('redesign:map-pick', { detail: { ai: m.__ai, day: activeDay } }));
@@ -570,12 +592,16 @@ export function drawDayMarkers(mapInst, places) {
 
 /** 목록에서 고른 장소의 핀을 잠깐 튀게 하고 지도 가운데로 옮긴다. */
 function _highlightMarker(ai) {
-  markers.forEach(m => m.setZIndex?.(m.__ai === ai ? 999 : null));
+  markers.forEach(x => {
+    const on = x.__ai === ai;
+    if (x.__pin) { x.zIndex = on ? 999 : null; x.__pin.scale = on ? 1.3 : 1; }
+    else x.setZIndex?.(on ? 999 : null);
+  });
   const m = markers.find(x => x.__ai === ai);
   if (!m) return;
   try {
-    map?.panTo(m.getPosition());
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    map?.panTo(m.__pos);
+    if (!m.__pin && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       m.setAnimation(google.maps.Animation.BOUNCE);
       setTimeout(() => m.setAnimation(null), 1400);
     }
@@ -586,7 +612,10 @@ function _mapLoadFailed(warn, e) {
   console.warn('[map] load failed', e?.message || e);
   if (!warn) return;
   warn.hidden = false;
-  warn.textContent = '지금은 지도를 불러올 수 없어요. 일정 목록과 각 장소의 ‘Google 지도에서 열기’는 그대로 쓸 수 있어요.';
+  warn.replaceChildren(
+    el('span', {}, '지금은 지도를 불러올 수 없어요. 일정 목록·편집과 각 장소의 ‘지도 열기’는 그대로 쓸 수 있어요. '),
+    el('button', { type: 'button', class: 'btn-text smc-retry', onclick: () => { warn.hidden = true; renderDayRoute(activeDay); } }, '다시 시도'),
+  );
 }
 
 export function drawDayPolyline(mapInst, decodedPath) {
@@ -651,7 +680,7 @@ export function decodePolyline(encoded) {
  *  Cleanup
  * ============================================================ */
 function clearMarkers() {
-  markers.forEach(m => m.setMap(null));
+  markers.forEach(m => { if (m.__pin) m.map = null; else m.setMap(null); });
   markers = [];
 }
 function clearPolyline() {

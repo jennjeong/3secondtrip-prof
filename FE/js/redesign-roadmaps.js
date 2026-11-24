@@ -129,11 +129,18 @@ export function initRoadmaps(state) {
     renderExplore();
   });
 
+  // 홈 ‘전체 스타일’ — 탐색으로 가서 스타일 칩을 펼쳐 둔다.
+  $('#homeAllStyles')?.addEventListener('click', () => {
+    explore.concept = 'all'; explore.query = ''; _filtersOpen = true;
+    _goExplore();
+    requestAnimationFrame(() => document.querySelector('#exploreFilters [data-filter-concept]')?.focus());
+  });
   // 여행 스타일 칩은 검색칸을 눌렀을 때(또는 스타일·검색어가 걸려 있을 때)만 보인다.
   $('#exploreSearch')?.addEventListener('focus', () => { _filtersOpen = true; _paintFilterVis(); });
-  document.addEventListener('pointerdown', (e) => {
+  // 누름이 끝난 뒤(click)에 접는다 — 누르는 순간 접으면 아래 카드가 밀려 탭이 빗나간다.
+  document.addEventListener('click', (e) => {
     if (!_filtersOpen) return;
-    if (e.target.closest?.('#explorePage .search-card, #exploreFilters')) return;
+    if (e.target.closest?.('#explorePage .search-card, #exploreFilters, #homeAllStyles')) return;
     _filtersOpen = false; _paintFilterVis();
   });
 
@@ -417,23 +424,18 @@ export function renderHomeRoadmaps() {
 }
 
 /* ============ 도시 바로가기 ============ */
-// 끊김 없이 돌도록 같은 묶음을 두 번 놓고, 두 번째는 화면에서만 보이게(키보드·낭독 제외) 한다.
+// 도시 바로가기 — 도시마다 한 번, 움직이지 않는 칩(누르면 그 도시로 탐색)
 function _renderCityMarquee() {
   const sec = document.getElementById('citySection');
   const wrap = document.getElementById('cityMarquee');
   if (!wrap) return;
-  const cities = [...new Set(roadmaps.map(m => m.city))];
+  const cities = [...new Set(roadmaps.map(m => m.city).filter(Boolean))];
   if (sec) sec.hidden = cities.length < 4;
-  const group = (copy) => el('div', { class: 'city-marquee-group', 'aria-hidden': copy ? 'true' : null },
-    cities.map(city => el('button', {
-      type: 'button',
-      class: 'city-marquee-item',
-      tabIndex: copy ? -1 : 0,
-      dataset: { marqueeCity: city },
-      'aria-label': copy ? null : `${city} 여행 코스 보기`,
-    }, city)));
-  wrap.replaceChildren(el('div', { class: 'city-marquee-track' }, [group(false), group(true)]));
-  try { localStorage.removeItem('tst_marquee_paused'); } catch (_) {}  // 예전 멈춤 버튼이 남긴 값
+  wrap.classList.add('city-chips');
+  wrap.replaceChildren(...cities.map(city => el('button', {
+    type: 'button', class: 'chip city-chip', dataset: { marqueeCity: city }, 'aria-label': `${city} 여행 코스 보기`,
+  }, city)));
+  try { localStorage.removeItem('tst_marquee_paused'); } catch (_) {}
 }
 
 /* ============ 탐색 ============ */
@@ -588,11 +590,11 @@ function _renderRoadmapDetail(m) {
   if (cover) {
     cover.style.background = m.gradient;
     cover.classList.remove('has-landmark-img');
-    cover.replaceChildren(
+    cover.replaceChildren(...[
       el('p', { class: 'rd-city' }, place),
       el('h1', { class: 'rd-title', id: 'roadmapTitle', tabIndex: -1 }, m.title),
       m.tagline ? el('p', { class: 'rd-tag' }, m.tagline) : null,
-    );
+    ].filter(Boolean));
     _attachLandmarkImage(cover, m.city, m.gradient);
   }
   if (meta) {
