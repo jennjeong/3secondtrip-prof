@@ -601,3 +601,172 @@
 /* 예약 후보 행 — [예약 사이트 열기 ↗] [예약 완료로 표시] 한 줄 */
 #bookingSheet .book-actions { display: flex !important; flex-direction: row !important; flex-wrap: wrap; align-items: center; }
 #bookingSheet .book-actions > * { flex: none; }
+
+/* =====================================================================
+ * 3차 다듬기 — 홈·탐색·여행 만들기·로딩·마이
+ * ===================================================================== */
+/* 홈 스타일 — 한 줄(넘치면 옆으로 넘김) */
+#homePage .home-styles {
+  display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important; gap: 8px !important;
+  margin: 0 calc(-1 * var(--app-side-padding, 16px)) !important; padding: 2px var(--app-side-padding, 16px) 4px !important;
+  scrollbar-width: none; scroll-padding-inline: var(--app-side-padding, 16px);
+}
+#homePage .home-styles::-webkit-scrollbar { display: none; }
+#homePage .home-styles .chip { flex: none !important; }
+/* 코스 카드 — 내용만큼만 */
+.roadmap-grid { align-items: start !important; gap: 10px !important; }
+.roadmap-card { border-radius: 14px !important; }
+.roadmap-card .rc-bottom { padding: 11px 12px 12px !important; }
+.roadmap-card .rc-place { font-size: 12px !important; }
+.roadmap-card .rc-title { margin-top: 3px !important; font-size: 15px !important; line-height: 1.3 !important; }
+.roadmap-card .rc-info { margin-top: 5px !important; font-size: 12.5px !important; }
+
+/* 탐색 — 스타일 칩은 검색할 때만(빈 자리 없이) */
+#exploreFilters[hidden] { display: none !important; }
+#exploreFilters { margin-top: 10px; }
+
+/* 여행 만들기 — 누구와 가나요: 체크 없이 색으로만 */
+#createTripPage .choice-grid .choice-card::after { content: none !important; display: none !important; }
+#createTripPage .choice-grid .choice-card { justify-content: center !important; }
+#createTripPage .choice-grid .choice-card.is-active { background: var(--a-ink) !important; border-color: var(--a-ink) !important; }
+#createTripPage .choice-grid .choice-card.is-active .ch-label { color: var(--a-on-ink) !important; }
+
+/* 달력 — 날짜와 출국·귀국 글자 사이 여백 */
+.cal-cell { min-height: 44px !important; flex-direction: column; justify-content: flex-start !important; padding-top: 9px !important; line-height: 1 !important; }
+.cal-cell.range-start::after, .cal-cell.range-end::after { position: static !important; display: block; margin-top: 5px; font-size: 10px !important; font-weight: 700; line-height: 1; }
+.cal-cell:not(.range-start):not(.range-end) { justify-content: center !important; padding-top: 0 !important; }
+
+/* 체크 목록 — 세부 스타일·이동·식사 조건 */
+.check-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; margin: 4px 0 0; }
+@media (max-width: 359px) { .check-list { grid-template-columns: 1fr; } }
+.check-opt {
+  position: relative; display: flex; align-items: center; gap: 10px; min-height: 44px; width: 100%;
+  padding: 0 2px; background: none; border: 0; border-bottom: 1px solid var(--a-line); border-radius: 0;
+  color: var(--r-text); font-size: 15px; font-weight: 600; text-align: left; cursor: pointer;
+}
+.check-opt::before {
+  content: ''; flex: none; width: 20px; height: 20px; border-radius: 6px; box-sizing: border-box;
+  border: 1.5px solid var(--r-border-strong); background: var(--r-surface) center / 12px no-repeat;
+}
+.check-opt.is-active::before, .check-opt[aria-pressed="true"]::before {
+  background-color: var(--a-ink); border-color: var(--a-ink);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 12.5 10 17.5 19 7'/%3E%3C/svg%3E");
+}
+.check-opt:focus-visible { outline: 2px solid var(--r-focus); outline-offset: 2px; border-radius: 6px; }
+.check-opt.is-custom { color: var(--r-text); }
+.check-add { display: flex; gap: 8px; align-items: center; margin: 10px 0 0; }
+.check-add .form-input { flex: 1 1 auto; min-width: 0; min-height: 44px !important; height: 44px; font-size: 15px; }
+.check-add .btn-sm { flex: none; }
+
+/* 예산 입력 — 상자 없이 가운데 큰 숫자 */
+#createTripPage .budget-field { text-align: center; }
+#createTripPage .budget-field .form-label { justify-content: center; display: flex; gap: 6px; }
+#createTripPage .budget-field .form-hint, #createTripPage .budget-field .form-error, #createTripPage .budget-level-badge { text-align: center; }
+#createTripPage .budget-input-wrap {
+  display: flex !important; justify-content: center; align-items: baseline; gap: 6px;
+  width: min(240px, 100%); margin: 14px auto 6px !important; min-height: 0 !important; padding: 0 0 6px !important;
+  background: none !important; border: 0 !important; border-bottom: 2px solid var(--r-border-strong) !important; border-radius: 0 !important; outline: 0 !important;
+}
+#createTripPage .budget-input-wrap:focus-within { border-bottom-color: var(--a-ink) !important; outline: 0 !important; }
+#createTripPage .budget-input-wrap .budget-input {
+  flex: 0 1 auto; width: 6ch; min-width: 3ch; text-align: right; font-size: 36px !important; font-weight: 800; letter-spacing: -0.02em;
+}
+#createTripPage .budget-input-wrap .bd-unit-fixed { font-size: 18px !important; font-weight: 700; color: var(--r-text-2); }
+
+/* 추천 예산 — 같은 안쪽 여백, 금액·버튼 오른쪽 끝 맞춤 */
+#createTripPage .budget-suggest {
+  margin-top: 24px; padding: 16px !important; background: var(--r-surface) !important;
+  border: 1px solid var(--a-line) !important; border-radius: 16px !important; box-shadow: none !important;
+}
+#createTripPage .budget-suggest-head { margin: 0 0 4px !important; }
+#createTripPage .budget-suggest .money-rows { margin: 0; padding: 0; display: block; }
+#createTripPage .budget-suggest .money-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 10px 0 !important; margin: 0 !important; border-bottom: 1px solid var(--a-line);
+}
+#createTripPage .budget-suggest .money-row dt { font-size: 14px; color: var(--r-text-2); font-weight: 600; margin: 0; padding: 0; }
+#createTripPage .budget-suggest .money-row dt small { display: block; margin-top: 2px; font-size: 12px; color: var(--r-text-3); font-weight: 500; }
+#createTripPage .budget-suggest .money-row dd { margin: 0; padding: 0; font-size: 15px; font-weight: 700; color: var(--r-text); text-align: right; }
+#createTripPage .budget-suggest .money-row--total { border-bottom: 0; padding-top: 12px !important; }
+#createTripPage .budget-suggest .money-row--total dt { color: var(--r-text); font-weight: 800; font-size: 15px; }
+#createTripPage .budget-suggest .money-row--total dd { font-size: 18px; font-weight: 800; }
+#createTripPage .budget-suggest #budgetSuggestText { margin: 6px 0 12px; font-size: 13px; color: var(--r-text-2); }
+#createTripPage .budget-suggest .budget-apply { width: 100%; margin: 0; }
+/* 예산 수준 — 같은 크기 3칸 */
+#createTripPage .budget-marks { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px !important; margin-top: 12px; }
+#createTripPage .budget-marks button {
+  display: flex !important; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 0;
+  padding: 12px !important; background: var(--r-surface) !important; border: 1px solid var(--a-line) !important; border-radius: 12px !important;
+  text-align: left; color: var(--r-text);
+}
+#createTripPage .budget-marks button.is-active, #createTripPage .budget-marks button[aria-pressed="true"] { background: var(--a-ink) !important; border-color: var(--a-ink) !important; color: var(--a-on-ink) !important; }
+#createTripPage .budget-marks .bm-label { font-size: 14px !important; font-weight: 800 !important; }
+#createTripPage .budget-marks .bm-val { font-size: 13px !important; font-weight: 700 !important; opacity: 1 !important; }
+#createTripPage .budget-marks .bm-desc { font-size: 12px; line-height: 1.4; opacity: .75; }
+
+/* 일정 만드는 중 — 앱 아이콘 경로 모션 */
+#genLoadingOverlay .gl-plane-route { width: 132px; height: 132px; margin-bottom: 14px; }
+#genLoadingOverlay .gl-plane-route path { animation: none !important; }
+#genLoadingOverlay .gl-plane-route mask path { stroke: #fff !important; stroke-width: 12 !important; stroke-dasharray: 1 1 !important; }
+#genLoadingOverlay .gl-plane-route .gl-dots { stroke: var(--a-ink) !important; stroke-width: 3.4 !important; stroke-linecap: round; stroke-dasharray: 0.1 6.2 !important; fill: none; }
+#genLoadingOverlay .gl-plane-route .gl-start { fill: none; stroke: var(--a-ink); stroke-width: 3.2; }
+#genLoadingOverlay .gl-plane-route .gl-stop { fill: var(--a-ink); }
+#genLoadingOverlay .gl-plane-route .gl-glow { fill: var(--r-brand); }
+#genLoadingOverlay .gl-plane-route .gl-plane path { fill: var(--a-ink) !important; stroke: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  #genLoadingOverlay .gl-plane-route mask path { stroke-dashoffset: 0 !important; }
+}
+
+/* 앱바 텍스트 동작 — 내 블로그의 ‘새 글’ */
+.topbar-text-btn {
+  display: none; min-height: 44px; padding: 0 8px; background: none; border: 0;
+  color: var(--r-brand-on-soft, #1F4F94); font-size: 15px; font-weight: 800; white-space: nowrap;
+}
+:root[data-page="my-blogs"] .topbar-text-btn { display: inline-flex; align-items: center; }
+.topbar-text-btn:focus-visible { outline: 2px solid var(--r-focus); outline-offset: 2px; border-radius: 8px; }
+#myBlogsPage .page-header { margin-bottom: 8px; }
+
+/* 설정 — 분류 목록 → 분류별 화면 */
+#settingsSheet .sheet-head { display: grid !important; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 6px !important; }
+#settingsSheet .sheet-head h3 { grid-column: 2; text-align: center; margin: 0; font-size: 17px; font-weight: 800; }
+#settingsSheet .sheet-head #settingsClose { grid-column: 3; }
+#settingsSheet .set-back { grid-column: 1; grid-row: 1; font-size: 30px; line-height: 1; font-weight: 300; }
+#settingsSheet .set-view[hidden] { display: none !important; }
+#settingsSheet .set-group-h { margin: 18px 4px 8px; font-size: 13px; font-weight: 700; color: var(--r-text-2); }
+#settingsSheet .set-view > .set-group-h:first-child { margin-top: 4px; }
+#settingsSheet .set-note { margin: 0 4px 12px; font-size: 14px; color: var(--r-text-2); }
+#settingsSheet #accountSettings:not([hidden]) ~ .set-note, #settingsSheet .set-view[data-set-view="account"]:has(#accountSettings:not([hidden])) #accountGuestNote { display: none; }
+#settingsSheet .set-view[data-set-view="account"]:has(#accountSettings[hidden]) .setting-list { display: none; }
+#settingsSheet .setting-row--block { flex-direction: column; align-items: stretch !important; gap: 10px; padding: 14px 16px !important; }
+#settingsSheet .set-view:not([data-set-view="root"]) { animation: set-in 180ms var(--r-ease, ease); }
+@keyframes set-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { #settingsSheet .set-view { animation: none !important; } }
+#createTripPage #budgetTripSummaryH { margin-top: 24px !important; }
+#genLoadingOverlay .gl-plane-route .gl-start { fill: var(--r-bg, #F7F8FA) !important; }
+#genLoadingOverlay .gl-plane-route .gl-guide { stroke: none !important; fill: none; }
+#genLoadingOverlay .gl-plane-route .gl-dot { fill: var(--a-ink); }
+
+/* 설정 — 아래에서 올라오는 시트가 아닌 새 창(화면 전체), 분류를 누르면 옆으로 넘어가는 화면 */
+#settingsSheet {
+  top: 0 !important; bottom: 0 !important; left: 0 !important; right: 0 !important; margin: 0 auto;
+  height: 100% !important; max-height: none !important; border-radius: 0 !important; box-shadow: none !important;
+  background: var(--r-bg) !important; padding-top: env(safe-area-inset-top, 0px);
+  transform: translateX(100%) !important; transition: transform 240ms var(--r-ease, ease) !important;
+}
+#settingsSheet.is-visible { transform: none !important; }
+#settingsSheet .sheet-handle { display: none !important; }
+#settingsSheet .sheet-head { background: var(--r-surface); }
+#settingsSheet .sheet-body { padding: 8px 16px calc(24px + env(safe-area-inset-bottom, 0px)) !important; }
+#settingsBackdrop { background: transparent !important; }
+@media (prefers-reduced-motion: reduce) { #settingsSheet { transition: none !important; } }
+/* 예산 금액 — 밑줄은 숫자 칸에만, 단위(만원)는 밑줄 밖, 숫자는 화면 가운데 */
+#createTripPage .budget-input-wrap {
+  display: grid !important; grid-template-columns: 1fr auto 1fr; align-items: end; column-gap: 10px;
+  width: 100% !important; margin: 16px 0 8px !important; padding: 0 !important; border: 0 !important;
+}
+#createTripPage .budget-input-wrap .budget-input {
+  grid-column: 2; width: 5.5ch !important; min-width: 0; text-align: center !important;
+  padding: 0 0 6px !important; border-bottom: 2px solid var(--r-border-strong) !important;
+}
+#createTripPage .budget-input-wrap:focus-within .budget-input { border-bottom-color: var(--a-ink) !important; }
+#createTripPage .budget-input-wrap .bd-unit-fixed { grid-column: 3; justify-self: start; padding-bottom: 10px; }

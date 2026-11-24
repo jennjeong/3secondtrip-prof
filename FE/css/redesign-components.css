@@ -2659,7 +2659,7 @@ body.is-typing .bottom-tab-nav { display: none; }
 .cal-cell.range-start::after, .cal-cell.range-end::after {
   position: absolute; left: 0; right: 0; bottom: 1px; font-size: 9px; font-weight: 700; line-height: 1; opacity: .9;
 }
-.cal-cell.range-start::after { content: "출발"; }
+.cal-cell.range-start::after { content: "출국"; }
 .cal-cell.range-end::after { content: "귀국"; }
 .cal-cell.range-start.range-end::after { content: "당일"; }
 .cal-cell:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 1px; }

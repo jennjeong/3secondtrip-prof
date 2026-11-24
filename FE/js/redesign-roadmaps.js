@@ -129,6 +129,14 @@ export function initRoadmaps(state) {
     renderExplore();
   });
 
+  // 여행 스타일 칩은 검색칸을 눌렀을 때(또는 스타일·검색어가 걸려 있을 때)만 보인다.
+  $('#exploreSearch')?.addEventListener('focus', () => { _filtersOpen = true; _paintFilterVis(); });
+  document.addEventListener('pointerdown', (e) => {
+    if (!_filtersOpen) return;
+    if (e.target.closest?.('#explorePage .search-card, #exploreFilters')) return;
+    _filtersOpen = false; _paintFilterVis();
+  });
+
   // 검색 — 탐색은 입력할 때마다, 홈은 검색을 누르면 탐색으로 넘어간다.
   $('#exploreSearch')?.addEventListener('input', (e) => {
     explore.query = (e.target.value || '').trim();
@@ -466,7 +474,14 @@ export function renderExplore() {
   _replaceExploreHash();
 }
 
+let _filtersOpen = false;
+function _paintFilterVis() {
+  const show = _filtersOpen || explore.concept !== 'all' || !!explore.query;
+  const f = document.getElementById('exploreFilters');
+  if (f) f.hidden = !show;
+}
 function _syncExploreUI() {
+  _paintFilterVis();
   setActiveByData(document.getElementById('exploreFilters'), 'data-filter-concept', explore.concept);
   $$('#exploreFilters [data-filter-concept]').forEach(c =>
     c.setAttribute('aria-pressed', String(c.dataset.filterConcept === explore.concept)));

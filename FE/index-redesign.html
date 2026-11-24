@@ -127,6 +127,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
       <a href="#page=create-trip" class="topbar-cta" data-nav-to="create-trip">+ 여행 만들기</a>
     </nav>
     <div class="topbar-spacer topbar-actions">
+      <button type="button" class="topbar-text-btn" id="topbarNewPost" data-nav-to="blog">+ 새 글</button>
       <button type="button" class="icon-btn topbar-share" id="topbarShare" aria-label="이 코스 공유" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><polyline points="7 8 12 3 17 8"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
     </div>
   </header>
@@ -350,14 +351,9 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
         <!-- Step 2 — Date / Companion (custom calendar) -->
         <div class="step-pane" data-step-pane="2" hidden>
           <h3 class="step-h">언제, 누구와 떠나시나요?</h3>
-          <div class="chip-row chip-wrap quick-dates" id="quickDates" role="group" aria-label="날짜 빠르게 고르기">
-            <button type="button" class="chip" data-quick="weekend">이번 주말</button>
-            <button type="button" class="chip" data-quick="nextweekend">다음 주말</button>
-            <button type="button" class="chip" data-quick="nextmonth">다음 달 2박 3일</button>
-          </div>
           <div class="form-row form-row--split">
             <div>
-              <span class="form-label" id="tripStartLbl">출발일</span>
+              <span class="form-label" id="tripStartLbl">출국일</span>
               <button type="button" class="date-trigger" id="tripStartTrigger" data-cal-target="start"
                       aria-labelledby="tripStartLbl tripStartLabel" aria-haspopup="dialog">
                 <span class="dt-icon" aria-hidden="true">📅</span>
@@ -422,7 +418,12 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <p class="form-error" id="conceptError" role="alert" hidden></p>
           <p class="pref-hint" id="prefHint" hidden>취향 분석 결과로 미리 골라 뒀어요 · 바꿔도 돼요</p>
           <h4 class="step-subh" id="styleH">세부 스타일 <span class="form-label-meta">선택 · 여러 개 가능</span></h4>
-          <div class="chip-row chip-wrap" id="styleChips" role="group" aria-labelledby="styleH"></div>
+          <div class="check-list" id="styleChips" role="group" aria-labelledby="styleH"></div>
+          <form class="check-add" id="styleAdd" novalidate>
+            <label class="sr-only" for="styleAddInput">세부 스타일 기타 입력</label>
+            <input class="form-input" type="text" id="styleAddInput" maxlength="20" placeholder="기타 — 예: 야경, 미술관" enterkeyhint="done"/>
+            <button type="submit" class="btn btn-soft btn-sm">추가</button>
+          </form>
           <p class="form-hint" id="styleHint" aria-live="polite">‘여유로운 일정’과 ‘빽빽한 일정’은 둘 중 하나만 고를 수 있어요.</p>
           <h4 class="step-subh" id="mustH">꼭 갈 장소 <span class="form-label-meta">선택 · 쉼표로 구분, 최대 5곳</span></h4>
           <input class="form-input" type="text" id="mustVisit" maxlength="200" placeholder="예: 시부야 스카이, 츠키지 시장" aria-labelledby="mustH" aria-describedby="mustHint"/>
@@ -430,13 +431,18 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <button type="button" class="btn btn-soft btn-sm" id="mustResolve">장소 확인</button>
           <div class="must-list" id="mustList" aria-live="polite"></div>
           <h4 class="step-subh" id="needsH">이동·식사 조건 <span class="form-label-meta">선택 · 여러 개 가능</span></h4>
-          <div class="chip-row chip-wrap" id="needsChips" role="group" aria-labelledby="needsH">
-            <button type="button" class="chip" data-need="lessWalk" aria-pressed="false">걷기 적게</button>
-            <button type="button" class="chip" data-need="stepFree" aria-pressed="false">계단 피하기·휠체어</button>
-            <button type="button" class="chip" data-need="veg" aria-pressed="false">채식</button>
-            <button type="button" class="chip" data-need="halal" aria-pressed="false">할랄</button>
-            <button type="button" class="chip" data-need="gluten" aria-pressed="false">글루텐 프리</button>
+          <div class="check-list" id="needsChips" role="group" aria-labelledby="needsH">
+            <button type="button" class="check-opt" data-need="lessWalk" aria-pressed="false">걷기 적게</button>
+            <button type="button" class="check-opt" data-need="stepFree" aria-pressed="false">계단 피하기·휠체어</button>
+            <button type="button" class="check-opt" data-need="veg" aria-pressed="false">채식</button>
+            <button type="button" class="check-opt" data-need="halal" aria-pressed="false">할랄</button>
+            <button type="button" class="check-opt" data-need="gluten" aria-pressed="false">글루텐 프리</button>
           </div>
+          <form class="check-add" id="needsAdd" novalidate>
+            <label class="sr-only" for="needsAddInput">이동·식사 조건 기타 입력</label>
+            <input class="form-input" type="text" id="needsAddInput" maxlength="20" placeholder="기타 — 예: 유모차, 반려견 동반" enterkeyhint="done"/>
+            <button type="submit" class="btn btn-soft btn-sm">추가</button>
+          </form>
           <p class="form-hint" id="needsHint">‘걷기 적게’는 하루 장소 수를 줄이고, 식단·접근성은 장소 검색에 반영해요. 실제 메뉴와 접근성은 방문 전에 확인해 주세요.</p>
         </div>
 
@@ -460,10 +466,10 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <section class="budget-suggest" aria-labelledby="budgetSuggestH">
             <div class="budget-suggest-head">
               <h4 class="form-section-title" id="budgetSuggestH">추천 예산</h4>
-              <button type="button" class="btn btn-soft budget-apply" id="budgetApplyBtn">추천 예산 적용</button>
             </div>
             <dl class="money-rows" id="budgetSuggestRows"></dl>
             <p class="form-hint" id="budgetSuggestText"></p>
+            <button type="button" class="btn btn-soft btn-block budget-apply" id="budgetApplyBtn">추천 예산 적용</button>
           </section>
 
           <div class="budget-marks" id="budgetMarks" role="group" aria-label="예산 수준 빠르게 고르기">
@@ -1223,10 +1229,9 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
       <div class="page-scroll">
         <div class="page-header schedule-head">
           <div>
-            <h2 class="page-title">✏️ 내 블로그</h2>
+            <h2 class="page-title">내 블로그</h2>
             <p class="page-sub">내가 쓴 글 + 초안</p>
           </div>
-          <button type="button" class="btn btn-primary" data-nav-to="blog">+ 새 글</button>
         </div>
         <div id="myBlogsList" class="my-list"></div>
         <div id="myBlogsEmpty" class="empty-state" hidden>
@@ -1407,11 +1412,31 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
   <aside class="bottom-sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
     <div class="sheet-handle"></div>
     <header class="sheet-head">
+      <button type="button" class="icon-btn set-back" id="settingsBack" aria-label="설정 목록으로" hidden>‹</button>
       <h3 id="settingsTitle">설정</h3>
       <button type="button" class="icon-btn" id="settingsClose" aria-label="닫기">×</button>
     </header>
     <div class="sheet-body">
-      <div class="setting-list">
+      <div class="set-view" data-set-view="root" data-set-title="설정">
+        <p class="set-group-h">앱</p>
+        <div class="setting-list">
+          <button type="button" class="setting-row" data-set-go="display"><span class="sr-label">화면</span><span class="setting-meta" id="setMetaTheme"></span><span class="setting-arrow" aria-hidden="true">›</span></button>
+          <button type="button" class="setting-row" data-set-go="noti"><span class="sr-label">알림</span><span class="setting-arrow" aria-hidden="true">›</span></button>
+          <button type="button" class="setting-row" data-set-go="lang"><span class="sr-label">언어</span><span class="setting-meta" id="setMetaLang"></span><span class="setting-arrow" aria-hidden="true">›</span></button>
+        </div>
+        <p class="set-group-h">계정</p>
+        <div class="setting-list">
+          <button type="button" class="setting-row" data-set-go="account"><span class="sr-label">계정 관리</span><span class="setting-arrow" aria-hidden="true">›</span></button>
+        </div>
+        <p class="set-group-h">지원·데이터</p>
+        <div class="setting-list">
+          <button type="button" class="setting-row" data-my-nav="feedback">
+          <span>피드백 보내기</span><span class="setting-arrow">›</span>
+        </button>
+          <button type="button" class="setting-row" data-set-go="data"><span class="sr-label">이 기기 데이터</span><span class="setting-arrow" aria-hidden="true">›</span></button>
+        </div>
+      </div>
+      <div class="set-view" data-set-view="display" data-set-title="화면" hidden><div class="setting-list">
         <div class="setting-row setting-row--block" role="radiogroup" aria-labelledby="themeLabel">
           <span id="themeLabel">화면 테마</span>
           <div class="seg" id="themeSeg">
@@ -1421,17 +1446,22 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           </div>
           <p class="setting-note" id="themeNote"></p>
         </div>
-
+      </div></div>
+      <div class="set-view" data-set-view="noti" data-set-title="알림" hidden><div class="setting-list">
         <div class="setting-row setting-row--block">
           <span>알림</span>
           <p class="setting-note" id="notiNote">확인 중…</p>
         </div>
-
+      </div></div>
+      <div class="set-view" data-set-view="lang" data-set-title="언어" hidden><div class="setting-list">
         <div class="setting-row setting-row--block">
           <span>언어</span>
           <p class="setting-note">한국어 · 다른 언어는 아직 번역이 없어 준비 중이에요.</p>
         </div>
-
+      </div></div>
+      <div class="set-view" data-set-view="account" data-set-title="계정 관리" hidden>
+        <p class="set-note" id="accountGuestNote">로그인하면 비밀번호 변경·로그아웃·계정 삭제를 할 수 있어요.</p>
+        <div class="setting-list">
         <div id="accountSettings" hidden>
           <button type="button" class="setting-row" id="settingPw" aria-expanded="false" aria-controls="pwPanel">
             <span>비밀번호 변경</span><span class="setting-arrow">›</span>
@@ -1495,9 +1525,9 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
             </div>
           </form>
         </div>
-        <button type="button" class="setting-row" data-my-nav="feedback">
-          <span>피드백 보내기</span><span class="setting-arrow">›</span>
-        </button>
+        </div>
+      </div>
+      <div class="set-view" data-set-view="data" data-set-title="이 기기 데이터" hidden><div class="setting-list">
         <button type="button" class="setting-row" id="settingReset" aria-expanded="false" aria-controls="resetPanel">
           <span style="color:var(--c-danger)">이 기기 데이터 초기화</span>
           <span class="setting-arrow">›</span>
@@ -1517,8 +1547,8 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
             <button type="button" class="btn btn-danger" id="resetConfirm">모두 지우기</button>
           </div>
         </div>
-      </div>
-      <p class="form-hint" style="text-align:center;margin-top:14px">3초 여행 · v1.1</p>
+      </div></div>
+      <p class="form-hint set-version" style="text-align:center;margin-top:14px">3초 여행 · v1.1</p>
     </div>
   </aside>
 

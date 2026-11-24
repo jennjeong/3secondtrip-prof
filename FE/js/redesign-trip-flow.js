@@ -49,6 +49,7 @@ export function initTripFlow(state) {
   _buildCountries();
   _buildConcepts();
   _buildStyles();
+  _initCheckAdds();
   _initQuickDates();
   _initNeeds();
   _buildQuickDest();
@@ -279,14 +280,23 @@ function _mustList(t) {
   return [...new Set(String(t.mustVisit || '').split(/[,，\n]/).map(s => s.trim()).filter(Boolean))].slice(0, 5);
 }
 
+/** 체크 목록 항목 상태(세부 스타일·이동·식사 조건 공통) */
+function _syncChecks(wrap, attr, values) {
+  wrap?.querySelectorAll('[' + attr + ']').forEach(b => {
+    const on = values.includes(b.getAttribute(attr));
+    b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on));
+  });
+}
 function _buildStyles() {
   const wrap = $('#styleChips');
   if (!wrap) return;
   wrap.innerHTML = '';
-  STYLES.forEach(s => {
+  const custom = (appState?.trip?.styles || []).filter(s => !STYLES.includes(s));
+  [...STYLES, ...custom].forEach(s => {
     wrap.appendChild(el('button', {
       type: 'button',
-      class: 'chip',
+      class: 'check-opt' + (STYLES.includes(s) ? '' : ' is-custom'),
+      'aria-pressed': 'false',
       dataset: { styleKey: s },
       onclick: (e) => {
         const k = e.currentTarget.dataset.styleKey;
@@ -304,9 +314,42 @@ function _buildStyles() {
             if (hint) hint.textContent = `‘${k}’와 ‘${other}’는 함께 고를 수 없어서 ‘${other}’ 선택을 풀었어요.`;
           }
         }
-        setMultiActive(wrap, 'data-style-key', arr);
+        _syncChecks(wrap, 'data-style-key', arr);
+        _saveDraft();
       }
     }, s));
+  });
+  _syncChecks(wrap, 'data-style-key', appState?.trip?.styles || []);
+}
+/** 이동·식사 조건의 ‘기타’(직접 입력) — needs 에 'custom:글자' 로 저장한다. */
+function _renderCustomNeeds() {
+  const wrap = $('#needsChips');
+  if (!wrap) return;
+  wrap.querySelectorAll('.is-custom').forEach(b => b.remove());
+  (appState?.trip?.needs || []).filter(n => n.startsWith('custom:')).forEach(n => {
+    wrap.appendChild(el('button', { type: 'button', class: 'check-opt is-custom is-active', 'aria-pressed': 'true', dataset: { need: n } }, n.slice(7)));
+  });
+}
+function _initCheckAdds() {
+  const add = (formSel, inputSel, onAdd) => {
+    $(formSel)?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const inp = $(inputSel);
+      const v = (inp?.value || '').replace(/[<>]/g, '').trim().slice(0, 20);
+      if (!v) { inp?.focus(); return; }
+      onAdd(v); inp.value = ''; inp.focus();
+    });
+  };
+  add('#styleAdd', '#styleAddInput', (v) => {
+    const t = appState.trip; t.styles = Array.isArray(t.styles) ? t.styles : [];
+    if (!t.styles.includes(v)) t.styles.push(v);
+    _buildStyles(); _saveDraft();
+  });
+  add('#needsAdd', '#needsAddInput', (v) => {
+    const t = appState.trip; t.needs = Array.isArray(t.needs) ? t.needs : [];
+    const k = 'custom:' + v;
+    if (!t.needs.includes(k)) t.needs.push(k);
+    _renderCustomNeeds(); _saveDraft();
   });
 }
 
@@ -1240,7 +1283,8 @@ function _resetTripState() {
 
   // 컨셉/스타일/동행 칩 active 해제
   $$('#conceptGrid .concept-card').forEach(b => b.classList.remove('is-active'));
-  $$('#styleChips .chip').forEach(b => b.classList.remove('is-active'));
+  _buildStyles();
+  _renderCustomNeeds();
   $$('[data-companion]').forEach(b => b.classList.toggle('is-active', b.dataset.companion === 'couple'));
   _syncPeopleRow();   // couple → 인원 입력칸 숨김 + people 초기화
   $$('[data-dest-quick]').forEach(b => b.classList.remove('is-active'));
@@ -1271,7 +1315,8 @@ function _applyState() {
   if (t.companion) setActiveByData(document.querySelector('.choice-grid'), 'data-companion', t.companion);
   _syncPeopleRow();   // 복원 시 가족/단체면 인원 입력칸 + 값 복원
   if (t.concept) setActiveByData(document.getElementById('conceptGrid'), 'data-concept-key', t.concept);
-  setMultiActive(document.getElementById('styleChips'), 'data-style-key', t.styles);
+  _buildStyles();
+  _renderCustomNeeds();
   const mv = $('#mustVisit'); if (mv) mv.value = t.mustVisit || '';
   $$('#needsChips [data-need]').forEach(b => { const on = (t.needs || []).includes(b.dataset.need); b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on)); });
   if (t.currency) $('#tripCurrency').value = t.currency;
@@ -2070,7 +2115,10 @@ function _queryFor(slot, t, level) {
   const food = cat === '식사' || cat === '카페';
   const diet = !food ? '' : needs.includes('veg') ? '채식' : needs.includes('halal') ? '할랄' : needs.includes('gluten') ? '글루텐 프리' : '';
   const access = needs.includes('stepFree') && !food ? '휠체어 접근 가능' : '';
-  return [t.cityName, diet, access, conceptHint, budgetHint, base].filter(Boolean).join(' ').trim();
+  // 직접 입력한 세부 스타일·조건(기타) — 검색어가 길어지지 않게 하나씩 돌려 쓴다.
+  const extras = [...(t.styles || []).filter(s => !STYLES.includes(s)), ...needs.filter(n => n.startsWith('custom:')).map(n => n.slice(7))];
+  const extra = extras.length ? extras[Math.floor(Math.random() * extras.length)] : '';
+  return [t.cityName, diet, access, extra, conceptHint, budgetHint, base].filter(Boolean).join(' ').trim();
 }
 
 /** Pick the next Places result that hasn't been used today. */
@@ -2194,6 +2242,48 @@ function _mergePinned(generated, pins) {
 
 /* ============ 생성 진행 화면 ============ */
 const GEN_STEPS = ['도시 위치 찾기', '항공권 확인', '숙소 확인', '날짜별 장소 고르기', '예산 맞추기'];
+/* 앱 아이콘의 경로(배경 없이): 빈 원에서 비행기가 떠나고, 지나간 자리에 점이 하나씩 떨어져 남는다.
+ * 점 크기는 앱 아이콘처럼 작고 큰 점이 섞이고, 경로 위 간격을 두어 서로 겹치지 않는다.
+ * 3.2초 한 바퀴 — 날아가기(0~70%) → 완성된 모습 잠시(70~90%) → 사라졌다 다시. 일정이 다 만들어질 때까지 반복. */
+const GL_PATH = 'M20 82 C34 80 45 73 48 63 C51 53 43 47 48 39 C53 31 66 31 80 18';
+const GL_DUR = 3.2, GL_FLY = 0.7, GL_HOLD = 0.9;
+// [경로 위치(0~1), 반지름] — 앱 아이콘의 점 배열(작은 점 사이사이 큰 점)
+const GL_DOTS = [[0.10, 1.6], [0.17, 1.9], [0.25, 2.7], [0.33, 1.6], [0.41, 3.3], [0.49, 1.7], [0.555, 1.2],
+                 [0.61, 1.8], [0.69, 3.4], [0.745, 1.6], [0.80, 2.0], [0.865, 2.6]];
+const GL_ROUTE_SVG = [
+  '<svg class="gl-route gl-plane-route" viewBox="0 0 100 100" fill="none" aria-hidden="true">',
+  '<path class="gl-guide" d="' + GL_PATH + '"/>',
+  '<g class="gl-loop"><animate attributeName="opacity" values="1;1;1;0" keyTimes="0;' + GL_FLY + ';' + GL_HOLD + ';1" dur="' + GL_DUR + 's" repeatCount="indefinite"/>',
+  '<g class="gl-drops"></g>',
+  '<circle class="gl-start" cx="20" cy="82" r="5.2"/>',
+  '<circle class="gl-glow" cx="80" cy="18" r="12" opacity="0"><animate attributeName="opacity" values="0;0;0.4;0.4" keyTimes="0;0.66;0.74;1" dur="' + GL_DUR + 's" repeatCount="indefinite"/></circle>',
+  '<g class="gl-plane"><path d="M5 0 L-1.5 -1.2 L-4.6 -6 L-6.4 -6 L-4.8 -1.3 L-7.8 -1.1 L-9 -3 L-10.2 -3 L-9.5 0 L-10.2 3 L-9 3 L-7.8 1.1 L-4.8 1.3 L-6.4 6 L-4.6 6 L-1.5 1.2 Z"/>',
+  '<animateMotion dur="' + GL_DUR + 's" repeatCount="indefinite" rotate="auto" keyPoints="0;1;1;1" keyTimes="0;' + GL_FLY + ';' + GL_HOLD + ';1" calcMode="linear" path="' + GL_PATH + '"/></g>',
+  '</g></svg>',
+].join('');
+/** 경로 위에 점을 놓는다 — 비행기가 그 자리를 지나는 순간 나타나 남는다(앞뒤 점과 겹치지 않게 간격 확인). */
+function glDropDots(svg) {
+  const guide = svg?.querySelector('.gl-guide');
+  const g = svg?.querySelector('.gl-drops');
+  if (!guide || !g || g.childElementCount) return;
+  const len = guide.getTotalLength();
+  const NS = 'http://www.w3.org/2000/svg';
+  let prev = null;
+  GL_DOTS.forEach(([f, r]) => {
+    const pt = guide.getPointAtLength(len * f);
+    if (prev && Math.hypot(pt.x - prev.x, pt.y - prev.y) < prev.r + r + 1.2) return;   // 겹치면 건너뛴다
+    prev = { x: pt.x, y: pt.y, r };
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', pt.x.toFixed(2)); c.setAttribute('cy', pt.y.toFixed(2)); c.setAttribute('r', String(r));
+    c.setAttribute('class', 'gl-dot'); c.setAttribute('opacity', '0');
+    const t = (f * GL_FLY).toFixed(3), t2 = Math.min(f * GL_FLY + 0.02, GL_FLY).toFixed(3);
+    const a = document.createElementNS(NS, 'animate');
+    a.setAttribute('attributeName', 'opacity'); a.setAttribute('values', '0;0;1;1');
+    a.setAttribute('keyTimes', '0;' + t + ';' + t2 + ';1'); a.setAttribute('dur', GL_DUR + 's'); a.setAttribute('repeatCount', 'indefinite');
+    c.appendChild(a); g.appendChild(c);
+  });
+}
+
 function _showGenLoading(msg) {
   let ov = document.getElementById('genLoadingOverlay');
   if (!ov) {
@@ -2204,8 +2294,9 @@ function _showGenLoading(msg) {
       el('p', { class: 'gl-sub', id: 'glSub', ariaLive: 'polite' }, ''),
       el('div', { class: 'gl-actions', id: 'glActions' }),
     ]);
-    ov.firstChild.outerHTML = '<svg class="gl-route" viewBox="0 0 120 80" fill="none" aria-hidden="true"><path pathLength="1" d="M10 68 C50 68 86 50 110 12"/></svg>';
+    ov.firstChild.outerHTML = GL_ROUTE_SVG;
     document.body.appendChild(ov);
+    glDropDots(ov.querySelector('.gl-plane-route'));
   }
   ov.classList.remove('is-failed');
   const m = ov.querySelector('#glMsg'); if (m && msg) m.textContent = msg;

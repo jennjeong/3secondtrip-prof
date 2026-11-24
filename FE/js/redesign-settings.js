@@ -256,12 +256,51 @@ export function initSettings(state) {
   document.addEventListener('redesign:auth-ready', _paintAccount);
 }
 
+/** 설정 시트 안의 화면 이동 — 분류 목록(root) → 분류별 화면. 뒤로(‹)로 목록으로 돌아온다. */
+function _setView(name, focusFrom) {
+  const sh = $('#settingsSheet');
+  if (!sh) return;
+  let title = '설정';
+  sh.querySelectorAll('.set-view').forEach(v => {
+    const on = v.dataset.setView === name;
+    v.hidden = !on;
+    if (on) title = v.dataset.setTitle || title;
+  });
+  const t = $('#settingsTitle'); if (t) t.textContent = title;
+  const back = $('#settingsBack'); if (back) back.hidden = name === 'root';
+  sh.dataset.setView = name;
+  const body = sh.querySelector('.sheet-body'); if (body) body.scrollTop = 0;
+  requestAnimationFrame(() => {
+    if (name === 'root') { if (focusFrom) sh.querySelector('[data-set-go="' + focusFrom + '"]')?.focus(); }
+    else (sh.querySelector('.set-view[data-set-view="' + name + '"] button, .set-view[data-set-view="' + name + '"] input') || back)?.focus();
+  });
+}
+function _paintSetMeta() {
+  const th = document.querySelector('#themeSeg input:checked')?.value || 'system';
+  const m = $('#setMetaTheme'); if (m) m.textContent = ({ system: '시스템', light: '라이트', dark: '다크' })[th] || '';
+  const l = $('#setMetaLang'); if (l) l.textContent = '한국어';
+}
+function _bindSetViews() {
+  const sh = $('#settingsSheet');
+  if (!sh || sh.dataset.viewsBound) return;
+  sh.dataset.viewsBound = '1';
+  sh.addEventListener('click', (e) => {
+    const go = e.target.closest?.('[data-set-go]');
+    if (go) _setView(go.dataset.setGo);
+  });
+  $('#settingsBack')?.addEventListener('click', () => _setView('root', sh.dataset.setView));
+  $('#themeSeg')?.addEventListener('change', _paintSetMeta);
+}
+
 export function openSettings() {
   const bd = $('#settingsBackdrop'); const sh = $('#settingsSheet');
   if (!bd || !sh) return;
+  _bindSetViews();
+  _setView('root');
   _paintNoti();
   _paintAccount();
   applyTheme();
+  _paintSetMeta();
   const panel = $('#resetPanel'); if (panel) panel.hidden = true;
   bd.hidden = false; sh.hidden = false;
   requestAnimationFrame(() => { bd.classList.add('is-visible'); sh.classList.add('is-visible'); });

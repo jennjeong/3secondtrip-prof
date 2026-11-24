@@ -87,7 +87,7 @@ function _render() {
   const title = $('#calendarSheetTitle');
   // 두 날짜를 다 고르면 ‘확인’ 단계 — 다시 누르면 출발일부터 새로 고른다.
   if (title) title.textContent = cal.start && cal.end ? '날짜 확인 · 완료를 눌러 주세요'
-    : cal.start ? '귀국일 선택' : '출발일 선택';
+    : cal.start ? '귀국일 선택' : '출국일 선택';
   const first = new Date(cal.minDate.getFullYear(), cal.minDate.getMonth(), 1);
   const last = new Date(first.getFullYear(), first.getMonth() + MAX_MONTHS_AHEAD, 1);
   const prev = $('#calPrev'); if (prev) prev.disabled = cal.view <= first;
@@ -138,7 +138,7 @@ function _render() {
       role: 'gridcell',
       dataset: { iso },
       ariaLabel: `${year}년 ${month+1}월 ${d}일 ${WEEKDAY[dow]}요일`
-        + (isToday ? ', 오늘' : '') + (isStart ? ', 출발일' : '') + (isEnd ? ', 귀국일' : '')
+        + (isToday ? ', 오늘' : '') + (isStart ? ', 출국일' : '') + (isEnd ? ', 귀국일' : '')
         + (isPast ? ', 선택할 수 없음' : ''),
       'aria-disabled': isPast ? 'true' : null,   // 고를 수 있는 날에는 속성을 붙이지 않는다
       ariaPressed: String(!!(isStart || isEnd)),
@@ -154,9 +154,9 @@ function _render() {
 function _renderSummary() {
   const s = $('#calSummary');
   if (!s) return;
-  if (!cal.start && !cal.end) { s.textContent = '출발일을 선택해 주세요'; return; }
+  if (!cal.start && !cal.end) { s.textContent = '출국일을 선택해 주세요'; return; }
   if (cal.start && !cal.end) {
-    s.innerHTML = `출발 <strong>${_fmtKo(cal.start)}</strong> · 귀국일을 골라 주세요`
+    s.innerHTML = `출국 <strong>${_fmtKo(cal.start)}</strong> · 귀국일을 골라 주세요`
       + (cal.maxDays ? ` (최대 ${cal.maxDays}일)` : '') + ' · 그대로 완료하면 당일치기예요';
     return;
   }
