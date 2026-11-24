@@ -364,9 +364,15 @@ function _cardEl(m, opts = {}) {
   ].filter(Boolean));
   if (!glow) { card.append(main, info, _goEl()); return card; }
   card.style.setProperty('--h', String(_hue(m.city)));
+  const big = LOCAL_NAME[m.city] || m.city || '';
+  // 도시는 그림에 크게 있으니 글은 제목 → 기간·스타일 → 나라·도시 순서로 읽힌다
   card.append(
-    el('span', { class: 'rg-art', 'aria-hidden': 'true' }, [el('span', { class: 'rg-name' }, LOCAL_NAME[m.city] || m.city || '')]),
-    el('span', { class: 'rg-cap' }, [main, info]),
+    el('span', { class: 'rg-art', 'aria-hidden': 'true' }, [el('span', { class: 'rg-name' + (big.length > 14 ? ' is-long' : big.length > 9 ? ' is-mid' : '') }, big)]),
+    el('span', { class: 'rg-cap' }, [
+      el('span', { class: 'rc-title' }, m.title), info,
+      el('span', { class: 'rc-place' }, _place(m)),
+      opts.reason ? el('span', { class: 'rc-reason-line' }, opts.reason) : null,
+    ].filter(Boolean)),
   );
   return card;
 }

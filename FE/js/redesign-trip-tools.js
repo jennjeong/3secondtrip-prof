@@ -159,7 +159,7 @@ async function _loadWeather(g, key) {
   if (!rows?.length) { target.textContent = '날씨 정보를 불러오지 못했어요.'; return; }
   target.textContent = '';
   rows.forEach((r, i) => target.appendChild(el('div', { class: 'tool-day' }, [
-    el('strong', {}, `${i + 1}일차 · ${Number(r.date.slice(5, 7))}/${Number(r.date.slice(8, 10))}`),
+    el('strong', {}, `${i + 1}일차 · ${r.date.slice(5, 7)}/${r.date.slice(8, 10)}`),
     el('span', {}, _weatherLabel(r.code)),
     el('span', {}, `${r.min}° / ${r.max}°`),
     el('span', { class: 'tool-note' }, `비 ${r.rain ?? '-'}%`),

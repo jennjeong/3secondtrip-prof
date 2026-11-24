@@ -139,9 +139,8 @@ export function initGlobe(canvas, { cities = [], onCity } = {}) {
     ctx.font = `600 ${fs}px "Pretendard Variable", Pretendard, sans-serif`;
     ctx.textBaseline = 'middle';
     const boxes = [];
-    names.forEach(n => {
-      const [X, Y, Z] = prj(_vec(...CITY_POS[n]));
-      if (Z < .12 || Y > h - 12 || X < 20 || X > w - 20) return;
+    const marks = names.map(n => { const [x, y, z] = prj(_vec(...CITY_POS[n])); return { n, x, y, z }; }).filter(m => m.z > .12 && m.y < h - 12 && m.x > 20 && m.x < w - 20);
+    marks.forEach(({ n, x: X, y: Y }) => {
       const on = n === hover;
       if (n === HOME) {
         ctx.beginPath(); ctx.arc(X, Y, s * 3, 0, 7); ctx.fillStyle = '#06102a'; ctx.fill(); ctx.lineWidth = s * 1.1; ctx.strokeStyle = '#fff'; ctx.stroke();
@@ -149,16 +148,20 @@ export function initGlobe(canvas, { cities = [], onCity } = {}) {
         ctx.beginPath(); ctx.arc(X, Y, s * (on ? 5.6 : 4.2), 0, 7); ctx.fillStyle = 'rgba(120,170,255,.35)'; ctx.fill();
         ctx.beginPath(); ctx.arc(X, Y, s * 2.1, 0, 7); ctx.fillStyle = '#fff'; ctx.fill();
       }
+    });
+    marks.forEach(({ n, x: X, y: Y }) => {
       const tw = ctx.measureText(n).width;
-      // 이름이 겹치면 왼쪽으로, 그래도 겹치면 점만 둔다
-      for (const dx of [s * 4.5 + 4, -(s * 4.5 + 4 + tw)]) {
-        const b = [X + dx - 3, Y - fs * .7, X + dx + tw + 3, Y + fs * .7];
-        if (b[0] < 4 || b[2] > w - 4 || boxes.some(o => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1])) continue;
+      // 이름 자리 — 오른쪽 → 왼쪽 → 아래 → 위 순서로 겹치지 않는 곳. 다른 도시의 점도 가리지 않는다. 자리가 없으면 점만 둔다.
+      const g = s * 4.5 + 4;
+      for (const [lx, ly] of [[X + g, Y], [X - g - tw, Y], [X - tw / 2, Y + fs * 1.25], [X - tw / 2, Y - fs * 1.25], [X + g * .4, Y + fs * 1.15], [X + g * .4, Y - fs * 1.15]]) {
+        const b = [lx - 3, ly - fs * .62, lx + tw + 3, ly + fs * .62];
+        if (b[0] < 6 || b[2] > w - 6 || b[3] > h - 6 || boxes.some(o => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1])) continue;
+        if (marks.some(m => m.n !== n && m.x > b[0] - s * 2 && m.x < b[2] + s * 2 && m.y > b[1] - s * 2 && m.y < b[3] + s * 2)) continue;
         boxes.push(b);
-        ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(10,24,58,.82)'; ctx.strokeText(n, X + dx, Y + .5);
+        ctx.lineWidth = 3.5; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(12,30,74,.78)'; ctx.strokeText(n, lx, ly + .5);
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(n, X + dx, Y + .5);
-        hits.push({ n, x0: Math.min(b[0], X - 16), y0: Y - 20, x1: Math.max(b[2], X + 16), y1: Y + 20 });
+        ctx.fillText(n, lx, ly + .5);
+        hits.push({ n, x0: Math.min(b[0], X - 16), y0: Math.min(b[1], Y - 20), x1: Math.max(b[2], X + 16), y1: Math.max(b[3], Y + 20) });
         break;
       }
       if (!hits.some(x => x.n === n)) hits.push({ n, x0: X - 14, y0: Y - 14, x1: X + 14, y1: Y + 14 });

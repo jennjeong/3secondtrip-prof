@@ -21,7 +21,7 @@
   --n-bg: #05070D; --n-panel: #0B111D; --n-ink: #EEF3FB; --n-ink2: #A3B2CB; --n-line: rgba(255, 255, 255, .12);
   --day-bg: #FFFFFF; --cw: 1120px; --gx: max(16px, calc((100vw - var(--cw)) / 2));
   --g-bg: linear-gradient(165deg, rgba(214, 227, 255, .66) 0%, rgba(255, 255, 255, .52) 46%, rgba(202, 218, 255, .62) 100%); --g-line: rgba(255, 255, 255, .85); --g-hi: rgba(255, 255, 255, .95);
-  --g-lens: linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(255, 255, 255, .62)); --g-ink: #101B2C; --g-ink2: #2C384C; --g-drop: rgba(24, 44, 92, .22);
+  --g-lens: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .7)); --g-ink: #101B2C; --g-ink2: #2C384C; --g-drop: rgba(24, 44, 92, .13);
 }
 :root.theme-dark {
   --p-bg: #111418; --p-ink: #EEF2F6; --p-ink2: #A7B0BC; --p-ink3: #8E98A5;
@@ -1010,4 +1010,275 @@ html, body, .app-shell { background: var(--n-bg) !important; }
 #genLoadingOverlay .btn-ghost { background: rgba(255, 255, 255, .12) !important; border: 0 !important; color: #FFFFFF !important; }
 #genLoadingOverlay .gl-steps li::before { border-color: rgba(156, 192, 255, .7) !important; background: transparent !important; }
 #genLoadingOverlay .gl-steps li.is-current::before, #genLoadingOverlay .gl-steps li.is-done::before { border-color: #9CC0FF !important; background: #9CC0FF !important; }
+
+/* =============== 13. 여백 · 정렬 · 버튼 규격 ===============
+ * 여백  --s1 4 · --s2 8 · --s3 12 · --s4 16 · --s5 20 · --s6 24 · --s7 32   (정보 안 4–6, 조작 8–12, 묶음 16–24, 구역 24–40)
+ * 버튼  --b-bar 52(하단 바·시트) · --b-main 48 · --b-sm 40(누름 44) · --b-icon 48 · 반경 999 · 좌우 18 · 아이콘과 글자 8
+ * 하단 바 --dock-h 64, 바깥 여백 --dock-y, 본문 아래 여백 = --dock-space */
+:root { --s1: 4px !important; --s2: 8px !important; --s3: 12px !important; --s4: 16px !important; --s5: 20px !important; --s6: 24px !important; --s7: 32px !important; --b-bar: 52px !important; --b-main: 48px !important; --b-sm: 40px !important; --b-icon: 48px !important; --dock-h: 64px !important; --dock-y: max(12px, calc(env(safe-area-inset-bottom, 0px) - 8px)) !important; --dock-space: calc(var(--dock-h) + var(--dock-y) + 24px) !important; --day-top: 18px !important; }
+
+/* 버튼 — 같은 역할은 같은 크기 */
+.btn { min-height: var(--b-main) !important; padding: 0 18px !important; border-radius: 999px !important; align-items: center !important; justify-content: center !important; gap: 8px !important; }
+.btn-block { width: 100% !important; }
+.sheet-foot .btn, .step-nav .btn, .roadmap-cta-row .btn, #bookingConfirm, .alt-confirm, #editSave { min-height: var(--b-bar) !important; }
+.btn-sm, .timeline .schedule-card-actions :is(.edit-button, .pin-btn), #bookingSheet .chip { min-height: var(--b-sm) !important; border-radius: 999px !important; }
+.sheet-foot--split { display: flex !important; gap: 8px !important; align-items: stretch !important; }
+.sheet-foot--split .btn { flex: 1 1 0 !important; }
+.sheet-foot--split .btn-primary { flex: 2 1 0 !important; }
+.sheet-head .icon-btn { width: 44px !important; height: 44px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
+
+/* 화면 제목 — 탐색·내 일정·마이가 같은 글자, 같은 위치 */
+#explorePage .page-title, #schedulePage .page-title, #myPage .my-title { margin: 0 !important; font-size: 32px !important; line-height: 38px !important; font-weight: 300 !important; letter-spacing: -0.045em !important; overflow-wrap: anywhere !important; word-break: keep-all !important; }
+#explorePage .page-sub, #schedulePage .band-trip .schedule-head .page-sub { margin: 4px 0 0 !important; font-size: 14px !important; line-height: 20px !important; }
+@media (max-width: 1023px) {
+  #explorePage .page-header { padding: 16px 0 20px !important; }
+  #schedulePage .band-trip .schedule-head, #myPage .my-title { margin-top: 0 !important; }
+  .band-trip, .band-my { padding-top: 16px !important; }
+}
+@media (min-width: 1024px) {
+  #explorePage .page-title, #schedulePage .page-title, #myPage .my-title { font-size: 48px !important; line-height: 58px !important; }
+  .band-trip, .band-my { padding-top: 124px !important; }
+  #explorePage.app-page:not(#homePage) > .page-scroll { padding-top: 124px !important; }
+  #explorePage .page-header { padding: 0 0 24px !important; }
+  #schedulePage .band-trip .schedule-head, #myPage .my-title { margin-top: 0 !important; }
+}
+
+/* 하단 탭 — 같은 높이·여백, 어두운 화면은 더 짙게, 밝은 화면은 그림자를 줄여서 */
+@media (max-width: 1023px) {
+  .bottom-tab-nav { height: var(--dock-h) !important; bottom: var(--dock-y) !important; padding: 0 6px !important; box-shadow: inset 0 1px 0 var(--g-hi), inset 0 -1px 0 rgba(255, 255, 255, .14), 0 8px 24px var(--g-drop) !important; }
+  .bottom-tab-nav .tab-button { height: calc(var(--dock-h) - 2px) !important; gap: 3px !important; padding: 0 !important; justify-content: center !important; }
+  .bottom-tab-nav .tab-ico { width: 24px !important; height: 24px !important; stroke-width: 1.8 !important; }
+  .bottom-tab-nav .tab-button.is-active .tab-ico { stroke-width: 2.3 !important; transform: none !important; }
+  .bottom-tab-nav .tab-label { font-size: 11px !important; line-height: 14px !important; min-height: 14px !important; }
+  .bottom-tab-nav::before { top: 5px !important; bottom: 5px !important; box-shadow: inset 0 1px 0 var(--g-hi), 0 1px 4px var(--g-drop) !important; }
+  :root:is([data-page="home"], [data-page="explore"], [data-page="auth"]) .bottom-tab-nav { --g-bg: linear-gradient(180deg, rgba(52, 66, 106, .72), rgba(14, 21, 42, .80)) !important; --g-line: rgba(255, 255, 255, .22) !important; --g-hi: rgba(255, 255, 255, .30) !important; --g-lens: linear-gradient(180deg, rgba(255, 255, 255, .24), rgba(255, 255, 255, .12)) !important; --g-ink: #FFFFFF !important; --g-ink2: rgba(236, 242, 255, .92) !important; --g-drop: rgba(0, 0, 0, .4) !important; }
+  #homePage > .page-scroll, :root:not([data-page="create-trip"]):not([data-page="roadmap-detail"]) .app-page:not(#homePage) > .page-scroll { padding-bottom: calc(var(--dock-space) + 8px) !important; scroll-padding-bottom: var(--dock-space) !important; }
+  .toast { bottom: calc(var(--dock-h) + var(--dock-y) + 12px) !important; }
+}
+
+/* ---- 홈 ---- */
+#homePage .search-card { padding: 0 6px 0 18px !important; gap: 10px !important; align-items: center !important; }
+#homePage .search-card .search-ico { display: inline-flex !important; align-items: center !important; }
+#homePage .search-card input { line-height: 24px !important; text-overflow: ellipsis !important; }
+#homePage .search-card .search-submit { min-height: 44px !important; height: 44px !important; padding: 0 18px !important; margin: 0 !important; }
+#homePage .search-card .search-clear { width: 36px !important; margin: 0 -4px 0 0 !important; }
+@media (max-width: 1023px) {
+  /* 첫 화면 높이 = 글자·검색·칩이 쓰는 만큼 + 지구본 자리(아래 메뉴까지). 다음 구역은 늘 메뉴 아래에서 시작한다 */
+  #homePage .nh-hero { display: grid !important; grid-template-rows: auto minmax(236px, 1fr) !important; min-height: 100vh !important; min-height: 100svh !important; border-radius: 0 0 28px 28px !important; }
+  #homePage .nh-copy { grid-row: 1 !important; padding-top: calc(env(safe-area-inset-top, 0px) + 92px) !important; }
+  #homePage .nh-title { font-size: 40px !important; line-height: 1.18 !important; padding: 0 !important; }
+  #homePage .search-card { margin-top: 26px !important; min-height: 58px !important; }
+  #homePage .home-styles { margin-top: 14px !important; gap: 8px !important; }
+  #homePage .home-create { margin-top: 10px !important; min-height: 44px !important; }
+}
+@media (max-width: 359px) {
+  #homePage .nh-title { font-size: 34px !important; }
+  #homePage .nh-copy { padding-top: calc(env(safe-area-inset-top, 0px) + 78px) !important; }
+  #homePage .search-card { margin-top: 22px !important; min-height: 56px !important; padding-left: 16px !important; gap: 8px !important; }
+  #homePage .search-card .search-submit { padding: 0 15px !important; }
+  #homePage .home-styles { margin-top: 12px !important; }
+  #homePage .home-create { margin-top: 6px !important; }
+}
+@media (min-width: 768px) and (max-width: 1023px) { #homePage .nh-hero { margin: 0 !important; border-radius: 0 0 28px 28px !important; border: 0 !important; } #homePage .nh-copy { padding-top: calc(env(safe-area-inset-top, 0px) + 120px) !important; } #homePage .nh-title { font-size: 56px !important; } }
+@media (min-width: 1024px) { #homePage .search-card { padding: 0 7px 0 20px !important; } }
+/* 구역 — 제목과 첫 항목 사이 14, 구역 사이 같은 간격 */
+#homePage .section-block, #homePage .home-window { margin-top: 44px !important; scroll-margin-top: 84px !important; }
+#homePage .home-window { margin-top: 48px !important; }
+#homePage .section-head { min-height: 32px !important; margin: 0 0 14px !important; align-items: center !important; }
+#homePage .section-head .section-more { min-height: 44px !important; margin: -6px 0 !important; }
+#homePage .section-title { font-size: 26px !important; line-height: 32px !important; margin: 0 !important; }
+#homePage .home-window > .section-title { margin: 0 0 14px !important; }
+#homePage .hw, #homePage .glow-grid, #homePage .city-marquee.city-chips, #reviewPreviewSection .review-preview-list { margin-top: 0 !important; }
+#homePage .section-head:has(+ .section-sub) { margin-bottom: 4px !important; }
+#homePage .section-sub { margin: 0 0 14px !important; font-size: 14px !important; line-height: 20px !important; }
+@media (min-width: 768px) { #homePage .section-block, #homePage .home-window { margin-top: 64px !important; } #homePage .section-title { font-size: 32px !important; line-height: 40px !important; } }
+@media (min-width: 1024px) { #homePage .section-block, #homePage .home-window { margin-top: 88px !important; scroll-margin-top: 104px !important; } #homePage .section-title { font-size: 36px !important; line-height: 44px !important; } #homePage .section-head, #homePage .home-window > .section-title { margin-bottom: 20px !important; } #homePage .section-head:has(+ .section-sub) { margin-bottom: 4px !important; } #homePage .section-sub { margin-bottom: 20px !important; } }
+#homePage .hw-main { padding: 18px 16px 16px !important; }
+#homePage .hw-go { margin-top: 18px !important; }
+@media (min-width: 1024px) { #homePage .hw-main { padding: 28px 32px 30px !important; } }
+
+/* ---- 코스 카드 — 같은 비율 그림, 글은 제목 → 기간·스타일 → 나라·도시 ---- */
+.glow-grid { gap: 22px 12px !important; align-items: start !important; }
+.rc--glow .rg-art { container-type: inline-size !important; aspect-ratio: 4 / 3 !important; }
+.rc--glow .rg-name { left: 15px !important; right: 15px !important; bottom: 14px !important; font-size: clamp(22px, 17.5cqw, 46px) !important; line-height: 1.14 !important; white-space: normal !important; overflow-wrap: anywhere !important; overflow: hidden !important; display: -webkit-box !important; -webkit-box-orient: vertical !important; -webkit-line-clamp: 2 !important; text-overflow: clip !important; padding-top: .06em !important; }
+.rc--glow .rg-name.is-mid { font-size: clamp(18px, 14cqw, 36px) !important; }
+.rc--glow .rg-name.is-long { font-size: clamp(16px, 11.5cqw, 28px) !important; }
+.rc--glow .rg-cap { padding: 10px 2px 0 !important; gap: 4px !important; }
+.rc--glow .rc-title { order: 0 !important; font-size: 16px !important; line-height: 22px !important; }
+.rc--glow .rc-info { order: 1 !important; gap: 0 5px !important; justify-content: flex-start !important; }
+.rc--glow .rc-info > * { font-size: 14px !important; line-height: 20px !important; }
+.rc--glow .rc-days { font-weight: 600 !important; color: #FFFFFF !important; }
+.rc--glow .rc-place { order: 2 !important; font-size: 13px !important; line-height: 18px !important; }
+.rc--glow .rc-reason-line { order: 3 !important; }
+@media (max-width: 767px) { .glow-grid > .rc--glow:last-child:nth-child(odd) .rg-art { aspect-ratio: 16 / 7 !important; } .glow-grid > .rc--glow:last-child:nth-child(odd) .rg-name { font-size: clamp(28px, 11cqw, 46px) !important; } }
+@media (min-width: 768px) { .glow-grid { gap: 28px 16px !important; } }
+
+/* ---- 탐색 ---- */
+#explorePage .search-card { min-height: 56px !important; padding: 0 6px 0 18px !important; }
+#explorePage .search-card input { min-height: 52px !important; }
+#explorePage .explore-bar { min-height: 44px !important; margin: 4px 0 0 !important; align-items: center !important; }
+#explorePage .explore-count { margin: 0 !important; font-size: 15px !important; line-height: 44px !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+#explorePage .sort-tabs { flex: none !important; height: 44px !important; align-items: stretch !important; gap: 12px !important; }
+#explorePage .sort-tabs .sort-tab { min-width: 46px !important; height: 44px !important; line-height: 44px !important; font-size: 14px !important; text-align: center !important; border: 0 !important; }
+#explorePage .sort-tabs .sort-tab.is-active::before { left: 2px !important; right: 2px !important; bottom: 7px !important; }
+#explorePage .explore-state { margin: 0 !important; padding: 0 !important; font-size: 13px !important; line-height: 19px !important; }
+#explorePage .explore-bar + .explore-state:not([hidden]) { margin-top: -2px !important; }
+#explorePage .glow-grid { margin: 6px 0 0 !important; }
+#explorePage .explore-state:not([hidden]) + .glow-grid { margin-top: 14px !important; }
+#explorePage #exploreFilters { margin: 12px 0 0 !important; }
+
+/* ---- 코스 상세 ---- */
+.band-detail .roadmap-meta { margin: 8px 0 0 !important; }
+#roadmapDetailPage .rd-tag { margin: 4px 0 0 !important; }
+#roadmapDetailPage .rd-cost { margin: 16px 0 0 !important; padding: 14px 16px 8px !important; }
+#roadmapDetailPage .rd-source > summary { min-height: 44px !important; margin: 0 !important; }
+#roadmapBody { padding-top: var(--day-top) !important; }
+.rd-day { margin: 24px 0 0 !important; }
+#roadmapBody > .rd-h + .rd-day { margin-top: 14px !important; }
+.rd-stop { grid-template-columns: 56px 22px minmax(0, 1fr) auto !important; }
+.rd-move { padding-left: 78px !important; }
+.rd-move::before { left: 60px !important; }
+.app-topbar .topbar-share, .app-topbar .topbar-back { min-width: 44px !important; min-height: 44px !important; }
+:root[data-page="roadmap-detail"] #roadmapDetailPage.app-page:not(#homePage) > .page-scroll { padding-bottom: calc(52px + 20px + env(safe-area-inset-bottom, 0px) + 28px) !important; }
+:root[data-page="create-trip"] #createTripPage.app-page:not(#homePage) > .page-scroll { padding-bottom: calc(52px + 20px + env(safe-area-inset-bottom, 0px) + 32px) !important; }
+@media (min-width: 1024px) { :root[data-page="create-trip"] #createTripPage.app-page:not(#homePage) > .page-scroll { padding-bottom: 0 !important; } }
+
+/* ---- 내 일정 ---- */
+#schedulePage .band-trip .schedule-actions { display: flex !important; align-items: center !important; gap: 8px !important; margin-top: 14px !important; }
+#schedulePage .schedule-actions[hidden] { display: none !important; }
+#schedulePage .band-trip :is(#btnSave, .action-icon) { min-height: var(--b-icon) !important; height: var(--b-icon) !important; }
+#schedulePage .band-trip .action-icon { flex: 0 0 var(--b-icon) !important; width: var(--b-icon) !important; background: rgba(255, 255, 255, .06) !important; border-color: rgba(255, 255, 255, .14) !important; }
+#schedulePage .band-trip #btnSave { gap: 8px !important; font-weight: 700 !important; }
+#schedulePage .band-trip .save-status { margin: 8px 0 0 !important; font-size: 13px !important; line-height: 18px !important; }
+/* 여행 중 — 라벨 | 장소 | 현지 시각 */
+#schedulePage .now-next { margin: 16px 0 0 !important; padding: 10px 0 8px !important; gap: 0 !important; border-top-width: 1px !important; border-top-color: rgba(156, 192, 255, .6) !important; }
+#schedulePage .now-next .nn-head { min-height: 32px !important; margin: 0 !important; }
+#schedulePage .now-next .nn-go { min-height: 44px !important; margin: -6px 0 !important; }
+#schedulePage .now-next .nn-row { display: grid !important; grid-template-columns: 40px minmax(0, 1fr) !important; column-gap: 8px !important; align-items: baseline !important; padding: 5px 0 !important; }
+#schedulePage .now-next .nn-label { padding: 0 !important; background: none !important; border-radius: 0 !important; font-size: 14px !important; line-height: 24px !important; font-weight: 500 !important; color: #9CC0FF !important; }
+#schedulePage .now-next .nn-body { display: flex !important; flex-wrap: wrap !important; justify-content: space-between !important; align-items: baseline !important; gap: 0 12px !important; min-width: 0 !important; }
+#schedulePage .now-next .nn-name { display: block !important; flex: 0 1 auto !important; max-width: 100% !important; font-size: 16px !important; line-height: 24px !important; font-weight: 600 !important; overflow: visible !important; -webkit-line-clamp: none !important; overflow-wrap: anywhere !important; word-break: keep-all !important; }
+#schedulePage .now-next .nn-meta { flex: 0 0 auto !important; font-size: 14px !important; line-height: 24px !important; text-align: left !important; }
+/* 예산 — 라벨과 금액을 같은 기준선에 */
+#schedulePage .band-trip .budget-panel { margin-top: 14px !important; padding: 12px 17px 8px !important; }
+#schedulePage .band-trip .budget-panel:not(.is-over) { padding-bottom: 12px !important; }
+#schedulePage .money-rows--panel .money-row { display: flex !important; align-items: baseline !important; justify-content: space-between !important; gap: 12px !important; padding: 2px 0 !important; }
+#schedulePage .money-rows--panel .money-row dt { flex: 1 1 auto !important; min-width: 0 !important; font-size: 14px !important; line-height: 24px !important; }
+#schedulePage .money-rows--panel .money-row dt .money-note { font-size: 13px !important; line-height: 18px !important; }
+#schedulePage .money-rows--panel .money-row dd { flex: none !important; line-height: 24px !important; white-space: nowrap !important; text-align: right !important; }
+#schedulePage .band-trip .money-row--over, #schedulePage .band-trip .money-row--under { min-height: 40px !important; align-items: center !important; }
+#schedulePage .band-trip .money-row--over dd, #schedulePage .band-trip .money-row--under dd { font-size: 25px !important; line-height: 36px !important; }
+#schedulePage .alt-summary { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 0 12px !important; margin-top: 6px !important; padding: 2px 0 0 !important; min-height: 46px !important; }
+#schedulePage .alt-summary-text { flex: 1 1 170px !important; min-width: 0 !important; padding: 4px 0 !important; row-gap: 0 !important; }
+#schedulePage .alt-summary .budget-alts-more { flex: none !important; min-height: 44px !important; padding: 0 !important; }
+@media (min-width: 768px) { #schedulePage .money-rows--panel .money-row { flex-direction: column !important; align-items: flex-start !important; justify-content: flex-start !important; gap: 0 !important; } #schedulePage .band-trip .money-row--over, #schedulePage .band-trip .money-row--under { align-items: flex-start !important; } #schedulePage .money-rows--panel .money-row dd { text-align: left !important; } }
+/* 날짜 탭 · 선택일 줄 · 도구 줄 */
+#schedulePage .day-row { margin: var(--day-top) 0 0 !important; }
+#schedulePage .day-chip { min-width: 78px !important; min-height: 56px !important; padding: 0 14px !important; display: inline-flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 1px !important; border: 0 !important; }
+#schedulePage .day-chip .day-chip-date { font-size: 16px !important; line-height: 21px !important; }
+#schedulePage .day-chip.is-active .day-chip-date { font-weight: 700 !important; }
+#schedulePage .day-chip .day-chip-label { font-size: 13px !important; line-height: 17px !important; }
+#schedulePage .day-sub { margin: 10px 0 0 !important; gap: 0 12px !important; }
+#schedulePage .day-sub-cost { font-size: 14px !important; line-height: 20px !important; }
+#schedulePage .checks-btn { display: inline-flex !important; align-items: center !important; gap: 6px !important; padding: 0 !important; margin: 0 !important; min-width: 0 !important; }
+#schedulePage .checks-btn .cb-ico { display: none !important; }
+#schedulePage .checks-btn .cb-text { flex: none !important; }
+#schedulePage .schedule-toolbar { margin: 0 !important; min-height: 44px !important; align-items: center !important; }
+#schedulePage .view-toggle { height: 40px !important; }
+#schedulePage .view-toggle button { min-width: 64px !important; line-height: 36px !important; }
+#schedulePage .btn-edit { min-height: 44px !important; height: 44px !important; line-height: 44px !important; }
+#schedulePage .timeline { margin-top: 14px !important; }
+.timeline .schedule-card { grid-template-columns: 56px 22px minmax(0, 1fr) !important; }
+.timeline .schedule-card::before { left: 60px !important; }
+.timeline .schedule-card::after { left: 57px !important; }
+.timeline > .schedule-card:first-of-type::after { left: 56px !important; }
+.timeline .tl-move { padding-left: 78px !important; }
+.timeline .tl-move::before { left: 60px !important; }
+.timeline .schedule-card .schedule-place-name { overflow-wrap: anywhere !important; word-break: keep-all !important; }
+.timeline .visit-inline { min-height: 36px !important; height: 36px !important; margin: 0 !important; padding: 0 !important; background: none !important; color: var(--p-link) !important; font-size: 14px !important; font-weight: 600 !important; }
+.timeline .visit-inline.is-on { background: none !important; color: var(--r-ok) !important; }
+
+/* ---- 마이 · 목록 행 ---- */
+#myPage .profile-card { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 10px 12px !important; margin: 16px 0 0 !important; padding: 14px 16px !important; }
+#myPage .profile-avatar { flex: none !important; width: 44px !important; height: 44px !important; }
+#myPage .profile-info { flex: 1 1 168px !important; min-width: 0 !important; }
+#myPage .profile-name { line-height: 22px !important; }
+#myPage .profile-email { margin-top: 2px !important; line-height: 19px !important; }
+#myPage #profileAuthBtn { flex: 0 0 auto !important; min-height: var(--b-sm) !important; padding: 0 18px !important; width: auto !important; }
+#myPage .band-my + .my-group { margin-top: var(--day-top) !important; }
+#myPage .my-group { margin-top: 28px !important; }
+#myPage .my-group-h { margin: 0 0 10px !important; font-size: 18px !important; line-height: 24px !important; }
+.setting-row { position: relative !important; flex-wrap: wrap !important; gap: 0 12px !important; min-height: 56px !important; padding: 8px 22px 8px 0 !important; align-items: center !important; align-content: center !important; }
+#myPage .my-group .setting-row, #settingsSheet .setting-row:not(.setting-row--block), #schedulePage .booking-cta #openBookingBtn { padding: 8px 22px 8px 0 !important; }
+#settingsSheet .setting-row--block { padding: 16px 0 !important; }
+.setting-row .sr-label { flex: 0 1 auto !important; max-width: calc(100% - 36px) !important; line-height: 22px !important; overflow-wrap: anywhere !important; }
+.setting-row .setting-meta { flex: 1 0 auto !important; max-width: 100% !important; line-height: 20px !important; text-align: right !important; }
+.setting-row .setting-arrow { position: absolute !important; right: 0 !important; top: 50% !important; transform: translateY(-50%) !important; width: 14px !important; margin: 0 !important; text-align: right !important; line-height: 1 !important; }
+#schedulePage .tools-section { margin-top: 32px !important; }
+@media (max-width: 359px) {
+  #myPage #profileAuthBtn { margin-left: 56px !important; }
+  .rc--glow .rc-info { flex-direction: column !important; gap: 0 !important; }
+  .rc--glow .rc-days::after { content: none !important; }
+}
+#schedulePage .tools-section .section-title { margin: 0 0 10px !important; font-size: 18px !important; line-height: 24px !important; }
+
+/* ---- 만들기 · 달력 · 시트 ---- */
+#createTripPage .step-pane > .step-h + * { margin-top: calc(var(--day-top) - 4px) !important; }
+#createTripPage .create-q { margin: 16px 0 0 !important; }
+#createTripPage .step-subh, #createTripPage .form-section-title { margin: 28px 0 12px !important; }
+#createTripPage .step-pane > .step-h + .step-subh { margin-top: 14px !important; }
+#createTripPage .form-row { margin: 0 0 20px !important; }
+#createTripPage .step-nav { gap: 8px !important; padding-top: 10px !important; align-items: stretch !important; }
+#createTripPage .step-nav .btn { min-height: var(--b-bar) !important; height: var(--b-bar) !important; }
+#createTripPage .trip-summary { margin-bottom: 0 !important; }
+#createTripPage details.budget-more { margin-top: 20px !important; }
+.cal-cell.in-range { background: #E4ECFA !important; color: #17305F !important; }
+.cal-cell.range-start, .cal-cell.range-end { background: var(--p-select) !important; color: var(--p-on-select) !important; }
+:root.theme-dark .cal-cell.in-range { background: #22304A !important; color: #DCE7FF !important; }
+#calendarSheet .cal-grid { padding-left: 14px !important; padding-right: 14px !important; }
+.bottom-sheet .sheet-head { min-height: 56px !important; }
+.bottom-sheet .sheet-foot { padding-top: 12px !important; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important; }
+#altSheet .sheet-body, #editSheet .sheet-body, #shareSheet .sheet-body { padding-bottom: 28px !important; }
+#bookingSheet .book-scroll { padding-bottom: 28px !important; }
+#bookingSheet .book-section > h4 { margin-top: 20px !important; }
+#schedulePage .alt-summary { row-gap: 0 !important; }
+@media (max-width: 1023px) { #roadmapDetailPage .roadmap-cta-row #shareRoadmapBtn { display: none !important; } }
+/* 큰 글자에서도 넘치지 않게 */
+#homePage .nh-hero { grid-template-columns: minmax(0, 1fr) !important; }
+#homePage .nh-copy { min-width: 0 !important; width: 100% !important; }
+.rc--glow .rc-info { align-items: flex-start !important; }
+.rc--glow .rg-name { font-size: clamp(18px, 17.5cqw, 46px) !important; }
+#myPage .profile-email { display: block !important; overflow: visible !important; -webkit-line-clamp: none !important; white-space: normal !important; text-overflow: clip !important; }
+#schedulePage .budget-alts-none { margin: 4px 0 0 !important; line-height: 19px !important; }
+#schedulePage .alt-summary .budget-alts-more { justify-content: flex-start !important; }
+.setting-row .setting-meta { flex: 1 0 auto !important; }
+/* 워드마크 — 둥근 선 글자(가로로 길어 폭으로 크기를 정한다) */
+.topbar-brand-mark { width: 192px !important; height: auto !important; aspect-ratio: 1000 / 123 !important; max-width: none !important; }
+@media (max-width: 359px) { .topbar-brand-mark { width: 176px !important; } }
+@media (min-width: 768px) { .topbar-brand-mark { width: 208px !important; } }
+/* 하단 바 — 렌즈가 튕기지 않고 천천히 미끄러져 멈춘다(글자·아이콘 색도 같은 흐름) */
+@media (max-width: 1023px) {
+  .bottom-tab-nav::before { transition: transform 720ms cubic-bezier(.45, 0, .15, 1), opacity 360ms ease !important; will-change: transform !important; }
+  .bottom-tab-nav .tab-button, .bottom-tab-nav .tab-label { transition: color 520ms ease !important; }
+  .bottom-tab-nav .tab-ico { transition: stroke-width 520ms ease, transform 240ms ease !important; }
+  .bottom-tab-nav .tab-button:active .tab-ico { transform: scale(.94) !important; }
+  .bottom-tab-nav { transition: background-color 520ms ease, border-color 520ms ease, box-shadow 420ms ease !important; }
+}
+@media (prefers-reduced-motion: reduce) { .bottom-tab-nav, .bottom-tab-nav::before, .bottom-tab-nav .tab-button, .bottom-tab-nav .tab-label, .bottom-tab-nav .tab-ico { transition: none !important; } }
+/* 만들기 — 이어쓰기 안내도 코스 안내와 같은 글줄로(밤하늘 위 글자) */
+#createTripPage .draft-banner { display: flex !important; align-items: center !important; gap: 12px !important; margin: 10px 0 0 !important; padding: 0 !important; background: none !important; border: 0 !important; border-radius: 0 !important; font-size: 13px !important; line-height: 1.5 !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#createTripPage .draft-banner[hidden] { display: none !important; }
+#createTripPage .draft-banner > span { flex: 1 1 auto !important; min-width: 0 !important; }
+#createTripPage .draft-banner .btn-text { flex: none !important; min-height: 44px !important; margin: -6px 0 !important; font-size: 13px !important; color: #BFD6FF !important; }
+/* 입력칸 지우기 — 바탕 없이 × 만(누름 영역 44) */
+.city-search-wrap .city-clear, .city-clear, .city-clear:hover, .city-clear:active { background: none !important; border: 0 !important; box-shadow: none !important; color: var(--p-ink2) !important; }
+.city-clear { width: 44px !important; height: 44px !important; min-width: 44px !important; right: 4px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; font-size: 22px !important; line-height: 1 !important; font-weight: 400 !important; border-radius: 12px !important; }
+.city-clear:hover { color: var(--p-ink) !important; }
+/* 별점 — 레몬색. 고르기 전에는 속이 빈 레몬 테두리, 고르면 레몬으로 채운다(밝은 바탕에서는 진한 테두리로 또렷하게) */
+.star-row .star { font-size: 34px !important; line-height: 44px !important; min-width: 44px !important; min-height: 44px !important; color: transparent !important; -webkit-text-stroke: 1.4px #D9AE00 !important; transition: color 140ms ease, transform 140ms ease !important; }
+.star-row .star.is-on, .star-row .star.hov { color: #FFE135 !important; -webkit-text-stroke: 1.2px #D9AE00 !important; }
+.star-row .star:active { transform: scale(.92) !important; }
+.rv-stars [role="img"] { color: #FFE135 !important; -webkit-text-stroke: .7px #D9AE00 !important; font-size: 16px !important; letter-spacing: 1px !important; }
+#reviewPreviewSection .rv-stars, #reviewPreviewSection .rv-stars [role="img"] { color: #FFE94A !important; -webkit-text-stroke: 0 !important; }
+#reviewPreviewSection .rv-stars .rv-sample { color: var(--n-ink2) !important; }
 }

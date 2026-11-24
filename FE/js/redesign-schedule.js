@@ -249,7 +249,7 @@ function _renderDayChips(g) {
       ariaLabel: `${idx + 1}일차 ${d.date}${g.hideCost ? '' : ' 예상 ' + _money(dayCost, g)}`,
       onclick: () => { activeDay = idx; focusedAi = null; renderSchedule(); },
     }, [
-      el('span', { class: 'day-chip-date' }, `${Number(d.date.slice(5, 7))}.${Number(d.date.slice(8, 10))} ${_dow(d.date)}`),
+      el('span', { class: 'day-chip-date' }, `${d.date.slice(5, 7)}/${d.date.slice(8, 10)} ${_dow(d.date)}`),
       el('span', { class: 'day-chip-label' }, `${idx + 1}일차`),
     ]);
     row.appendChild(chip);
@@ -260,7 +260,14 @@ function _renderDayChips(g) {
   const utc = utcLabel(utcOffsetMin(_tripTz(g), d?.date));
   if (line) line.textContent = d ? `${activeDay + 1}일차 · ${g.hideCost ? '비용 숨김' : '하루 약 ' + _shortMoney(_dayTotal(d, activeDay), g)}${utc ? ` · 현지 시각 ${utc}` : ''}` : '';
   // 긴 여행에서도 고른 날짜가 보이도록
-  requestAnimationFrame(() => row.querySelector('.day-chip.is-active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+  // 날짜 줄만 옆으로 움직인다 — 화면을 세로로 밀면 낮은 화면에서 제목이 가려진다
+  requestAnimationFrame(() => {
+    const on = row.querySelector('.day-chip.is-active');
+    if (!on) return;
+    const a = on.getBoundingClientRect(), b = row.getBoundingClientRect();
+    if (a.left < b.left + 16) row.scrollLeft += a.left - b.left - 16;
+    else if (a.right > b.right - 16) row.scrollLeft += a.right - b.right + 16;
+  });
 }
 
 /* ============ 일정 검증 ============
@@ -696,8 +703,11 @@ function _renderNowNext(g) {
   const next = items.find(x => (!cur || x.i > cur.i) && !x.a.visited && x.m > nowMin) || null;
   const row = (label, name, meta) => el('div', { class: 'nn-row' }, [
     el('span', { class: 'nn-label' }, label),
-    el('span', { class: 'nn-name', title: name }, name),
-    meta ? el('span', { class: 'nn-meta' }, meta) : null,
+    // 장소명과 시각 — 한 줄에 다 들어가지 않으면 시각이 장소명 열의 다음 줄로 내려간다
+    el('span', { class: 'nn-body' }, [
+      el('span', { class: 'nn-name', title: name }, name),
+      meta ? el('span', { class: 'nn-meta' }, meta) : null,
+    ].filter(Boolean)),
   ]);
   const rows = [];
   if (cur) rows.push(row('지금', cur.n, cur.a.visited ? '다녀옴' : cur.t));
@@ -1244,7 +1254,7 @@ function _fillDaySelect(di, enabled) {
   const row = $('#editDayRow');
   if (!sel) return;
   const g = appState.generated;
-  sel.replaceChildren(...g.days.map((d, i) => el('option', { value: String(i) }, `${i + 1}일차 · ${Number(d.date.slice(5, 7))}/${Number(d.date.slice(8, 10))}`)));
+  sel.replaceChildren(...g.days.map((d, i) => el('option', { value: String(i) }, `${i + 1}일차 · ${d.date.slice(5, 7)}/${d.date.slice(8, 10)}`)));
   sel.value = String(di);
   if (row) row.hidden = !enabled || g.days.length < 2;
 }
