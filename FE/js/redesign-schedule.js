@@ -69,6 +69,7 @@ export function initSchedule(state) {
   });
 
   $('#btnShare')?.addEventListener('click', _openShareSheet);
+  _bindMoreMenu();
   $('#shareClose')?.addEventListener('click', _closeSheet);
   $('#shareBackdrop')?.addEventListener('click', _closeSheet);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#shareSheet')?.hidden) _closeSheet(); });
@@ -564,7 +565,7 @@ function _renderTimeline(g) {
     details.push(el('button', { type: 'button', class: 'btn-text sc-map-link', 'aria-label': `${placeName} Google 지도에서 열기`, onclick: (e) => { e.stopPropagation(); _openMap(a); } }, '지도 열기 ↗'));
 
     const card = el('article', {
-      class: 'schedule-card' + (hasName ? '' : ' schedule-card--no-name') + (focusedAi === ai ? ' is-focused' : '') + (a.visited ? ' is-visited' : ''),
+      class: 'schedule-card' + (hasName ? '' : ' schedule-card--no-name') + (focusedAi === ai ? ' is-focused' : '') + (a.visited ? ' is-visited' : '') + (editMode ? ' is-editing' : ''),
       draggable: 'false',
       tabIndex: -1,
       dataset: { di: String(activeDay), ai: String(ai), placeId: n.placeId || n.id || '', movable: movable ? '1' : '0' },
@@ -575,6 +576,11 @@ function _renderTimeline(g) {
         el('span', { class: 'sc-num', 'aria-hidden': 'true' }, String(ai + 1)),
       ]),
       el('div', { class: 'schedule-card-main' }, [
+        editMode ? null : el('button', {
+          type: 'button', class: 'sc-more', 'aria-label': `${placeName} 더보기 — 편집·고정`, 'aria-expanded': 'false',
+          'aria-controls': `scAct${ai}`,
+          onclick: (e) => { e.stopPropagation(); _toggleCardActions(e.currentTarget.closest('.schedule-card'), e.currentTarget); },
+        }, [el('span', { class: 'dots', 'aria-hidden': 'true' })]),
         el('h3', { class: 'schedule-place-name', id: `scName${ai}` }, placeName),
         el('p', { class: 'schedule-card-meta-line' }, [
           n.category ? el('span', { class: 'schedule-category' }, n.category) : null,
@@ -591,7 +597,7 @@ function _renderTimeline(g) {
         flags.length ? el('ul', { class: 'sc-flags' }, flags.map(f => el('li', { class: 'sc-flag sc-flag--' + f.lvl }, f.text))) : null,
         el('div', { class: 'sc-where' }, details),
       ]),
-      el('div', { class: 'schedule-card-actions' }, [
+      el('div', { class: 'schedule-card-actions', id: `scAct${ai}` }, [
         el('button', {
           type: 'button', class: 'edit-button', 'aria-label': `${placeName} 편집`,
           onclick: (e) => { e.stopPropagation(); _openEdit(activeDay, ai); },
@@ -923,22 +929,36 @@ function _renderBudgetPanel(g) {
   alts.hidden = !list.length;
   alts.replaceChildren(...(list.length ? [
     el('p', { class: 'budget-alts-title' }, best === limit ? '예산에 맞추는 방법' : '추천 대안'),
-    _altCard(best, g),
+    _altCard(best, g, null, true),
     list.length > 1 ? el('button', { type: 'button', class: 'btn-text budget-alts-more', onclick: () => _openAltSheet(list, g, plans.length) }, `다른 대안 보기 (${list.length - 1})`) : null,
   ] : []));
 }
 
 /** 대안 하나 — 무엇이 바뀌는지, 새 총액, 절감액, 남은 초과액, ‘이 조합 적용’ */
-function _altCard(alt, g, onPick) {
+function _altCard(alt, g, onPick, compact = false) {
   const rows = alt.isLimitChange
     ? [['새 예산 한도', _shortMoney(alt.apply.budget * 10000, g)], ['예상 총액', _shortMoney(alt.total, g) + ' · 일정 그대로']]
     : [['새 총액', _shortMoney(alt.total, g)], ['절감액', alt.saving ? _shortMoney(alt.saving, g) : '—'],
        [alt.fits ? '예산' : '남은 초과액', alt.fits ? '✓ 예산 안' : _shortMoney(alt.over, g)]];
+  if (compact) {
+    // 한 줄 요약 + 적용(보조 버튼) — 첫 장소를 밀어내지 않도록 작게
+    const line = alt.isLimitChange
+      ? `예산 한도 ${_shortMoney(alt.apply.budget * 10000, g)} · 일정 그대로`
+      : [`새 총액 ${_shortMoney(alt.total, g)}`, alt.saving ? `${_shortMoney(alt.saving, g)} 절감` : '', alt.fits ? '예산 안' : `아직 ${_shortMoney(alt.over, g)} 초과`].filter(Boolean).join(' · ');
+    return el('div', { class: 'alt-card alt-card--compact' + (alt.fits ? ' is-fit' : '') }, [
+      el('div', { class: 'alt-card-text' }, [
+        el('p', { class: 'alt-card-title' }, alt.label),
+        el('p', { class: 'alt-card-line' }, line),
+      ]),
+      el('button', { type: 'button', class: 'btn btn-soft btn-sm alt-apply', onclick: () => _applyAlternative(alt) },
+        alt.isLimitChange ? '한도 바꾸기' : '이 조합 적용'),
+    ]);
+  }
   return el('div', { class: 'alt-card' + (alt.fits ? ' is-fit' : '') }, [
     el('p', { class: 'alt-card-title' }, alt.label),
     alt.detail ? el('p', { class: 'alt-card-detail' }, alt.detail) : null,
     el('dl', { class: 'alt-card-rows' }, rows.map(([k, v]) => el('div', { class: 'alt-row' + (k === '남은 초과액' ? ' is-over' : '') }, [el('dt', {}, k), el('dd', {}, v)]))),
-    el('button', { type: 'button', class: 'btn btn-primary btn-gradient alt-apply', onclick: () => { onPick?.(); _applyAlternative(alt); } },
+    el('button', { type: 'button', class: 'btn btn-primary alt-apply', onclick: () => { onPick?.(); _applyAlternative(alt); } },
       alt.isLimitChange ? '예산 한도 바꾸기' : '이 조합 적용'),
   ]);
 }
@@ -1571,6 +1591,38 @@ function _scheduleTitle(g) {
 function _payload(g) {
   const { savedScheduleId, ...data } = g;   // 저장 번호는 기기에만 둔다
   return data;
+}
+
+/** 일정 상단 ‘더보기’ — 다시 만들기처럼 자주 쓰지 않는 행동을 접어 둔다. */
+function _bindMoreMenu() {
+  const btn = $('#btnScheduleMore');
+  const menu = $('#scheduleMoreMenu');
+  if (!btn || !menu) return;
+  const close = (focusBtn) => {
+    if (menu.hidden) return;
+    menu.hidden = true; btn.setAttribute('aria-expanded', 'false');
+    if (focusBtn) btn.focus();
+  };
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = menu.hidden;
+    menu.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+    if (open) menu.querySelector('[role=menuitem]')?.focus();
+  });
+  menu.addEventListener('click', () => close(false));
+  document.addEventListener('click', (e) => { if (!e.target.closest?.('.more-wrap')) close(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(true); });
+}
+
+/** 장소 하나의 고정·다녀옴·편집 — 평소에는 ‘더보기’ 뒤에, 일정 편집 중에는 바로 보인다. */
+function _toggleCardActions(card, btn) {
+  const open = !card.classList.contains('is-actions-open');
+  document.querySelectorAll('#scheduleTimeline .schedule-card.is-actions-open').forEach(c => {
+    c.classList.remove('is-actions-open'); c.querySelector('.sc-more')?.setAttribute('aria-expanded', 'false');
+  });
+  card.classList.toggle('is-actions-open', open);
+  btn.setAttribute('aria-expanded', String(open));
+  if (open) card.querySelector('.schedule-card-actions button')?.focus();
 }
 
 function _paintSaveStatus() {
