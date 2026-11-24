@@ -32,6 +32,7 @@ function _loadResultModules() {
     ]).then(([map, tools, booking]) => {
       map.initMap(appState);
       tools.initTripTools(appState);
+      tools.initToolMenu();
       booking.initBooking(appState);
     }).catch((e) => { _resultModules = null; console.warn('[main] 결과 화면 모듈을 불러오지 못했어요', e?.message); });
   }

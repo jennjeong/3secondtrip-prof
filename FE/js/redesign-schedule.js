@@ -562,7 +562,7 @@ function _renderTimeline(g) {
     const flags = check.items[ai] || [];
     const details = [];
     if (n.address && n.address !== placeName) details.push(el('p', { class: 'sc-addr' }, n.address));
-    details.push(el('button', { type: 'button', class: 'btn-text sc-map-link', 'aria-label': `${placeName} Google 지도에서 열기`, onclick: (e) => { e.stopPropagation(); _openMap(a); } }, '지도 열기 ↗'));
+    const mapLink = el('button', { type: 'button', class: 'btn-text sc-map-link', 'aria-label': `${placeName} Google 지도에서 열기`, onclick: (e) => { e.stopPropagation(); _openMap(a); } }, '지도 열기 ↗');
 
     const card = el('article', {
       class: 'schedule-card' + (hasName ? '' : ' schedule-card--no-name') + (focusedAi === ai ? ' is-focused' : '') + (a.visited ? ' is-visited' : '') + (editMode ? ' is-editing' : ''),
@@ -582,7 +582,7 @@ function _renderTimeline(g) {
           onclick: (e) => { e.stopPropagation(); _toggleCardActions(e.currentTarget.closest('.schedule-card'), e.currentTarget); },
         }, [el('span', { class: 'dots', 'aria-hidden': 'true' })]),
         el('h3', { class: 'schedule-place-name', id: `scName${ai}` }, placeName),
-        el('p', { class: 'schedule-card-meta-line' }, [
+        el('div', { class: 'sc-line' }, [el('p', { class: 'schedule-card-meta-line' }, [
           n.category ? el('span', { class: 'schedule-category' }, n.category) : null,
           a.pinned ? el('span', { class: 'pin-badge' }, '고정') : null,
           a.visited ? el('span', { class: 'visited-badge' }, '다녀옴') : null,
@@ -593,7 +593,7 @@ function _renderTimeline(g) {
             el('span', { class: 'sr-only' }, '예상 비용 '), costText,
             costTag ? el('span', { class: 'schedule-price-tag' + (costTag === '실시간' ? ' is-live' : '') }, ' · ' + costTag) : null,
           ]) : null,
-        ].filter(Boolean)),
+        ].filter(Boolean)), mapLink]),
         n.memo ? el('p', { class: 'schedule-place-subinfo schedule-memo' }, '메모 · ' + n.memo) : null,
         _tripStarted(g) && !g.sharedView ? el('button', {
           type: 'button', class: 'visit-btn visit-inline' + (a.visited ? ' is-on' : ''), 'aria-pressed': String(!!a.visited),
@@ -601,7 +601,7 @@ function _renderTimeline(g) {
           onclick: (e) => { e.stopPropagation(); _toggleVisited(activeDay, ai); },
         }, a.visited ? '다녀옴' : '다녀옴 표시') : null,
         flags.length ? el('ul', { class: 'sc-flags' }, flags.map(f => el('li', { class: 'sc-flag sc-flag--' + f.lvl }, f.text))) : null,
-        el('div', { class: 'sc-where' }, details),
+        details.length ? el('div', { class: 'sc-where' }, details) : null,
       ]),
       el('div', { class: 'schedule-card-actions', id: `scAct${ai}` }, [
         el('button', {
@@ -940,9 +940,10 @@ function _renderBudgetPanel(g) {
   alts.replaceChildren(...(list.length ? [
     el('div', { class: 'alt-summary' }, [
       el('p', { class: 'alt-summary-text' }, [
-        el('span', { class: 'alt-summary-k' }, best === limit ? '맞추는 방법' : '추천'),
-        el('span', { class: 'alt-summary-v' }, best.isLimitChange ? `예산 한도 ${_shortMoney(best.apply.budget * 10000, g)}` : `${best.label} → ${_shortMoney(best.total, g)}`),
-      ]),
+        el('span', { class: 'alt-summary-k' }, best === limit ? '맞추는 방법' : '추천 대안'),
+        el('span', { class: 'alt-summary-v' }, best.isLimitChange ? `예산 한도 ${_shortMoney(best.apply.budget * 10000, g)}` : best.label),
+        best.isLimitChange ? null : el('span', { class: 'alt-summary-t' }, `예상 ${_shortMoney(best.total, g)}`),
+      ].filter(Boolean)),
       el('button', { type: 'button', class: 'btn-text budget-alts-more', onclick: () => _openAltSheet(list, g, plans.length, best) },
         list.length > 1 ? `대안 ${list.length}개 보기` : '대안 보기'),
     ]),
@@ -999,16 +1000,17 @@ function _openAltSheet(list, g, planCount, preferred) {
     }, [
       el('span', { class: 'alt-opt-mark', 'aria-hidden': 'true' }),
       el('span', { class: 'alt-opt-main' }, [
-        el('span', { class: 'alt-opt-total' }, a.isLimitChange ? `한도 ${_shortMoney(a.apply.budget * 10000, g)}` : _shortMoney(a.total, g)),
         el('span', { class: 'alt-opt-label' }, a.label),
+        a.detail && !a.isLimitChange ? el('span', { class: 'alt-opt-detail' }, a.detail) : null,
         el('span', { class: 'alt-opt-sub' + (a.fits ? '' : ' is-over') }, sub),
-      ]),
+      ].filter(Boolean)),
+      el('span', { class: 'alt-opt-total' }, a.isLimitChange ? `한도 ${_shortMoney(a.apply.budget * 10000, g)}` : _shortMoney(a.total, g)),
     ]);
   };
   const body = sh.querySelector('.sheet-body');
   const paint = () => {
     body.replaceChildren(
-      el('p', { class: 'alt-sheet-lead' }, `지금 예산 ${_shortMoney(budget, g)} · 하나를 고르고 아래에서 적용하면 일정이 다시 만들어져요.`),
+      el('p', { class: 'alt-sheet-lead' }, `예산 ${_shortMoney(budget, g)}에 맞추는 방법이에요. 적용하면 일정이 다시 만들어져요.`),
       el('div', { class: 'alt-opts', role: 'radiogroup', 'aria-label': '예산 대안' }, ordered.map(row)),
     );
     paintFoot();

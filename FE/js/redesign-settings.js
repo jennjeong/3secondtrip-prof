@@ -33,7 +33,7 @@ export function applyTheme(mode = _theme()) {
   r.classList.toggle('theme-dark', mode === 'dark');     // 항상 어둡게
   const dark = mode === 'dark' || (mode === 'system' && _sysDark());
   r.style.colorScheme = dark ? 'dark' : 'light';
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#111418' : '#F4F5F7');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#05070D');
   const note = $('#themeNote');
   if (note) note.textContent = mode === 'system'
     ? `기기 설정을 따라요 · 지금은 ${_sysDark() ? '다크' : '라이트'}`

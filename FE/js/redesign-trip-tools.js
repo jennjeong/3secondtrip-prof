@@ -83,18 +83,18 @@ export function render() {
 
   wrap.innerHTML = '';
   wrap.append(
-    _section('날씨', el('div', { id: 'toolWeather', class: 'tool-weather' }, '불러오는 중…')),
-    _section('환율', el('p', { id: 'toolRate', class: 'tool-note' }, '불러오는 중…')),
-    _section('경비 기록', _expenseEl(g)),
-    _section('준비물', _checklistEl(g)),
-    _section('내보내기', _exportEl(g)),
+    _section('weather', '날씨', el('div', { id: 'toolWeather', class: 'tool-weather' }, '불러오는 중…')),
+    _section('rate', '환율', el('p', { id: 'toolRate', class: 'tool-note' }, '불러오는 중…')),
+    _section('expense', '경비 기록', _expenseEl(g)),
+    _section('checklist', '준비물', _checklistEl(g)),
+    _section('export', '내보내기', _exportEl(g)),
   );
   _loadWeather(g, key);
   _loadRate(g, key);
 }
 
-function _section(title, body) {
-  return el('div', { class: 'tool-card' }, [el('h3', { class: 'tool-title' }, title), body]);
+function _section(key, title, body) {
+  return el('section', { class: 'tool-card', dataset: { tool: key }, 'aria-label': title }, [el('h3', { class: 'tool-title' }, title), body]);
 }
 
 /* ============ 날씨 ============ */
@@ -306,7 +306,7 @@ function _expenseEl(g) {
   };
 
   const add = el('button', {
-    type: 'button', class: 'btn btn-soft',
+    type: 'button', class: 'btn btn-primary',
     onclick: () => {
       const value = Math.round(Number(amount.value));
       if (!name.value.trim() || !Number.isFinite(value) || value <= 0 || value > 1e10) {
@@ -581,4 +581,105 @@ function _printAll(g) {
   const done = () => { sheet.remove(); window.removeEventListener('afterprint', done); };
   window.addEventListener('afterprint', done);
   window.print();
+}
+
+/* ============ 여행 도구 목록 · 도구 창 ============
+ * 일정 아래에는 도구 이름과 지금 상태만 한 줄씩 보이고, 누르면 창에서 그 도구 하나를 쓴다.
+ * 도구 본문(#costSummary · #tripTools · #collabPanel)은 창 안에 있고, 고른 것에만 is-current 를 붙인다. */
+const TOOL_TITLE = { cost: '비용 자세히', weather: '날씨', rate: '환율', expense: '경비 기록', checklist: '준비물', export: '내보내기', collab: '함께 편집' };
+let toolOpen = '';
+
+function _toolNode(key) {
+  if (key === 'cost') return $('#costSummary');
+  if (key === 'collab') return $('#collabPanel');
+  return document.querySelector(`#tripTools .tool-card[data-tool="${key}"]`);
+}
+function _toolMeta(key) {
+  const g = appState?.generated;
+  if (!g) return '';
+  if (key === 'cost') return $('#costRows .money-row--total dd')?.textContent || '';
+  if (key === 'weather') {
+    const n = document.querySelectorAll('#toolWeather .tool-day').length;
+    return n ? `${n}일 예보` : /출발/.test($('#toolWeather')?.textContent || '') ? '출발 전에 볼 수 있어요' : '';
+  }
+  if (key === 'rate') return ($('#toolRate')?.textContent || '').match(/^[\d,]+ [A-Z]{3} ≈ [\d,]+원/)?.[0] || '';
+  if (key === 'expense') {
+    const sum = _tripData(g).expenses.reduce((a, x) => a + (Number(x.amount) || 0), 0);
+    return sum ? formatCurrency(sum, 'KRW') + ' 씀' : '기록 없음';
+  }
+  if (key === 'checklist') {
+    const all = document.querySelectorAll('#toolChecklist input').length;
+    const on = document.querySelectorAll('#toolChecklist input:checked').length;
+    return all ? `${on}/${all}개 챙김` : '';
+  }
+  if (key === 'export') return '캘린더, PDF';
+  if (key === 'collab') return $('#collabStart') ? '링크로 같이 고치기' : '편집 중';
+  return '';
+}
+
+function _paintToolMenu() {
+  const box = $('#toolMenuRows');
+  if (!box) return;
+  const keys = Object.keys(TOOL_TITLE).filter(k => { const n = _toolNode(k); return n && !n.hidden; });
+  // 줄이 그대로면 글자만 바꾼다(누르는 중에 줄이 다시 만들어지지 않게)
+  if (box.dataset.keys !== keys.join()) {
+    box.dataset.keys = keys.join();
+    box.replaceChildren(...keys.map(k => el('button', {
+      type: 'button', class: 'setting-row', dataset: { toolOpen: k }, 'aria-haspopup': 'dialog', onclick: () => openTool(k),
+    }, [
+      el('span', { class: 'sr-label' }, TOOL_TITLE[k]),
+      el('span', { class: 'setting-meta' }, _toolMeta(k)),
+      el('span', { class: 'setting-arrow', 'aria-hidden': 'true' }, '›'),
+    ])));
+  } else {
+    keys.forEach(k => {
+      const m = box.querySelector(`[data-tool-open="${k}"] .setting-meta`);
+      const t = _toolMeta(k);
+      if (m && m.textContent !== t) m.textContent = t;
+    });
+  }
+  if (toolOpen) _markCurrent();
+}
+function _markCurrent() {
+  const cur = _toolNode(toolOpen);
+  document.querySelectorAll('#toolSheet .is-current').forEach(n => { if (n !== cur) n.classList.remove('is-current'); });
+  cur?.classList.add('is-current');
+}
+
+export function openTool(key) {
+  const bd = $('#toolBackdrop'), sh = $('#toolSheet');
+  const node = _toolNode(key);
+  if (!bd || !sh || !node) return;
+  toolOpen = key;
+  _markCurrent();
+  const t = $('#toolSheetTitle'); if (t) t.textContent = TOOL_TITLE[key];
+  bd.hidden = false; sh.hidden = false;
+  const body = sh.querySelector('.sheet-body'); if (body) body.scrollTop = 0;
+  requestAnimationFrame(() => { bd.classList.add('is-visible'); sh.classList.add('is-visible'); });
+}
+export function closeTool() {
+  const bd = $('#toolBackdrop'), sh = $('#toolSheet');
+  if (!bd || !sh || sh.hidden) return;
+  bd.classList.remove('is-visible'); sh.classList.remove('is-visible');
+  toolOpen = '';
+  _paintToolMenu();
+  setTimeout(() => { bd.hidden = true; sh.hidden = true; }, 240);
+}
+
+export function initToolMenu() {
+  const sh = $('#toolSheet');
+  if (!sh || sh.dataset.bound) return;
+  sh.dataset.bound = '1';
+  $('#toolSheetClose')?.addEventListener('click', closeTool);
+  $('#toolBackdrop')?.addEventListener('click', closeTool);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sh.hidden) closeTool(); });
+  document.addEventListener('redesign:tool-open', (e) => openTool(e.detail));
+  window.addEventListener('hashchange', closeTool);      // 다른 화면으로 가면 창도 닫는다
+  let queued = false;
+  const later = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; _paintToolMenu(); }); };
+  const body = sh.querySelector('.sheet-body');
+  new MutationObserver(later).observe(body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
+  body.addEventListener('change', later);
+  document.addEventListener('redesign:schedule-changed', later);
+  later();
 }

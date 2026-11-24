@@ -51,8 +51,9 @@ function _themeIsDark() {
 function _syncStatusBar() {
   const sb = P().StatusBar;
   if (!sb) return;
-  sb.setStyle({ style: _themeIsDark() ? 'DARK' : 'LIGHT' }).catch(() => {});
-  if (PLATFORM === 'android') sb.setBackgroundColor({ color: _themeIsDark() ? '#111418' : '#F7F8FA' }).catch(() => {});
+  // 모든 화면의 맨 위는 밤하늘 — 상태 막대 글자는 늘 밝게. 창(설정·도구)도 머리가 어둡다.
+  sb.setStyle({ style: 'DARK' }).catch(() => {});
+  if (PLATFORM === 'android') sb.setBackgroundColor({ color: '#05070D' }).catch(() => {});
 }
 
 export function initNative({ goBack } = {}) {
@@ -61,7 +62,7 @@ export function initNative({ goBack } = {}) {
   root.classList.add('is-app', `is-${PLATFORM}`);
 
   _syncStatusBar();
-  new MutationObserver(_syncStatusBar).observe(root, { attributes: true, attributeFilter: ['class'] });
+  new MutationObserver(_syncStatusBar).observe(root, { attributes: true, attributeFilter: ['class', 'data-page'] });
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', _syncStatusBar);
 
   // Android 뒤로 가기

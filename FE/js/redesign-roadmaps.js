@@ -129,18 +129,12 @@ export function initRoadmaps(state) {
     renderExplore();
   });
 
-  // 홈 ‘전체 스타일’ — 탐색으로 가서 스타일 칩을 펼쳐 둔다.
-  $('#homeAllStyles')?.addEventListener('click', () => {
-    explore.concept = 'all'; explore.query = ''; _filtersOpen = true;
-    _goExplore();
-    requestAnimationFrame(() => document.querySelector('#exploreFilters [data-filter-concept]')?.focus());
-  });
   // 여행 스타일 칩은 검색칸을 눌렀을 때(또는 스타일·검색어가 걸려 있을 때)만 보인다.
   $('#exploreSearch')?.addEventListener('focus', () => { _filtersOpen = true; _paintFilterVis(); });
   // 누름이 끝난 뒤(click)에 접는다 — 누르는 순간 접으면 아래 카드가 밀려 탭이 빗나간다.
   document.addEventListener('click', (e) => {
     if (!_filtersOpen) return;
-    if (e.target.closest?.('#explorePage .search-card, #exploreFilters, #homeAllStyles')) return;
+    if (e.target.closest?.('#explorePage .search-card, #exploreFilters')) return;
     _filtersOpen = false; _paintFilterVis();
   });
 
@@ -345,35 +339,114 @@ function _daysLabel(d) {
   return d > 1 ? `${d - 1}박 ${d}일` : '당일치기';
 }
 
+/* 코스 한 건의 글자 조각 — 홈 목록·추천·노선도와 탐색 목록이 같은 조각을 쓴다. */
+const _place = (m) => [m.country, m.city].filter(Boolean).join(' · ');
+const _styleEl = (m) => el('span', { class: 'rc-style' }, [m.concept, m.isSample ? el('span', { class: 'rc-sample-tag' }, '예시') : null].filter(Boolean));
+const _goEl = () => el('span', { class: 'rc-go', 'aria-hidden': 'true' });
+
+/* 도시 이름을 그 나라 글자로 — 홈 카드의 그림 자리에 쓴다. 모르는 도시는 한글 그대로. */
+const LOCAL_NAME = { 도쿄: '東京', 오사카: '大阪', 교토: '京都', 후쿠오카: '福岡', 삿포로: '札幌', 방콕: 'กรุงเทพ', 파리: 'Paris', 런던: 'London', 로마: 'Roma', 바르셀로나: 'Barcelona', 뉴욕: 'New York', 시드니: 'Sydney', 타이베이: '臺北', 홍콩: '香港', 상하이: '上海', 하노이: 'Hà Nội', 다낭: 'Đà Nẵng', 싱가포르: 'Singapore', 프라하: 'Praha' };
+const CITY_HUE = { 도쿄: 215, 뉴욕: 28, 방콕: 330, 서울: 190, 시드니: 170, 오사카: 10, 제주: 145, 파리: 255 };
+const _hue = (city) => CITY_HUE[city] ?? [...String(city)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 360, 7);
+
+/** 코스 카드 — 기본은 목록 행(탐색), 'glow'는 홈의 빛 카드. */
 function _cardEl(m, opts = {}) {
-  // 사진(없으면 같은 크기의 브랜드 배경) 영역은 비율을 고정하고, 글은 아래 본문 영역에 둔다.
-  const media = el('div', { class: 'rc-media', style: { background: m.gradient }, 'aria-hidden': 'true' }, [
-    el('div', { class: 'rc-top' }, []),
+  const glow = opts.variant === 'glow';
+  // 예시 코스의 좋아요 수는 실제 기록이 아니라 보여 주지 않는다(서버에 올라온 코스만 실제 수).
+  const likes = m.isSample ? null : el('span', { class: 'rc-likes' }, [
+    el('span', { 'aria-hidden': 'true' }, '♥ '), el('span', { class: 'sr-only' }, '좋아요 '), (Number(m.likes) || 0).toLocaleString('ko-KR'),
   ]);
-  const card = el('button', {
-    type: 'button',
-    class: 'roadmap-card',
-    dataset: { roadmapId: m.id },
-  }, [
-    media,
-    el('div', { class: 'rc-bottom' }, [
-      el('div', { class: 'rc-place' }, [m.country, m.city].filter(Boolean).join(' · ')),
-      el('div', { class: 'rc-title' }, m.title),
-      el('div', { class: 'rc-info' }, [el('span', { class: 'nowrap' }, _daysLabel(m.days)), ' · ', el('span', { class: 'nowrap' }, m.concept),
-        m.isSample ? el('span', { class: 'rc-sample-tag', 'aria-hidden': 'true' }, '예시') : null]),
-      opts.reason ? el('div', { class: 'rc-reason-line' }, `추천 이유 · ${opts.reason}`) : null,
-      // 예시 코스의 좋아요 수는 실제 기록이 아니라 보여 주지 않는다(서버에 올라온 코스만 실제 수).
-      m.isSample ? null : el('div', { class: 'rc-likes' }, [
-        el('span', { 'aria-hidden': 'true' }, '♥ '),
-        el('span', { class: 'sr-only' }, '좋아요 '),
-        (Number(m.likes) || 0).toLocaleString('ko-KR'),
+  const card = el('button', { type: 'button', class: 'roadmap-card ' + (glow ? 'rc--glow' : 'rc--row'), dataset: { roadmapId: m.id } });
+  const info = el('span', { class: 'rc-info' }, [el('span', { class: 'rc-days' }, _daysLabel(m.days)), _styleEl(m), likes].filter(Boolean));
+  const main = el('span', { class: 'rc-main' }, [
+    el('span', { class: 'rc-place' }, _place(m)), el('span', { class: 'rc-title' }, m.title),
+    opts.reason ? el('span', { class: 'rc-reason-line' }, opts.reason) : null,
+  ].filter(Boolean));
+  if (!glow) { card.append(main, info, _goEl()); return card; }
+  card.style.setProperty('--h', String(_hue(m.city)));
+  card.append(
+    el('span', { class: 'rg-art', 'aria-hidden': 'true' }, [el('span', { class: 'rg-name' }, LOCAL_NAME[m.city] || m.city || '')]),
+    el('span', { class: 'rg-cap' }, [main, info]),
+  );
+  return card;
+}
+
+/* ============ 홈 일정 창 ============
+ * 공개 코스 한 건의 실제 날짜별 일정. 날짜 탭을 누르면 그날 들르는 곳이 시각과 함께 나온다.
+ * 일정 데이터(m.plan)에 있는 것만 쓴다 — 없는 장소·시간·비용은 만들지 않는다. */
+let _winKey = '';
+
+function _routeCourse(sorted) {
+  const has = (m) => m.plan?.some(d => d?.length);
+  return sorted.find(m => has(m) && m.plan.length === 3) || sorted.find(has) || sorted[0] || null;
+}
+
+function _renderWindow(m) {
+  const box = document.getElementById('homeFeature');
+  if (!box) return;
+  box.hidden = !m;
+  if (!m) { box.replaceChildren(); _winKey = ''; return; }
+  const plan = (m.plan || []).filter(d => d?.length);
+  const key = JSON.stringify([m.id, m.title, m.days, m.concept, plan]);
+  if (key === _winKey) return;              // 같은 코스면 다시 그리지 않는다(고른 날짜가 풀리지 않게)
+  _winKey = key;
+
+  const list = el('ol', { class: 'hw-stops' });
+  const panel = el('div', { class: 'hw-panel', id: 'hwPanel', role: plan.length ? 'tabpanel' : null, tabIndex: plan.length ? 0 : null });
+  const tabs = plan.map((_, i) => el('button', {
+    type: 'button', class: 'hw-tab', role: 'tab', id: `hwTab${i}`, 'aria-controls': 'hwPanel',
+    onclick: () => pick(i),
+    onkeydown: (e) => {
+      const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+      if (!d) return;
+      e.preventDefault(); const n = (i + d + plan.length) % plan.length; pick(n); tabs[n].focus();
+    },
+  }, `${i + 1}일차`));
+  function pick(i) {
+    tabs.forEach((t, k) => { t.setAttribute('aria-selected', String(k === i)); t.tabIndex = k === i ? 0 : -1; });
+    panel.setAttribute('aria-labelledby', `hwTab${i}`);
+    const day = plan[i];
+    const fresh = el('ol', { class: 'hw-stops' }, day.map((x, j) => el('li', { class: 'hw-stop' }, [
+      el('span', { class: 'hw-time' }, x.time || ''), el('span', { class: 'hw-name' }, x.name),
+      x.move && j < day.length - 1 ? el('span', { class: 'hw-move' }, `다음까지 ${x.move}`) : null,
+    ].filter(Boolean))));
+    panel.replaceChildren(fresh);
+  }
+  if (plan.length) pick(0);
+  else { panel.removeAttribute('role'); panel.removeAttribute('tabindex'); panel.append(el('p', { class: 'hw-none' }, m.tagline || '날짜별 장소는 아직 공개되지 않았어요.')); }
+  void list;
+
+  box.replaceChildren(
+    el('h2', { class: 'section-title', id: 'homeFeatureH' }, '일정은 이렇게 나와요'),
+    el('div', { class: 'hw' }, [
+      ...(plan.length ? [el('div', { class: 'hw-tabs', role: 'tablist', 'aria-label': `${m.title} 날짜` }, tabs)] : []),
+      el('div', { class: 'hw-main' }, [
+        el('p', { class: 'hw-place' }, _place(m)),
+        el('h3', { class: 'hw-title' }, m.title),
+        el('p', { class: 'hw-meta' }, [_daysLabel(m.days), m.concept, m.isSample ? '예시' : ''].filter(Boolean).join(' · ')),
+        panel,
+        el('button', { type: 'button', class: 'btn hw-go', dataset: { roadmapId: m.id }, 'aria-label': `${m.title} 코스 보기` }, '코스 보기'),
       ]),
     ]),
-  ]);
-  _attachLandmarkImage(media, m.city, m.gradient);
-  // 화면 낭독기에는 예시 여부·추천 이유도 읽어 준다(사진 영역은 장식이라 숨김).
-  if (m.isSample || opts.reason) card.appendChild(el('span', { class: 'sr-only' }, [m.isSample ? '예시 코스' : '', opts.reason ? '추천 이유 ' + opts.reason : ''].filter(Boolean).join(' · ')));
-  return card;
+  );
+  box.classList.toggle('is-plain', !plan.length);
+}
+
+/* 첫 화면 지구본 — 코스가 있는 도시로 항로를 잇고, 도시를 누르면 그 도시 검색으로 */
+let _globe = null;
+function _renderGlobe() {
+  const cv = document.getElementById('homeGlobe');
+  if (!cv) return;
+  const cities = [...new Set(roadmaps.map(m => m.city).filter(Boolean))];
+  if (_globe) { _globe.setCities(cities); return; }
+  if (_globe === false) return;
+  _globe = false;
+  import('./redesign-globe.js').then(({ initGlobe }) => {
+    _globe = initGlobe(cv, { cities, onCity: (city) => {
+      if (!roadmaps.some(m => m.city === city)) return;
+      explore.query = city; explore.concept = 'all'; _goExplore();
+    } }) || false;
+  }).catch((e) => console.warn('[home] 지구본을 그리지 못했어요', e?.message));
 }
 
 /** 이전에 만든 여행에서 고른 조건(스타일·나라·기간). 없으면 null. */
@@ -396,28 +469,35 @@ function _reasonFor(m, pref) {
 
 export function renderHomeRoadmaps() {
   const sorted = [...roadmaps].sort(_byPopular);
-  const merge = sorted.length <= 6;            // 코스가 적으면 인기·추천을 한 섹션으로
-  const popular = merge ? sorted : sorted.slice(0, 4);
+  // 일정 창에 나온 코스는 아래 카드에서 되풀이하지 않는다.
+  const route = _routeCourse(sorted);
+  _renderWindow(route);
+  _renderGlobe();
+  const others = sorted.filter(m => m !== route);
+  const merge = others.length <= 5;            // 코스가 적으면 인기·추천을 한 섹션으로
+  const popular = merge ? others : others.slice(0, 4);
+  const popSec = document.getElementById('popularSection');
+  if (popSec) popSec.hidden = !popular.length;
   const grid = document.getElementById('popularRoadmaps');
-  if (grid) grid.replaceChildren(...popular.map(m => _cardEl(m)));
+  if (grid) grid.replaceChildren(...popular.map(m => _cardEl(m, { variant: 'glow' })));
   const popH = document.getElementById('popularH');
   if (popH) popH.textContent = merge ? '여행 코스' : '인기 여행 코스';
 
   // 추천 — 인기 섹션에 나온 코스는 빼고, 이전에 고른 조건과 맞는 코스를 먼저 보여 준다.
   const recoSec = document.getElementById('recoSection');
   const list = document.getElementById('recoRoadmaps');
-  const rest = sorted.slice(popular.length);
+  const rest = others.slice(popular.length);
   if (recoSec) recoSec.hidden = merge || !rest.length;
   if (list && !merge) {
     const pref = _preference();
     const scored = rest.map(m => ({ m, reason: _reasonFor(m, pref) }))
       .sort((a, b) => (b.reason ? 1 : 0) - (a.reason ? 1 : 0));
-    list.replaceChildren(...scored.slice(0, 6).map(({ m, reason }) => _cardEl(m, { reason })));
+    list.replaceChildren(...scored.slice(0, 6).map(({ m, reason }) => _cardEl(m, { reason, variant: 'glow' })));
     const sub = document.getElementById('recoSub');
     if (sub) {
       const hit = scored.some(x => x.reason);
       sub.textContent = hit ? '이전에 고른 여행 스타일·나라·기간과 맞는 코스를 먼저 보여 드려요'
-        : '여러 도시와 기간의 코스를 골랐어요. 여행을 만들면 비슷한 코스를 먼저 추천해요';
+        : '여행을 만들면 비슷한 코스를 먼저 보여 드려요';
     }
   }
   _renderCityMarquee();
@@ -463,7 +543,7 @@ export function renderExplore() {
   const count = document.getElementById('exploreCount');
   if (!grid) return;
   const items = _filterAndSort(roadmaps);
-  grid.replaceChildren(...items.map(m => _cardEl(m)));
+  grid.replaceChildren(...items.map(m => _cardEl(m, { variant: 'glow' })));
   if (empty) empty.hidden = items.length > 0;
   if (count) {
     const parts = [];
@@ -530,7 +610,7 @@ async function _openDetail(id, city) {
   if (!m) {
     body?.replaceChildren(el('p', { class: 'rd-loading', role: 'status' }, '코스를 불러오는 중이에요…'));
     $('#roadmapCover')?.replaceChildren();
-    $('#roadmapMeta')?.replaceChildren();
+    $('#roadmapMeta')?.replaceChildren(); $('#roadmapCost')?.replaceChildren();
     _toggleDetailActions(false);
     await loaded;
     m = roadmaps.find(r => r.id === String(id));
@@ -560,7 +640,7 @@ function _toggleDetailActions(on) {
 function _renderMissing(opts = {}) {
   window.__redesign && (window.__redesign.__currentRoadmap = null);
   $('#roadmapCover')?.replaceChildren();
-  $('#roadmapMeta')?.replaceChildren();
+  $('#roadmapMeta')?.replaceChildren(); $('#roadmapCost')?.replaceChildren();
   _toggleDetailActions(false);
   _setDocMeta('여행 코스를 찾을 수 없어요 · 3초 여행', DOC_DESC);
   const retry = opts.retry;
@@ -578,7 +658,6 @@ function _won(n) {
   return `약 ${n.toLocaleString('ko-KR')}원`;
 }
 
-const CAT_ICON = { 관광: '📍', 식사: '🍽️', 숙박: '🏨', 쇼핑: '🛍️', 이동: '🚆' };
 
 function _renderRoadmapDetail(m) {
   _toggleDetailActions(true);
@@ -590,7 +669,9 @@ function _renderRoadmapDetail(m) {
   if (cover) {
     cover.style.background = m.gradient;
     cover.classList.remove('has-landmark-img');
+    cover.closest('.night-band')?.style.setProperty('--h', String(_hue(m.city)));
     cover.replaceChildren(...[
+      el('p', { class: 'rd-native', 'aria-hidden': 'true' }, LOCAL_NAME[m.city] || m.city || ''),
       el('p', { class: 'rd-city' }, place),
       el('h1', { class: 'rd-title', id: 'roadmapTitle', tabIndex: -1 }, m.title),
       m.tagline ? el('p', { class: 'rd-tag' }, m.tagline) : null,
@@ -609,10 +690,12 @@ function _renderRoadmapDetail(m) {
   if (!body) return;
   const parts = [];
   // 예상 비용 — 금액(먼저) · 포함 항목(보조) · 추정 근거(펼침)
+  const costBox = document.getElementById('roadmapCost');
+  if (costBox) costBox.replaceChildren();
   if (m.cost?.amount) {
-    parts.push(el('section', { class: 'rd-cost', 'aria-labelledby': 'rdCostH' }, [
+    (costBox ? (x => costBox.append(x)) : (x => parts.push(x)))(el('section', { class: 'rd-cost', 'aria-labelledby': 'rdCostH' }, [
       el('h2', { class: 'rd-h', id: 'rdCostH' }, m.isSample ? '예상 비용 · 예시' : '예상 비용'),
-      el('p', { class: 'rd-cost-num' }, [el('span', { class: 'rd-cost-who' }, '성인 1명 '), _won(m.cost.amount)]),
+      el('p', { class: 'rd-cost-num' }, [_won(m.cost.amount), el('span', { class: 'rd-cost-who' }, ' 성인 1명')]),
       m.cost.note ? el('p', { class: 'rd-cost-note' }, m.cost.note) : null,
       el('details', { class: 'rd-source' }, [
         el('summary', {}, '금액 기준'),
@@ -638,10 +721,11 @@ function _renderRoadmapDetail(m) {
     day.forEach((s, j) => {
       items.push(el('li', { class: 'rd-stop' }, [
         el('span', { class: 'rd-time' }, s.time),
-        el('span', { class: 'rd-ico', 'aria-hidden': 'true' }, CAT_ICON[s.cat] || '📍'),
-        el('span', { class: 'rd-name' }, [s.name, s.cat ? el('small', {}, s.cat) : null].filter(Boolean)),
+        el('span', { class: 'rd-node', 'aria-hidden': 'true' }),
+        el('span', { class: 'rd-name' }, s.name),
+        s.cat ? el('span', { class: 'rd-cat' }, s.cat) : null,
       ]));
-      if (s.move && j < day.length - 1) items.push(el('li', { class: 'rd-move' }, `다음 장소까지 ${s.move}`));
+      if (s.move && j < day.length - 1) items.push(el('li', { class: 'rd-move' }, [el('span', { class: 'sr-only' }, '다음 장소까지 '), s.move]));
     });
     parts.push(el('section', { class: 'rd-day', 'aria-labelledby': `rdDay${i}` }, [
       el('h3', { class: 'rd-day-h', id: `rdDay${i}` }, `${i + 1}일차`),

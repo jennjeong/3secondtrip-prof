@@ -412,15 +412,14 @@ function _rowEl(it) {
   const row = el('div', { class: 'book-row' + (selected.has(it.id) ? ' is-selected' : '') }, [
     label,
     el('div', { class: 'book-info' }, [
-      el('div', { class: 'book-name' }, [it.name, badge ? ' ' : null, badge]),
-      el('div', { class: 'book-desc' }, it.desc || ''),
+      el('div', { class: 'book-head' }, [
+        el('div', { class: 'book-name' }, [it.name, badge ? ' ' : null, badge].filter(Boolean)),
+        el('div', { class: 'book-price' }, [formatCurrency(it.price, 'KRW'), el('div', { class: 'book-estimate' }, _priceKind(it))]),
+      ]),
+      it.desc ? el('div', { class: 'book-desc' }, it.desc) : null,
       actions,
       refBox,
-    ]),
-    el('div', { class: 'book-price' }, [
-      formatCurrency(it.price, 'KRW'),
-      el('div', { class: 'book-estimate' }, _priceKind(it)),
-    ]),
+    ].filter(Boolean)),
   ]);
   return row;
 }

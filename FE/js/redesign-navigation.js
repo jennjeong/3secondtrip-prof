@@ -141,6 +141,9 @@ function _syncTabs(pageId) {
 }
 
 function _syncTopbar(pageId) {
+  const brand = document.querySelector('.topbar-brand');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#05070D');
+  if (brand) { if (pageId === 'home') brand.setAttribute('aria-current', 'page'); else brand.removeAttribute('aria-current'); }
   const topbar = document.getElementById('appTopbar');
   const title = document.getElementById('topbarTitle');
   const back  = document.querySelector('.topbar-back');

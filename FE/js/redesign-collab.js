@@ -182,7 +182,7 @@ export async function initCollab(state, renderSchedule) {
   document.addEventListener('redesign:collab-open', () => {
     const box = $('#collabPanel');
     if (!box || box.hidden) return;
-    box.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+    document.dispatchEvent(new CustomEvent('redesign:tool-open', { detail: 'collab' }));
     $('#collabTitle')?.focus({ preventScroll: true });
   });
 

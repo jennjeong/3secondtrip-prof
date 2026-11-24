@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<meta name="theme-color" content="#F4F5F7"/>
+<meta name="theme-color" content="#05070D"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-title" content="3초 여행"/>
@@ -82,9 +82,10 @@
 <link rel="stylesheet" href="./css/redesign-system.css">
 <link rel="stylesheet" href="./css/redesign-refine.css">
 <link rel="stylesheet" href="./css/redesign-app.css">
+<link rel="stylesheet" href="./css/redesign-product.css">
 <style>
 /* 첫 화면: CSS 파일이 오기 전에도 배경을 칠하고, 시작 이미지와 같은 배치의 시작 화면을 보여 준다 */
-html, body { background: #F4F5F7; }
+html, body { background: #05070D; }
 html.theme-dark, html.theme-dark body { background: #111418; }
 @media (prefers-color-scheme: dark) { html.allow-dark, html.allow-dark body { background: #111418; } }
 #bootSplash { position: fixed; inset: 0; z-index: 10000; display: grid; place-content: center; justify-items: center; gap: 16px;
@@ -111,7 +112,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
 <div id="app" class="app-shell" data-app="redesign">
 
   <!-- ============== TOP STATUS BAR (back button only — body pages own their titles) ============== -->
-  <header class="app-topbar" id="appTopbar" aria-label="상단 영역">
+  <header class="app-topbar night" id="appTopbar" aria-label="상단 영역">
     <button type="button" class="topbar-back" data-action="goBack" aria-label="뒤로 가기" hidden>
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
@@ -120,11 +121,10 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     </a>
     <div class="topbar-title sr-only" id="topbarTitle" aria-live="polite">3초 여행</div>
     <nav class="topbar-nav" aria-label="주요 메뉴">
-      <a href="#page=home" data-nav-to="home">홈</a>
       <a href="#page=explore" data-nav-to="explore">탐색</a>
       <a href="#page=schedule" data-nav-to="schedule">내 일정</a>
       <a href="#page=my" data-nav-to="my">마이</a>
-      <a href="#page=create-trip" class="topbar-cta" data-nav-to="create-trip">+ 여행 만들기</a>
+      <a href="#page=create-trip" class="topbar-cta" data-nav-to="create-trip">새 여행 만들기</a>
     </nav>
     <div class="topbar-spacer topbar-actions">
       <button type="button" class="topbar-text-btn" id="topbarNewPost" data-nav-to="blog">+ 새 글</button>
@@ -141,39 +141,11 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <section id="homePage" class="app-page is-active" data-page="home" aria-label="홈">
       <div class="page-scroll">
 
-        <div class="hero-card">
-          <div class="hero-illust" aria-hidden="true">
-            <span class="hero-aurora a1"></span>
-            <span class="hero-aurora a2"></span>
-            <svg class="hero-route" viewBox="0 0 150 210" fill="none">
-              <path class="hero-route-line" d="M10 188 C80 188 136 130 124 16"/>
-              <circle class="hero-route-start" cx="10" cy="188" r="4"/>
-              <circle class="hero-route-pin" cx="124" cy="16" r="3.5"/>
-              <circle class="hero-route-dot" r="4.5"/>
-            </svg>
-            <!-- 넓은 화면에서만 — 만들어지는 일정의 모습을 미리 보여 준다 -->
-            <div class="hero-preview">
-              <p class="hp-head"><span>도쿄 · 2박 3일</span><span class="hp-badge">예시</span></p>
-              <ol class="hp-days">
-                <li><b>1일차</b> 신주쿠 교엔 → 시부야</li>
-                <li><b>2일차</b> 아사쿠사 → 스카이트리</li>
-                <li><b>3일차</b> 메이지 신궁 → 하라주쿠</li>
-              </ol>
-              <p class="hp-cost">예상 비용 <b>1인 약 62만 원</b></p>
-            </div>
-          </div>
-          <div class="hero-text">
-            <p class="hero-greet" id="homeGreet">오늘은 어디로 떠나볼까요?</p>
-            <h1 class="hero-title"><span>나만의 여행 일정을</span> <br/><span>빠르게</span></h1>
-            <p class="hero-sub">여행지, 날짜, 예산에 맞춰 하루씩 일정을 짜보세요</p>
-          </div>
-          <button type="button" class="hero-cta" data-nav-to="create-trip">
-            새 여행 만들기
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
-          </button>
-        </div>
-
-        <form class="search-card" id="homeSearchForm" role="search" aria-label="여행 코스 검색">
+        <div class="nh-hero">
+          <canvas class="nh-globe" id="homeGlobe" aria-hidden="true"></canvas>
+          <div class="nh-copy">
+            <h1 class="nh-title">다음 여행이<br>여기서 이륙합니다</h1>
+            <form class="search-card" id="homeSearchForm" role="search" aria-label="여행 코스 검색">
           <span class="search-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </span>
@@ -181,14 +153,9 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <button type="button" class="search-clear" id="homeSearchClear" aria-label="검색어 지우기" hidden>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
           </button>
-          <button type="submit" class="search-submit" id="homeSearchSubmit">검색</button>
+          <button type="submit" class="search-submit" id="homeSearchSubmit">찾기</button>
         </form>
-
-        <div class="home-subh-row">
-          <h2 class="home-subh" id="homeStyleH">여행 스타일로 찾기</h2>
-          <button type="button" class="section-more" id="homeAllStyles">전체 스타일 →</button>
-        </div>
-        <div class="chip-row chip-wrap home-styles" role="group" aria-labelledby="homeStyleH">
+            <div class="chip-row chip-wrap home-styles" role="group" aria-label="여행 스타일로 찾기">
           <button type="button" class="chip" data-quick-concept="가성비">가성비</button>
           <button type="button" class="chip" data-quick-concept="힐링">힐링</button>
           <button type="button" class="chip" data-quick-concept="액티비티">액티비티</button>
@@ -196,13 +163,18 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <button type="button" class="chip" data-quick-concept="효율">효율</button>
           <button type="button" class="chip" data-quick-concept="균형">균형</button>
         </div>
+            <button type="button" class="home-create" data-nav-to="create-trip"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>새 여행 만들기</button>
+          </div>
+        </div>
 
-        <section class="section-block" aria-labelledby="popularH">
+        <section class="home-window" id="homeFeature" aria-labelledby="homeFeatureH" hidden></section>
+
+        <section class="section-block" id="popularSection" aria-labelledby="popularH">
           <header class="section-head">
             <h2 id="popularH" class="section-title">인기 여행 코스</h2>
-            <button type="button" class="section-more" data-nav-to="explore">전체 코스 보기 →</button>
+            <button type="button" class="section-more" data-nav-to="explore">전체 보기</button>
           </header>
-          <div class="roadmap-grid" id="popularRoadmaps"></div>
+          <div class="glow-grid" id="popularRoadmaps"></div>
         </section>
 
         <section class="section-block city-section" id="citySection" aria-labelledby="cityH" hidden>
@@ -215,10 +187,10 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
         <section class="section-block" id="recoSection" aria-labelledby="recoH" hidden>
           <header class="section-head">
             <h2 id="recoH" class="section-title">추천 여행 코스</h2>
-            <button type="button" class="section-more" data-nav-to="explore">전체 코스 보기 →</button>
+            <button type="button" class="section-more" data-nav-to="explore">전체 보기</button>
           </header>
           <p class="section-sub" id="recoSub"></p>
-          <div class="roadmap-list" id="recoRoadmaps"></div>
+          <div class="glow-grid" id="recoRoadmaps"></div>
         </section>
 
         <section class="section-block" id="recentScheduleSection" hidden aria-labelledby="recentH">
@@ -238,7 +210,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     </section>
 
     <!-- ============ EXPLORE ============ -->
-    <section id="explorePage" class="app-page" data-page="explore" aria-label="탐색">
+    <section id="explorePage" class="app-page night" data-page="explore" aria-label="탐색">
       <div class="page-scroll">
         <div class="page-header">
           <h1 class="page-title">여행 코스 탐색</h1>
@@ -271,7 +243,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           </div>
         </div>
 
-        <div class="roadmap-grid" id="exploreGrid"></div>
+        <div class="glow-grid" id="exploreGrid"></div>
         <div class="empty-state" id="exploreEmpty" hidden>
           <div class="empty-icon" aria-hidden="true">🧭</div>
           <p class="empty-text">조건에 맞는 여행 코스가 없어요. 다른 도시나 스타일로 찾아보세요.</p>
@@ -283,6 +255,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <!-- ============ CREATE TRIP ============ -->
     <section id="createTripPage" class="app-page" data-page="create-trip" aria-label="새 여행 만들기">
       <div class="page-scroll">
+        <div class="night-band night band-create">
         <div class="page-header">
           <h2 class="page-title">새 여행 만들기</h2>
           <p class="page-sub">4단계로 완성하는 맞춤 일정</p>
@@ -300,6 +273,8 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <div class="step-dot" data-step="3">3<span>스타일</span></div>
           <div class="step-line"></div>
           <div class="step-dot" data-step="4">4<span>예산</span></div>
+        </div>
+        <h2 class="create-q" id="createQ" tabindex="-1">어디서 어디로 떠나시나요?</h2>
         </div>
 
         <!-- Step 1 — Origin + Destination (global city search) -->
@@ -495,6 +470,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
 
           <h4 class="form-section-title" id="budgetTripSummaryH">여행 요약</h4>
           <div class="budget-trip-summary" id="budgetTripSummary" aria-labelledby="budgetTripSummaryH"></div>
+          <div class="trip-summary" id="tripSummary"></div>
 
           <details class="budget-more" id="budgetMore">
             <summary class="form-section-title">세부 조건 <span class="form-label-meta" id="budgetMoreMeta">선택 · 포함 항목·통화·항공·숙소</span></summary>
@@ -662,8 +638,6 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
             </div>
           </details>
           </details>
-
-          <div class="trip-summary" id="tripSummary"></div>
         </div>
 
         <div class="step-nav">
@@ -677,6 +651,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <!-- ============ SCHEDULE ============ -->
     <section id="schedulePage" class="app-page" data-page="schedule" aria-label="일정">
       <div class="page-scroll">
+        <div class="night-band night band-trip">
         <div class="page-header schedule-head">
           <div>
             <h1 class="page-title" id="scheduleTitle">나의 일정</h1>
@@ -704,6 +679,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <p class="budget-meta" id="budgetWhyMeta"></p>
           <div class="budget-alts" id="budgetAlts" hidden></div>
         </section>
+        </div>
 
         <div class="day-row" id="scheduleDayRow" hidden>
           <div class="day-chips" id="dayChips" role="tablist" aria-label="여행일"></div>
@@ -769,29 +745,15 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
         </div>
         </div>
 
-        <section class="cost-summary" id="costSummary" hidden aria-labelledby="costSummaryH">
-          <h2 class="cost-summary-title" id="costSummaryH">비용 자세히 보기</h2>
-          <dl class="money-rows" id="costRows"></dl>
-          <p class="cs-disclaimer" id="costNote"></p>
-          <h3 class="cost-why-h">금액 기준</h3>
-          <p class="budget-panel-plan" id="budgetPanelPlan"></p>
-          <ul class="budget-notices" id="budgetNotices"></ul>
-        </section>
-
         <section class="tools-section" id="toolsSection" aria-labelledby="toolsH" hidden>
           <h2 class="section-title" id="toolsH">여행 도구</h2>
-          <p class="section-sub">날씨·환율·경비·준비물·내보내기·함께 편집</p>
-          <div class="trip-tools" id="tripTools" hidden></div>
-          <div class="tool-card" id="collabPanel" hidden></div>
-        </section>
-
-        <div class="booking-cta" id="bookingCta" hidden>
-          <div>
-            <p class="bcta-title">예약 후보</p>
-            <p class="bcta-sub" id="bookingCtaSub">외부 사이트에서 찾고, 후보를 저장하고, 예약을 마치면 표시해 두세요</p>
+          <div class="setting-list tool-menu">
+            <div class="booking-cta" id="bookingCta" hidden>
+              <button type="button" class="setting-row" id="openBookingBtn"><span class="sr-label">예약 후보</span><span class="setting-meta">항공, 숙소, 맛집</span><span class="setting-arrow" aria-hidden="true">›</span></button>
+            </div>
+            <div id="toolMenuRows"></div>
           </div>
-          <button type="button" class="btn btn-primary" id="openBookingBtn">후보 보기</button>
-        </div>
+        </section>
 
         <section class="section-block" id="reviewSection" hidden>
           <h3 class="section-title">여행 후기</h3>
@@ -827,7 +789,8 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <!-- ============ MY ============ -->
     <section id="myPage" class="app-page" data-page="my" aria-label="마이">
       <div class="page-scroll">
-        <h1 class="sr-only">마이</h1>
+        <div class="night-band night band-my">
+        <h1 class="page-title my-title">마이</h1>
         <div class="profile-card" id="profileCard">
           <div class="profile-avatar" id="profileAvatar">3</div>
           <div class="profile-info">
@@ -835,6 +798,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
             <div class="profile-email" id="profileEmail">로그인하면 일정을 계정에 보관하고 다른 기기에서도 볼 수 있어요</div>
           </div>
           <button type="button" class="btn btn-soft" id="profileAuthBtn">로그인</button>
+        </div>
         </div>
 
         <section class="my-group" aria-labelledby="myTripsH">
@@ -875,6 +839,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <!-- ============ SUBSCRIPTION ============ -->
     <section id="subscriptionPage" class="app-page" data-page="subscription" aria-label="구독 · 멤버십">
       <div class="page-scroll">
+        <div class="night-band night band-sub">
         <header class="sub-hero">
           <h1 class="sub-hero-title">요금제</h1>
           <p class="sub-hero-desc">아직 결제를 받지 않아요. 지금은 모든 기능을 결제 없이 쓸 수 있고, 아래는 출시를 준비 중인 요금제예요.</p>
@@ -884,6 +849,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
         <div class="sub-toggle" role="tablist">
           <button type="button" class="sub-toggle-btn is-on" data-billing="monthly" role="tab" aria-selected="true">월 구독</button>
           <button type="button" class="sub-toggle-btn"       data-billing="payg"    role="tab" aria-selected="false">회당 결제</button>
+        </div>
         </div>
 
         <div class="sub-grid" id="subGrid">
@@ -981,7 +947,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     </section>
 
     <!-- ============ AUTH ============ -->
-    <section id="authPage" class="app-page" data-page="auth" aria-label="로그인">
+    <section id="authPage" class="app-page night" data-page="auth" aria-label="로그인">
       <div class="page-scroll">
         <div class="auth-hero">
           <img class="auth-logo auth-logo-img" src="assets/icon-192.png?v=plane1" alt="" aria-hidden="true" width="72" height="72">
@@ -1067,8 +1033,12 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <!-- ============ ROADMAP DETAIL ============ -->
     <section id="roadmapDetailPage" class="app-page" data-page="roadmap-detail" aria-label="여행 코스 상세">
       <div class="page-scroll">
+        <div class="night-band night band-detail">
         <div class="roadmap-cover" id="roadmapCover"></div>
         <div class="roadmap-meta" id="roadmapMeta"></div>
+        <div id="roadmapCost"></div>
+        </div>
+
         <div id="roadmapBody" class="roadmap-body"></div>
         <div class="roadmap-cta-row">
           <button type="button" class="btn btn-soft" id="shareRoadmapBtn">공유</button>
@@ -1080,10 +1050,13 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <!-- ============ BLOG ============ -->
     <section id="blogPage" class="app-page" data-page="blog" aria-label="블로그 작성">
       <div class="page-scroll">
+        <div class="night-band night band-form">
         <div class="page-header">
           <h2 class="page-title">여행 블로그 작성</h2>
           <p class="page-sub">기록은 또 다른 여행이 됩니다</p>
         </div>
+        </div>
+
         <form class="blog-form" id="blogForm">
           <div class="form-row">
             <label class="form-label" for="blogTitle">제목</label>
@@ -1118,10 +1091,13 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <!-- ============ FEEDBACK ============ -->
     <section id="feedbackPage" class="app-page" data-page="feedback" aria-label="피드백">
       <div class="page-scroll">
+        <div class="night-band night band-form">
         <div class="page-header">
           <h2 class="page-title">피드백 보내기</h2>
           <p class="page-sub">의견 한 줄이 큰 도움이 됩니다</p>
         </div>
+        </div>
+
         <form class="feedback-form" id="feedbackForm">
           <div class="form-row">
             <label class="form-label">유형</label>
@@ -1163,12 +1139,15 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <!-- ============ SURVEY ============ -->
     <section id="surveyPage" class="app-page" data-page="survey" aria-label="취향 분석">
       <div class="page-scroll">
+        <div class="night-band night band-form">
         <div class="page-header">
           <h2 class="page-title">취향 분석</h2>
           <p class="page-sub" id="surveySub">5가지 질문 · 결과는 새 여행 만들기의 ‘스타일’ 단계에 미리 골라 둬요</p>
         </div>
         <p class="survey-count" id="surveyCount" aria-live="polite"></p>
         <div class="step-progress" id="surveyProgress" aria-label="설문 진행"></div>
+        </div>
+
         <div id="surveyPane"></div>
         <div class="step-nav">
           <button type="button" class="btn btn-ghost" id="surveyPrev">이전</button>
@@ -1181,10 +1160,13 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <!-- ============ MY · SAVED SCHEDULES ============ -->
     <section id="mySavedPage" class="app-page" data-page="my-saved" aria-label="저장한 일정">
       <div class="page-scroll">
+        <div class="night-band night band-form">
         <div class="page-header">
           <h1 class="page-title">저장한 일정</h1>
           <p class="page-sub">일정 화면에서 ‘저장’을 누른 일정이 계정에 모여요</p>
         </div>
+        </div>
+
         <div id="mySavedList" class="my-list"></div>
         <div id="mySavedExtra" class="my-list"></div>
         <div id="mySavedEmpty" class="empty-state" hidden>
@@ -1198,10 +1180,13 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <!-- ============ MY · ROADMAPS ============ -->
     <section id="myRoadmapsPage" class="app-page" data-page="my-roadmaps" aria-label="내가 공개한 코스">
       <div class="page-scroll">
+        <div class="night-band night band-form">
         <div class="page-header">
           <h1 class="page-title">내가 공개한 코스</h1>
           <p class="page-sub">탐색에 공개한 내 여행 코스</p>
         </div>
+        </div>
+
         <div id="myRoadmapsList" class="roadmap-grid"></div>
         <div id="myRoadmapsEmpty" class="empty-state" hidden>
           <div class="empty-icon" aria-hidden="true">🗺️</div>
@@ -1214,10 +1199,13 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <!-- ============ MY · REVIEWS ============ -->
     <section id="myReviewsPage" class="app-page" data-page="my-reviews" aria-label="내 후기">
       <div class="page-scroll">
+        <div class="night-band night band-form">
         <div class="page-header">
-          <h2 class="page-title">⭐ 내 후기</h2>
+          <h2 class="page-title">내 후기</h2>
           <p class="page-sub">내가 남긴 여행 후기 목록</p>
         </div>
+        </div>
+
         <div id="myReviewsList" class="my-list"></div>
         <div id="myReviewsEmpty" class="empty-state" hidden>
           <div class="empty-icon" aria-hidden="true">⭐</div>
@@ -1230,12 +1218,15 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
     <!-- ============ MY · BLOGS ============ -->
     <section id="myBlogsPage" class="app-page" data-page="my-blogs" aria-label="내 블로그">
       <div class="page-scroll">
+        <div class="night-band night band-form">
         <div class="page-header schedule-head">
           <div>
             <h2 class="page-title">내 블로그</h2>
             <p class="page-sub">내가 쓴 글 + 초안</p>
           </div>
         </div>
+        </div>
+
         <div id="myBlogsList" class="my-list"></div>
         <div id="myBlogsEmpty" class="empty-state" hidden>
           <div class="empty-icon" aria-hidden="true">✏️</div>
@@ -1408,6 +1399,27 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
       <button type="button" class="btn btn-ghost" id="calReset">초기화</button>
       <button type="button" class="btn btn-primary" id="calDone">완료</button>
     </footer>
+  </aside>
+
+  <!-- ============ 여행 도구 창 — 목록에서 고른 도구 하나만 보여 준다 ============ -->
+  <div class="sheet-backdrop" id="toolBackdrop" hidden></div>
+  <aside class="bottom-sheet window-sheet" id="toolSheet" role="dialog" aria-modal="true" aria-labelledby="toolSheetTitle" hidden>
+    <header class="sheet-head">
+      <button type="button" class="icon-btn window-back" id="toolSheetClose" aria-label="일정으로 돌아가기"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5 8 12 15 19"/></svg></button>
+      <h2 id="toolSheetTitle">여행 도구</h2>
+    </header>
+    <div class="sheet-body">
+      <section class="cost-summary" id="costSummary" hidden aria-labelledby="costSummaryH">
+        <h3 class="cost-summary-title" id="costSummaryH">비용 자세히</h3>
+        <dl class="money-rows" id="costRows"></dl>
+        <p class="cs-disclaimer" id="costNote"></p>
+        <h4 class="cost-why-h">금액 기준</h4>
+        <p class="budget-panel-plan" id="budgetPanelPlan"></p>
+        <ul class="budget-notices" id="budgetNotices"></ul>
+      </section>
+      <div class="trip-tools" id="tripTools" hidden></div>
+      <section class="tool-card" id="collabPanel" data-tool="collab" aria-label="함께 편집" hidden></section>
+    </div>
   </aside>
 
   <!-- ============ SETTINGS BOTTOM SHEET ============ -->

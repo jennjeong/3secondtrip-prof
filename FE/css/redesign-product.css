@@ -1,0 +1,1013 @@
+/* 3초 여행 — 제품 층(마지막) : 여행 시간표
+ *
+ * 밤·낮  : 둘러보는 화면은 밤(홈·탐색·로그인), 읽고 쓰는 화면은 위 밤하늘(.night-band) + 아래 밝은 본문. 경계는 지평선 곡선.
+ *          .night 안에서는 --p-* 가 밤 값으로 바뀐다. 하단 바·행동 바는 유리(--g-*).
+ * 홈     : 밤하늘 지구본 — 어두운 화면, 서울에서 도시로 이어지는 점선 항로(redesign-globe.js), 유리 메뉴와 검색.
+ * 그 밖  : 흰 화면의 여행 시간표. 상자 대신 글자·여백·구분선. 시각은 왼쪽, 장소는 오른쪽, 금액은 오른쪽 끝에 맞춘다.
+ *          모티프는 하나 — 앱 아이콘의 길(빈 출발점 → 둥근 경유점 → 도착점). 순서·경로가 있을 때만 쓴다.
+ * 바탕   : 흰 화면(홈만 어두움, --n-*). 연한 바탕(--p-tint)은 한 화면에 한 영역(대표 코스 · 비용 · 예산)만.
+ * 색     : 차콜이 기본, 파랑(--p-link)은 누를 수 있는 글자와 선택에만.
+ * 글자   : 화면 24–28 · 구역 17–19 · 항목 16 · 본문 15 · 보조 13–14(굵기 400).
+ * 여백   : 좌우 16 · 같은 정보 2–8 · 묶음 16–20 · 구역 24–36.
+ *
+ * 앞선 층에는 id 선택자와 !important 가 섞여 있어, 이 층은 @layer 안의 !important 로 쓴다
+ * (층 안의 !important 는 층 밖의 !important 보다 앞선다 — 선택자 힘겨루기를 하지 않는다).
+ * 규칙을 고칠 때도 선언마다 !important 를 붙인다. [hidden] 은 맨 앞 규칙이 지켜 준다.
+ */
+:root {
+  --p-bg: #FFFFFF; --p-surface: #FFFFFF; --p-ink: #101B2C; --p-ink2: #526071; --p-ink3: #66717F;
+  --p-line: #DFE3E7; --p-field: #C3CAD2; --p-tint: #F3F6FA; --p-link: #2456C4; --p-dot: #7C889A;
+  --p-select: #2456C4; --p-on-select: #FFFFFF; --a-ink: #101B2C; --a-ink-press: #060C16;
+  --n-bg: #05070D; --n-panel: #0B111D; --n-ink: #EEF3FB; --n-ink2: #A3B2CB; --n-line: rgba(255, 255, 255, .12);
+  --day-bg: #FFFFFF; --cw: 1120px; --gx: max(16px, calc((100vw - var(--cw)) / 2));
+  --g-bg: linear-gradient(165deg, rgba(214, 227, 255, .66) 0%, rgba(255, 255, 255, .52) 46%, rgba(202, 218, 255, .62) 100%); --g-line: rgba(255, 255, 255, .85); --g-hi: rgba(255, 255, 255, .95);
+  --g-lens: linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(255, 255, 255, .62)); --g-ink: #101B2C; --g-ink2: #2C384C; --g-drop: rgba(24, 44, 92, .22);
+}
+:root.theme-dark {
+  --p-bg: #111418; --p-ink: #EEF2F6; --p-ink2: #A7B0BC; --p-ink3: #8E98A5;
+  --p-line: #2A3038; --p-field: #3A424D; --p-tint: #1A1F26; --p-link: #8FB6EA; --p-dot: #6B7585;
+  --p-surface: #171C22; --p-select: #8FB6EA; --p-on-select: #10151C; --a-ink: #EEF2F6; --a-ink-press: #D5DBE2; --day-bg: #111418;
+  --g-bg: linear-gradient(180deg, rgba(70, 84, 116, .42), rgba(24, 32, 54, .46)); --g-line: rgba(255, 255, 255, .2); --g-hi: rgba(255, 255, 255, .34);
+  --g-lens: linear-gradient(180deg, rgba(255, 255, 255, .26), rgba(255, 255, 255, .1)); --g-ink: #FFFFFF; --g-ink2: rgba(230, 238, 255, .78); --g-drop: rgba(0, 0, 0, .44);
+}
+@media (prefers-color-scheme: dark) {
+  :root.allow-dark {
+    --p-bg: #111418; --p-ink: #EEF2F6; --p-ink2: #A7B0BC; --p-ink3: #8E98A5;
+    --p-line: #2A3038; --p-field: #3A424D; --p-tint: #1A1F26; --p-link: #8FB6EA; --p-dot: #6B7585;
+  --p-surface: #171C22; --p-select: #8FB6EA; --p-on-select: #10151C; --a-ink: #EEF2F6; --a-ink-press: #D5DBE2; --day-bg: #111418;
+  --g-bg: linear-gradient(180deg, rgba(70, 84, 116, .42), rgba(24, 32, 54, .46)); --g-line: rgba(255, 255, 255, .2); --g-hi: rgba(255, 255, 255, .34);
+  --g-lens: linear-gradient(180deg, rgba(255, 255, 255, .26), rgba(255, 255, 255, .1)); --g-ink: #FFFFFF; --g-ink2: rgba(230, 238, 255, .78); --g-drop: rgba(0, 0, 0, .44);
+  }
+}
+
+.night {
+  --p-bg: #0B1222; --p-surface: rgba(255, 255, 255, .1); --p-ink: #FFFFFF; --p-ink2: #AEBCD6; --p-ink3: #93A3C0; --p-line: rgba(255, 255, 255, .15);
+  --p-field: rgba(255, 255, 255, .28); --p-tint: rgba(255, 255, 255, .09); --p-link: #BFD6FF; --p-select: #FFFFFF; --p-on-select: #0A1222; --p-dot: #8FA6D2;
+  --a-ink: #FFFFFF; --a-ink-press: #DCE7FF; --a-on-ink: #0A1222; --r-text: #FFFFFF; --r-text-2: #AEBCD6; --r-text-3: #93A3C0; --r-danger: #FFA69B; --r-brand-on-soft: #BFD6FF;
+}
+
+@layer product {
+/* ---------- 0. 바탕 · 공통 ---------- */
+[hidden]:not(#_a#_b#_c) { display: none !important; }
+html, body, .app-shell, .app-main, .app-page, .page-scroll { background: var(--p-bg) !important; }
+.app-topbar { background: var(--p-bg) !important; border-bottom: 1px solid var(--p-line) !important; }
+.page-title { font-size: 26px !important; line-height: 1.25 !important; font-weight: 800 !important; letter-spacing: -0.025em !important; color: var(--p-ink) !important; margin: 0 !important; }
+.page-sub, .section-sub { font-size: 14px !important; line-height: 1.5 !important; font-weight: 400 !important; color: var(--p-ink2) !important; margin: 4px 0 0 !important; }
+.section-title, .home-subh { font-size: 19px !important; line-height: 1.3 !important; font-weight: 700 !important; letter-spacing: -0.02em !important; color: var(--p-ink) !important; }
+.section-block, .tools-section { margin-top: 36px !important; }
+.section-head { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; margin: 0 0 4px !important; padding: 0 !important; min-height: 44px !important; }
+.section-head .section-title { margin: 0 !important; }
+.section-head + .section-sub { margin: -8px 0 8px !important; }
+.form-hint, .tool-note { font-size: 13px !important; line-height: 1.5 !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+.form-label { font-size: 14px !important; font-weight: 600 !important; color: var(--p-ink) !important; margin-bottom: 8px !important; }
+.form-label-meta { font-size: 13px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+.form-input, .date-trigger, .city-search-wrap input { min-height: 50px !important; border: 1px solid var(--p-field) !important; border-radius: 12px !important; background: var(--p-surface) !important; font-size: 16px !important; font-weight: 500 !important; color: var(--p-ink) !important; }
+textarea.form-input { padding-top: 12px !important; }
+.form-input:focus, .date-trigger:focus-visible { border-color: var(--p-ink) !important; outline: 1px solid var(--p-ink) !important; outline-offset: -2px !important; }
+.form-error, .field-error { margin: 6px 0 0 !important; font-size: 13px !important; font-weight: 500 !important; }
+
+/* 버튼 — 대표(차콜) · 보조(연한 바탕) · 글자 */
+.btn { border-radius: 12px !important; font-size: 15px !important; font-weight: 700 !important; }
+.btn-primary, .hero-cta, #stepNext, #stepGenerate, #useRoadmapBtn, #bookingConfirm, #btnSave { border-radius: 12px !important; font-weight: 700 !important; letter-spacing: -0.01em !important; }
+.btn-soft, .btn-ghost, #stepPrev, .action-btn:not(#btnSave), .btn-edit { background: var(--p-tint) !important; color: var(--p-ink) !important; border: 0 !important; font-weight: 600 !important; }
+.btn-text, .section-more, .budget-alts-more, .book-link, .sc-map-link { color: var(--p-link) !important; font-size: 14px !important; font-weight: 600 !important; }
+.section-more { color: var(--p-ink2) !important; }
+.btn:disabled, .btn[aria-disabled="true"] { background: var(--p-tint) !important; color: var(--p-ink3) !important; }
+
+/* 칩 — 홈·탐색·예약 같은 규격 */
+.chip, .chip-mini { min-height: 40px !important; padding: 0 14px !important; border-radius: 10px !important; border: 1px solid var(--p-line) !important; background: var(--p-bg) !important; color: var(--p-ink) !important; font-size: 14px !important; font-weight: 500 !important; }
+.chip.is-active, .chip[aria-pressed="true"], .chip-mini.is-active, .chip-mini[aria-pressed="true"] { background: var(--p-select) !important; border-color: var(--p-select) !important; color: var(--p-on-select) !important; }
+
+/* 구분선 목록 — 마이·설정·여행 도구 */
+.setting-list { border: 0 !important; border-radius: 0 !important; background: none !important; border-top: 1px solid var(--p-line) !important; }
+.setting-row { display: flex !important; align-items: center !important; gap: 12px !important; width: 100% !important; min-height: 56px !important; padding: 8px 0 !important; border: 0 !important; border-bottom: 1px solid var(--p-line) !important; border-radius: 0 !important; background: none !important; text-align: left !important; }
+.setting-row:last-child { border-bottom: 1px solid var(--p-line) !important; }
+.setting-row .sr-ico { flex: none !important; width: 24px !important; display: inline-flex !important; justify-content: center !important; color: var(--p-ink) !important; }
+.setting-row .sr-label { flex: 0 1 auto !important; min-width: 0 !important; font-size: 16px !important; font-weight: 600 !important; color: var(--p-ink) !important; }
+.setting-row .setting-meta { flex: 1 1 0 !important; min-width: 0 !important; max-width: none !important; text-align: right !important; font-size: 14px !important; font-weight: 400 !important; color: var(--p-ink2) !important; white-space: normal !important; overflow: visible !important; overflow-wrap: anywhere !important; line-height: 1.35 !important; }
+.setting-row .setting-arrow { flex: none !important; width: 10px !important; margin-left: 0 !important; text-align: right !important; color: var(--p-ink3) !important; }
+.setting-row .sr-label + .setting-arrow { margin-left: auto !important; }
+.setting-row:hover { background: none !important; }
+.setting-row:active { background: var(--p-tint) !important; }
+
+/* 알림 글 — 짧은 직사각형 */
+.toast { border-radius: 12px !important; padding: 12px 16px !important; background: var(--a-ink) !important; color: var(--a-on-ink) !important; font-size: 14px !important; font-weight: 500 !important; line-height: 1.45 !important; width: max-content !important; max-width: min(420px, calc(100vw - 32px)) !important; text-align: left !important; }
+
+/* ---------- 1. 헤더 · 하단 탭 ---------- */
+.bottom-tab-nav { background: var(--p-bg) !important; border-top: 1px solid var(--p-line) !important; }
+.bottom-tab-nav .tab-button { color: var(--p-ink3) !important; }
+.bottom-tab-nav .tab-button.is-active { color: var(--p-ink) !important; }
+.bottom-tab-nav .tab-ico { stroke-width: 1.7 !important; }
+.bottom-tab-nav .tab-button.is-active .tab-ico { stroke-width: 2.3 !important; }
+.bottom-tab-nav .tab-label { font-weight: 500 !important; }
+.bottom-tab-nav .tab-button.is-active .tab-label { font-weight: 700 !important; }
+.bottom-tab-nav .tab-create .tab-ico line { stroke: currentColor !important; }
+.topbar-title { font-size: 17px !important; font-weight: 700 !important; color: var(--p-ink) !important; }
+@media (max-width: 1023px) {
+  /* 앱바에 화면 이름이 있는 안쪽 화면은 본문 제목을 되풀이하지 않는다 */
+  #blogPage .page-title, #feedbackPage .page-title, #surveyPage .page-title, #mySavedPage .page-title,
+  #myRoadmapsPage .page-title, #myReviewsPage .page-title, #myBlogsPage .page-title, #subscriptionPage .sub-hero-title, #createTripPage > .page-scroll > .page-header { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; }
+}
+
+/* ---------- 2. 코스 — 목록 행 · 추천 한 건 ---------- */
+.course-list { display: block !important; border-top: 1px solid var(--p-line) !important; margin: 0 !important; }
+.roadmap-card.rc--row { width: 100% !important; margin: 0 !important; text-align: left !important; background: none !important; border: 0 !important; border-radius: 0 !important; transform: none !important; color: var(--p-ink) !important; cursor: pointer !important; }
+.roadmap-card.rc--row { display: grid !important; grid-template-columns: minmax(0, 1fr) 16px !important; column-gap: 12px !important; row-gap: 4px !important; align-items: center !important; min-height: 76px !important; padding: 14px 0 !important; border-bottom: 1px solid var(--p-line) !important; }
+.roadmap-card .rc-main { display: flex !important; flex-direction: column !important; gap: 2px !important; min-width: 0 !important; padding: 0 !important; }
+.roadmap-card .rc-place { margin: 0 !important; font-size: 13px !important; line-height: 1.4 !important; font-weight: 400 !important; color: var(--p-ink2) !important; overflow-wrap: anywhere !important; }
+.roadmap-card .rc-title { margin: 0 !important; display: block !important; font-size: 17px !important; line-height: 1.4 !important; font-weight: 700 !important; letter-spacing: -0.015em !important; color: var(--p-ink) !important; overflow-wrap: anywhere !important; word-break: keep-all !important; -webkit-line-clamp: none !important; }
+.roadmap-card .rc-reason-line { font-size: 13px !important; line-height: 1.4 !important; font-weight: 500 !important; color: var(--p-link) !important; }
+.roadmap-card .rc-info { display: flex !important; flex-flow: row wrap !important; gap: 0 6px !important; margin: 0 !important; padding: 0 !important; }
+.roadmap-card .rc-days, .roadmap-card .rc-style, .roadmap-card .rc-likes { display: inline !important; margin: 0 !important; padding: 0 !important; background: none !important; border-radius: 0 !important; font-size: 14px !important; line-height: 1.45 !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+.roadmap-card .rc-days { font-weight: 600 !important; color: var(--p-ink) !important; font-variant-numeric: tabular-nums !important; }
+.roadmap-card .rc-days + .rc-style::before { content: '· ' !important; }
+.roadmap-card .rc-sample-tag { font-size: inherit !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+.roadmap-card .rc-sample-tag::before { content: ' · ' !important; white-space: pre !important; }
+.roadmap-card .rc-go { grid-column: 2 !important; grid-row: 1 / span 2 !important; justify-self: end !important; width: 8px !important; height: 8px !important; margin-right: 2px !important; border: solid var(--p-ink3) !important; border-width: 2px 2px 0 0 !important; transform: rotate(45deg) !important; transition: transform 140ms ease, border-color 140ms ease !important; }
+.roadmap-card.rc--row:hover .rc-title { color: var(--p-link) !important; }
+.roadmap-card.rc--row:hover .rc-go { border-color: var(--p-link) !important; transform: translateX(3px) rotate(45deg) !important; }
+.roadmap-card.rc--row:active { opacity: .7 !important; }
+@media (min-width: 768px) {
+  .roadmap-card.rc--row { grid-template-columns: minmax(0, 1fr) auto 16px !important; column-gap: 20px !important; }
+  .roadmap-card.rc--row .rc-info { flex-direction: column !important; align-items: flex-end !important; text-align: right !important; white-space: nowrap !important; }
+  .roadmap-card.rc--row .rc-days { font-size: 16px !important; }
+  .roadmap-card.rc--row .rc-days + .rc-style::before { content: none !important; }
+  .roadmap-card .rc-go { grid-column: 3 !important; grid-row: 1 !important; }
+}
+/* 경로점 — 상세·일정의 시간표 */
+.rd-stop .rd-node::before, .timeline .schedule-card::after { content: '' !important; box-sizing: border-box !important; border-radius: 50% !important; background: var(--p-ink) !important; border: 0 !important; width: 9px !important; height: 9px !important; }
+.rd-stops > .rd-stop:first-child .rd-node::before, .timeline > .schedule-card:first-of-type::after { background: var(--p-bg) !important; border: 2.5px solid var(--p-ink) !important; width: 11px !important; height: 11px !important; }
+
+/* 검색 — 홈·탐색이 같이 쓰는 틀 */
+.search-card { display: flex !important; align-items: center !important; gap: 10px !important; padding: 0 6px 0 16px !important; background: var(--p-surface) !important; border: 1px solid var(--p-field) !important; border-radius: 12px !important; transition: border-color 140ms ease, box-shadow 140ms ease !important; }
+.search-card .search-ico { flex: none !important; color: var(--p-ink2) !important; transition: color 140ms ease !important; }
+.search-card input, .search-card input[type="search"] { flex: 1 1 auto !important; min-width: 0 !important; min-height: 50px !important; padding: 0 !important; background: none !important; border: 0 !important; font-size: 17px !important; font-weight: 500 !important; color: var(--p-ink) !important; -webkit-appearance: none !important; appearance: none !important; }
+.search-card input::placeholder { color: var(--p-ink3) !important; font-weight: 400 !important; opacity: 1 !important; }
+.search-card input::-webkit-search-cancel-button { display: none !important; }
+.search-card:hover { border-color: var(--p-ink3) !important; }
+.search-card:focus-within { border-color: var(--p-select) !important; box-shadow: inset 0 0 0 1px var(--p-select) !important; outline: 0 !important; }
+.search-card:focus-within .search-ico, .search-card.has-text .search-ico { color: var(--p-select) !important; }
+.search-card .search-clear { flex: none !important; width: 40px !important; height: 44px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; background: none !important; border: 0 !important; border-radius: 10px !important; color: var(--p-ink2) !important; }
+.search-card .search-submit { flex: none !important; min-height: 44px !important; padding: 0 14px !important; border-radius: 10px !important; background: none !important; color: var(--p-link) !important; font-size: 15px !important; font-weight: 700 !important; }
+/* ---------- 3. 홈 — 밤하늘 지구본 ---------- */
+/* 바탕과 떠 있는 메뉴 */
+:root[data-page="home"], :root[data-page="home"] body, :root[data-page="home"] .app-shell, :root[data-page="home"] .app-main,
+#homePage, #homePage > .page-scroll { background: var(--n-bg) !important; }
+:root[data-page="home"] .app-main { max-width: none !important; width: 100% !important; margin: 0 !important; }
+#homePage { left: 0 !important; right: 0 !important; color: var(--n-ink) !important; }
+#homePage > .page-scroll { padding: 0 0 calc(96px + var(--safe-bottom, env(safe-area-inset-bottom, 0px))) !important; max-width: none !important; width: 100% !important; margin: 0 !important; }
+:root[data-page="home"] .app-topbar { position: absolute !important; z-index: 40 !important; left: 50% !important; transform: translateX(-50%) !important; top: calc(8px + env(safe-area-inset-top, 0px)) !important; width: calc(100% - 32px) !important; max-width: none !important; height: 52px !important; min-height: 52px !important; padding: 0 8px !important; margin: 0 !important; background: rgba(18, 25, 42, .62) !important; -webkit-backdrop-filter: blur(18px) saturate(1.4) !important; backdrop-filter: blur(18px) saturate(1.4) !important; border: 1px solid rgba(255, 255, 255, .12) !important; border-radius: 999px !important; }
+:root[data-page="home"] .topbar-brand-mark { filter: brightness(0) invert(1) !important; }
+/* 첫 화면 */
+#homePage .nh-hero { position: relative !important; overflow: hidden !important; margin: 0 !important; border-radius: 0 0 28px 28px !important; min-height: min(860px, calc(100svh - 84px - env(safe-area-inset-bottom, 0px))) !important; background: radial-gradient(120% 70% at 50% 108%, #12305F 0%, #081226 46%, var(--n-bg) 82%) !important; }
+#homePage .nh-globe { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; display: block !important; touch-action: pan-y !important; cursor: grab !important; }
+#homePage .nh-copy { position: relative !important; z-index: 2 !important; display: flex !important; flex-direction: column !important; align-items: center !important; padding: calc(96px + env(safe-area-inset-top, 0px)) 16px 0 !important; text-align: center !important; pointer-events: none !important; }
+#homePage .nh-copy > * { pointer-events: auto !important; }
+#homePage .nh-title { margin: 0 !important; font-size: 40px !important; line-height: 1.2 !important; font-weight: 300 !important; letter-spacing: -0.05em !important; word-break: keep-all !important; color: #FFFFFF !important; background: linear-gradient(180deg, #FFFFFF 25%, #A6C1F0) !important; -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent !important; padding-bottom: 4px !important; }
+:is(#homePage, #explorePage) .search-card { width: 100% !important; max-width: 560px !important; min-height: 58px !important; margin: 26px 0 0 !important; padding: 0 7px 0 20px !important; background: rgba(255, 255, 255, .11) !important; -webkit-backdrop-filter: blur(20px) !important; backdrop-filter: blur(20px) !important; border: 1px solid rgba(255, 255, 255, .24) !important; border-radius: 999px !important; box-shadow: none !important; }
+:is(#homePage, #explorePage) .search-card:hover { border-color: rgba(255, 255, 255, .42) !important; }
+:is(#homePage, #explorePage) .search-card:focus-within { border-color: #BFD6FF !important; background: rgba(255, 255, 255, .16) !important; box-shadow: 0 0 0 4px rgba(120, 170, 255, .22) !important; }
+:is(#homePage, #explorePage) .search-card .search-ico, :is(#homePage, #explorePage) .search-card:focus-within .search-ico, :is(#homePage, #explorePage) .search-card.has-text .search-ico { color: rgba(255, 255, 255, .86) !important; }
+:is(#homePage, #explorePage) .search-card input { min-height: 54px !important; color: #FFFFFF !important; font-size: 17px !important; font-weight: 400 !important; text-align: left !important; }
+:is(#homePage, #explorePage) .search-card input::placeholder { color: rgba(226, 235, 255, .72) !important; }
+:is(#homePage, #explorePage) .search-card .search-clear { color: rgba(255, 255, 255, .8) !important; border-radius: 999px !important; }
+:is(#homePage, #explorePage) .search-card .search-submit { display: inline-flex !important; align-items: center !important; min-height: 44px !important; padding: 0 20px !important; border-radius: 999px !important; background: #FFFFFF !important; color: #0A1222 !important; font-size: 15px !important; font-weight: 700 !important; transition: transform 120ms ease, background-color 120ms ease !important; }
+:is(#homePage, #explorePage) .search-card .search-submit:hover { background: #E3ECFF !important; }
+:is(#homePage, #explorePage) .search-card .search-submit:active { transform: scale(.96) !important; }
+#homePage .home-styles { display: flex !important; flex-flow: row wrap !important; justify-content: center !important; gap: 8px !important; margin: 14px 0 0 !important; padding: 0 !important; max-width: 560px !important; overflow: visible !important; -webkit-mask-image: none !important; mask-image: none !important; }
+#homePage .home-styles .chip { flex: none !important; width: auto !important; min-height: 40px !important; padding: 0 15px !important; border-radius: 999px !important; background: rgba(14, 22, 42, .5) !important; border: 1px solid rgba(255, 255, 255, .2) !important; color: #F2F6FF !important; font-size: 14px !important; font-weight: 500 !important; -webkit-backdrop-filter: blur(10px) !important; backdrop-filter: blur(10px) !important; transition: background-color 140ms ease, border-color 140ms ease !important; }
+#homePage .home-styles .chip:hover { background: rgba(120, 165, 255, .24) !important; border-color: rgba(190, 214, 255, .6) !important; }
+#homePage .home-create { display: inline-flex !important; align-items: center !important; gap: 6px !important; margin: 12px 0 0 !important; min-height: 44px !important; padding: 0 10px !important; width: auto !important; background: none !important; border: 0 !important; color: #FFFFFF !important; font-size: 16px !important; font-weight: 600 !important; }
+#homePage .home-create:hover { color: #C6DAFF !important; background: none !important; }
+#homePage :is(button, a, input):focus-visible { outline: 2px solid #BFD6FF !important; outline-offset: 2px !important; }
+:is(#homePage, #explorePage) .search-card input:focus-visible { outline: 0 !important; }
+
+/* 아래 구역 */
+#homePage .section-block, #homePage .home-window { width: min(1120px, 100% - 32px) !important; margin: 64px auto 0 !important; }
+#homePage .section-title { font-size: 26px !important; line-height: 1.25 !important; font-weight: 300 !important; letter-spacing: -0.035em !important; color: #FFFFFF !important; }
+#homePage .section-sub { color: var(--n-ink2) !important; margin: -2px 0 0 !important; }
+#homePage .section-more { color: #BFD6FF !important; font-weight: 500 !important; }
+#homePage .section-head { margin: 0 !important; }
+
+/* 일정 창 — 날짜 탭을 누르면 그날 일정 */
+#homePage .hw { margin: 18px 0 0 !important; background: var(--n-panel) !important; border: 1px solid var(--n-line) !important; border-radius: 20px !important; overflow: hidden !important; }
+#homePage .hw-tabs { display: flex !important; gap: 4px !important; padding: 10px !important; overflow-x: auto !important; scrollbar-width: none !important; border-bottom: 1px solid var(--n-line) !important; }
+#homePage .hw-tabs::-webkit-scrollbar { display: none !important; }
+#homePage .hw-tab { flex: none !important; min-height: 44px !important; padding: 0 16px !important; border: 0 !important; border-radius: 12px !important; background: none !important; color: var(--n-ink2) !important; font-size: 15px !important; font-weight: 500 !important; transition: background-color 160ms ease, color 160ms ease !important; }
+#homePage .hw-tab:hover { color: #FFFFFF !important; }
+#homePage .hw-tab[aria-selected="true"] { background: rgba(120, 165, 255, .2) !important; color: #DCE8FF !important; font-weight: 600 !important; }
+#homePage .hw-main { padding: 20px 18px 18px !important; }
+#homePage .hw-place { margin: 0 !important; font-size: 13px !important; color: var(--n-ink2) !important; }
+#homePage .hw-title { margin: 2px 0 0 !important; font-size: 22px !important; line-height: 1.3 !important; font-weight: 600 !important; letter-spacing: -0.03em !important; color: #FFFFFF !important; overflow-wrap: anywhere !important; word-break: keep-all !important; }
+#homePage .hw-meta { margin: 2px 0 0 !important; font-size: 14px !important; color: var(--n-ink2) !important; }
+#homePage .hw-stops { list-style: none !important; margin: 20px 0 0 !important; padding: 0 !important; animation: hw-in 200ms ease !important; }
+@keyframes hw-in { from { opacity: .25 !important; } to { opacity: 1 !important; } }
+#homePage .hw-stop { position: relative !important; display: grid !important; grid-template-columns: 54px minmax(0, 1fr) !important; column-gap: 6px !important; padding: 0 0 18px 24px !important; }
+#homePage .hw-stop:last-child { padding-bottom: 0 !important; }
+#homePage .hw-stop::before { content: '' !important; position: absolute !important; left: 1px !important; top: 6px !important; width: 10px !important; height: 10px !important; border-radius: 50% !important; background: #9CC0FF !important; box-sizing: border-box !important; }
+#homePage .hw-stop:first-child::before { left: 0 !important; top: 5px !important; width: 12px !important; height: 12px !important; background: var(--n-panel) !important; border: 2.5px solid #9CC0FF !important; }
+#homePage .hw-stop:not(:last-child)::after { content: '' !important; position: absolute !important; left: 3px !important; top: 22px !important; bottom: -1px !important; width: 6px !important; background: radial-gradient(circle, rgba(156, 192, 255, .6) 1.5px, transparent 1.8px) center top / 6px 8px !important; background-repeat: no-repeat round !important; }
+#homePage .hw-time { font-size: 15px !important; line-height: 1.45 !important; color: var(--n-ink2) !important; font-variant-numeric: tabular-nums !important; }
+#homePage .hw-name { font-size: 16px !important; line-height: 1.45 !important; font-weight: 500 !important; color: #FFFFFF !important; overflow-wrap: anywhere !important; word-break: keep-all !important; }
+#homePage .hw-move { grid-column: 2 !important; font-size: 13px !important; color: var(--n-ink2) !important; }
+#homePage .hw-none { margin: 16px 0 0 !important; font-size: 15px !important; line-height: 1.6 !important; color: var(--n-ink2) !important; }
+#homePage .hw-go { margin: 20px 0 0 !important; min-height: 48px !important; padding: 0 22px !important; border-radius: 999px !important; background: #FFFFFF !important; color: #0A1222 !important; font-size: 15px !important; font-weight: 700 !important; }
+#homePage .hw-go:hover { background: #E3ECFF !important; }
+
+/* 코스 카드 — 도시마다 다른 빛, 현지 글자로 쓴 도시 이름 */
+.glow-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; margin: 18px 0 0 !important; border: 0 !important; }
+.roadmap-card.rc--glow { display: flex !important; flex-direction: column !important; width: 100% !important; margin: 0 !important; padding: 0 !important; text-align: left !important; background: none !important; border: 0 !important; border-radius: 18px !important; color: var(--n-ink) !important; cursor: pointer !important; transform: none !important; }
+.rc--glow .rg-art { position: relative !important; display: block !important; width: 100% !important; aspect-ratio: 4 / 3 !important; overflow: hidden !important; border-radius: 18px !important; border: 1px solid var(--n-line) !important; background: radial-gradient(90% 90% at 78% 12%, hsl(var(--h) 88% 60% / .88), transparent 62%), radial-gradient(85% 85% at 8% 98%, hsl(calc(var(--h) + 42) 82% 48% / .62), transparent 62%), #0A0F1A !important; transition: border-color 180ms ease !important; }
+.rc--glow .rg-name { position: absolute !important; left: 14px !important; right: 10px !important; bottom: 10px !important; font-size: clamp(26px, 8.4vw, 40px) !important; line-height: 1.16 !important; font-weight: 600 !important; letter-spacing: -0.045em !important; color: #FFFFFF !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; transition: transform 220ms ease !important; }
+.rc--glow:hover .rg-art, .rc--glow:focus-visible .rg-art { border-color: rgba(255, 255, 255, .46) !important; }
+.rc--glow:hover .rg-name { transform: translateY(-5px) !important; }
+.rc--glow:active { opacity: .78 !important; }
+.rc--glow .rg-cap { display: flex !important; flex-direction: column !important; gap: 2px !important; padding: 11px 2px 14px !important; }
+.rc--glow .rc-place { font-size: 13px !important; color: var(--n-ink2) !important; }
+.rc--glow .rc-title { font-size: 16px !important; line-height: 1.35 !important; font-weight: 600 !important; color: #FFFFFF !important; }
+.rc--glow .rc-info { display: flex !important; flex-flow: row wrap !important; gap: 0 5px !important; }
+.rc--glow .rc-days, .rc--glow .rc-style, .rc--glow .rc-sample-tag, .rc--glow .rc-likes { font-size: 14px !important; color: var(--n-ink2) !important; font-weight: 400 !important; }
+.rc--glow .rc-days { color: #E4ECFB !important; }
+.rc--glow .rc-reason-line { color: #BFD6FF !important; }
+
+#homePage .city-marquee.city-chips { display: flex !important; flex-flow: row wrap !important; gap: 8px !important; margin: 14px 0 0 !important; padding: 0 !important; border: 0 !important; overflow: visible !important; }
+#homePage .city-chips .city-chip { flex: none !important; min-height: 48px !important; max-width: 100% !important; padding: 4px 20px !important; border: 1px solid var(--n-line) !important; border-radius: 999px !important; background: rgba(255, 255, 255, .06) !important; color: #F2F6FF !important; font-size: 16px !important; font-weight: 500 !important; white-space: normal !important; text-align: left !important; overflow-wrap: anywhere !important; transition: background-color 140ms ease, border-color 140ms ease !important; }
+#homePage .city-chips .city-chip:hover { background: rgba(120, 165, 255, .2) !important; border-color: rgba(190, 214, 255, .5) !important; }
+#reviewPreviewSection .review-preview-list { display: grid !important; grid-template-columns: 1fr !important; gap: 0 48px !important; margin: 10px 0 0 !important; padding: 0 !important; border-top: 1px solid var(--n-line) !important; overflow: visible !important; }
+#reviewPreviewSection .review-preview { display: block !important; width: auto !important; min-width: 0 !important; margin: 0 !important; padding: 16px 0 !important; background: none !important; border: 0 !important; border-bottom: 1px solid var(--n-line) !important; border-radius: 0 !important; box-shadow: none !important; }
+#reviewPreviewSection .rv-text { margin: 4px 0 !important; font-size: 16px !important; line-height: 1.6 !important; font-weight: 400 !important; color: #F2F6FF !important; }
+#reviewPreviewSection .rv-meta, #reviewPreviewSection .rv-sample { font-size: 13px !important; color: var(--n-ink2) !important; background: none !important; border: 0 !important; padding: 0 !important; }
+#reviewPreviewSection .rv-stars { font-size: 13px !important; color: #FFD98A !important; }
+#recentScheduleSection:not([hidden]) .recent-list { color: var(--n-ink) !important; }
+
+@media (max-width: 359px) {
+  #homePage .nh-title { font-size: 34px !important; }
+  #homePage .nh-copy { padding-top: calc(78px + env(safe-area-inset-top, 0px)) !important; }
+  :is(#homePage, #explorePage) .search-card { margin-top: 18px !important; min-height: 56px !important; }
+  #homePage .home-styles .chip { padding: 0 12px !important; }
+  #homePage .nh-hero { min-height: 560px !important; }
+}
+@media (min-width: 768px) {
+  #homePage .nh-hero { margin: 10px 10px 0 !important; border-radius: 26px !important; border: 1px solid rgba(255, 255, 255, .09) !important; min-height: min(940px, calc(100svh - 110px)) !important; }
+  #homePage .nh-copy { padding-top: 140px !important; }
+  #homePage .nh-title { font-size: 58px !important; }
+  #homePage .section-title { font-size: 32px !important; }
+  #homePage .section-block, #homePage .home-window { margin-top: 88px !important; }
+  .glow-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 16px !important; }
+  .glow-grid:has(> :nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .glow-grid:has(> :nth-child(3):last-child) .rg-art { aspect-ratio: 16 / 9 !important; }
+  .rc--glow .rg-name { font-size: clamp(26px, 3.1vw, 46px) !important; }
+  #reviewPreviewSection .review-preview-list { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; border-top: 0 !important; }
+  #reviewPreviewSection .review-preview { border-bottom: 0 !important; border-top: 1px solid var(--n-line) !important; }
+}
+@media (min-width: 1024px) {
+  :root[data-page="home"] .app-topbar { width: min(1120px, calc(100% - 48px)) !important; height: 60px !important; top: 22px !important; padding: 0 9px 0 22px !important; }
+  :root[data-page="home"] .topbar-nav a:not(.topbar-cta) { color: rgba(226, 235, 255, .8) !important; }
+  :root[data-page="home"] .topbar-nav a:not(.topbar-cta):hover { color: #FFFFFF !important; }
+  :root[data-page="home"] .topbar-nav .topbar-cta { background: #FFFFFF !important; color: #0A1222 !important; border-radius: 999px !important; }
+  :root[data-page="home"] .topbar-nav .topbar-cta:hover { background: #E3ECFF !important; }
+  #homePage > .page-scroll { padding-bottom: 72px !important; }
+  #homePage .nh-hero { min-height: clamp(720px, calc(100svh - 20px), 980px) !important; }
+  #homePage .nh-copy { padding-top: 152px !important; }
+  #homePage .nh-title { font-size: 74px !important; line-height: 1.15 !important; }
+  :is(#homePage, #explorePage) .search-card { margin-top: 34px !important; min-height: 60px !important; }
+  #homePage .home-styles { margin-top: 16px !important; }
+  #homePage .home-create { display: none !important; }
+  #homePage .section-title { font-size: 38px !important; }
+  #homePage .section-block, #homePage .home-window { margin-top: 112px !important; }
+  #homePage .hw { display: grid !important; grid-template-columns: 190px minmax(0, 1fr) !important; margin-top: 24px !important; }
+  #homePage .hw-tabs { flex-direction: column !important; padding: 22px 14px !important; border-bottom: 0 !important; border-right: 1px solid var(--n-line) !important; background: rgba(255, 255, 255, .025) !important; }
+  #homePage .hw-tab { text-align: left !important; }
+  #homePage .hw-main { padding: 28px 32px 32px !important; }
+  #homePage .hw-title { font-size: 28px !important; }
+  /* 넓은 화면 — 하루를 왼쪽에서 오른쪽으로 */
+  #homePage .hw-stops { display: grid !important; grid-auto-flow: column !important; grid-auto-columns: minmax(0, 1fr) !important; margin-top: 32px !important; }
+  #homePage .hw-stop { display: block !important; padding: 28px 16px 0 0 !important; }
+  #homePage .hw-stop::before { left: 1px !important; top: 3px !important; width: 12px !important; height: 12px !important; }
+  #homePage .hw-stop:first-child::before { left: 0 !important; top: 1px !important; width: 15px !important; height: 15px !important; }
+  #homePage .hw-stop:not(:last-child)::after { left: 22px !important; right: 6px !important; top: 6px !important; bottom: auto !important; width: auto !important; height: 6px !important; background: radial-gradient(circle, rgba(156, 192, 255, .6) 1.5px, transparent 1.8px) left center / 9px 6px !important; background-repeat: round no-repeat !important; }
+  #homePage .hw-time, #homePage .hw-name, #homePage .hw-move { display: block !important; }
+  #homePage .hw-name { margin-top: 2px !important; font-size: 17px !important; }
+  #homePage .hw-move { margin-top: 4px !important; }
+  #homePage .hw-go { margin-top: 32px !important; }
+}
+@media (prefers-reduced-motion: reduce) { #homePage *, #homePage *::before, #homePage *::after { transition: none !important; animation: none !important; } }
+
+/* 상단 메뉴(다른 화면) — 현재 화면은 밑줄 하나 */
+@media (min-width: 1024px) {
+  .topbar-nav a:not(.topbar-cta) { position: relative !important; background: none !important; padding: 0 12px !important; min-height: 44px !important; font-size: 15px !important; font-weight: 500 !important; color: var(--p-ink2) !important; border-radius: 0 !important; }
+  .topbar-nav a:not(.topbar-cta):hover { color: var(--p-ink) !important; background: none !important; }
+  .topbar-nav a:not(.topbar-cta).is-active { background: none !important; color: var(--p-ink) !important; font-weight: 700 !important; }
+  .topbar-nav a:not(.topbar-cta).is-active::after { content: '' !important; position: absolute !important; left: 12px !important; right: 12px !important; bottom: 2px !important; height: 2px !important; background: var(--p-select) !important; }
+  .topbar-nav .topbar-cta { min-height: 44px !important; padding: 0 18px !important; margin-left: 8px !important; font-size: 15px !important; font-weight: 700 !important; }
+}
+
+/* ---------- 4. 탐색 ---------- */
+#explorePage .page-header { margin: 8px 0 16px !important; padding: 0 !important; }
+#explorePage #exploreFilters { margin: 8px 0 0 !important; gap: 8px !important; flex-wrap: wrap !important; overflow: visible !important; }
+#explorePage .explore-bar { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; margin: 20px 0 8px !important; min-height: 44px !important; }
+#explorePage .explore-count { margin: 0 !important; font-size: 15px !important; font-weight: 600 !important; color: var(--p-ink) !important; }
+#explorePage .sort-tabs { background: none !important; width: auto !important; height: 44px !important; padding: 0 !important; gap: 16px !important; display: flex !important; border-radius: 0 !important; }
+#explorePage .sort-tabs::before { content: none !important; display: none !important; }
+#explorePage .sort-tabs .sort-tab { width: auto !important; padding: 0 !important; background: none !important; font-size: 14px !important; font-weight: 500 !important; color: var(--p-ink2) !important; border-radius: 0 !important; box-shadow: none !important; }
+#explorePage .sort-tabs .sort-tab.is-active { color: var(--p-ink) !important; font-weight: 700 !important; background: none !important; }
+#explorePage .sort-tabs .sort-tab.is-active::before { content: '' !important; position: absolute !important; left: 0 !important; right: 0 !important; bottom: 8px !important; height: 2px !important; background: var(--p-ink) !important; }
+
+/* ---------- 5. 코스 상세 ---------- */
+.roadmap-cover:not(.has-landmark-img) { padding: 8px 0 0 !important; margin: 0 !important; background: none !important; }
+#roadmapDetailPage .rd-city { margin: 0 !important; font-size: 14px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#roadmapDetailPage .rd-title { margin: 2px 0 0 !important; font-size: 26px !important; line-height: 1.25 !important; font-weight: 800 !important; letter-spacing: -0.025em !important; color: var(--p-ink) !important; }
+#roadmapDetailPage .rd-tag { margin: 4px 0 0 !important; font-size: 15px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#roadmapDetailPage .roadmap-meta { margin: 10px 0 0 !important; }
+.roadmap-meta .meta-pill { font-size: 14px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+.roadmap-meta .meta-pill:first-child { font-weight: 700 !important; color: var(--p-ink) !important; }
+.rd-cost { margin: 24px 0 0 !important; padding: 16px !important; background: var(--p-tint) !important; border: 0 !important; border-radius: 14px !important; }
+.rd-cost .rd-h { margin: 0 !important; font-size: 13px !important; font-weight: 400 !important; color: var(--p-ink2) !important; border: 0 !important; padding: 0 !important; }
+.rd-cost-num { margin: 2px 0 0 !important; font-size: 24px !important; line-height: 1.3 !important; font-weight: 800 !important; color: var(--p-ink) !important; }
+.rd-cost-who { font-size: 14px !important; font-weight: 400 !important; letter-spacing: 0 !important; color: var(--p-ink2) !important; }
+.rd-cost-note { margin: 2px 0 0 !important; font-size: 13px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+.rd-source { margin: 0 !important; }
+.rd-source > summary { min-height: 44px !important; margin-bottom: -10px !important; font-size: 13px !important; font-weight: 500 !important; color: var(--p-ink2) !important; }
+.rd-cost + .rd-h, .rd-note + .rd-h { border: 0 !important; padding: 0 !important; margin: 32px 0 0 !important; }
+#roadmapBody > .rd-h { font-size: 19px !important; font-weight: 700 !important; color: var(--p-ink) !important; }
+.rd-day { margin: 28px 0 0 !important; }
+#roadmapBody > .rd-h + .rd-day { margin-top: 12px !important; }
+.rd-day-h { margin: 0 0 12px !important; font-size: 16px !important; font-weight: 700 !important; color: var(--p-ink) !important; }
+.rd-stop { display: grid !important; grid-template-columns: 48px 22px minmax(0, 1fr) auto !important; column-gap: 0 !important; align-items: baseline !important; padding: 0 !important; margin: 0 !important; border: 0 !important; min-height: 0 !important; }
+.rd-stop .rd-time { font-size: 15px !important; line-height: 1.4 !important; font-weight: 600 !important; color: var(--p-ink) !important; font-variant-numeric: tabular-nums !important; }
+.rd-stop .rd-node { position: relative !important; align-self: start !important; height: 22px !important; }
+.rd-stop .rd-node::before { position: absolute !important; left: 1px !important; top: 6px !important; }
+.rd-stops > .rd-stop:first-child .rd-node::before { left: 0 !important; top: 5px !important; }
+.rd-stop .rd-name { display: block !important; font-size: 16px !important; line-height: 1.4 !important; font-weight: 600 !important; color: var(--p-ink) !important; overflow-wrap: anywhere !important; }
+.rd-stop .rd-cat { padding-left: 12px !important; font-size: 13px !important; font-weight: 400 !important; color: var(--p-ink2) !important; white-space: nowrap !important; }
+.rd-move { position: relative !important; padding: 10px 0 10px 70px !important; margin: 0 !important; border: 0 !important; font-size: 13px !important; line-height: 1.5 !important; font-weight: 400 !important; color: var(--p-ink2) !important; text-align: left !important; min-height: 40px !important; display: flex !important; align-items: center !important; }
+.rd-move::before { content: '' !important; display: block !important; position: absolute !important; left: 52px !important; top: 0 !important; bottom: 0 !important; width: 3px !important; height: auto !important; border: 0 !important; border-radius: 0 !important; background: radial-gradient(circle, var(--p-dot) 1.4px, transparent 1.7px) center top / 3px 8px !important; background-repeat: no-repeat round !important; }
+#roadmapDetailPage .roadmap-cta-row { background: var(--p-bg) !important; border-top: 1px solid var(--p-line) !important; }
+@media (min-width: 1024px) {
+  .rd-stop .rd-name { font-size: 16px !important; }
+}
+
+/* ---------- 6. 여행 만들기 ---------- */
+#createTripPage .step-compact .stc-count { color: var(--p-ink2) !important; font-size: 14px !important; font-weight: 500 !important; }
+#createTripPage .step-compact .stc-name { font-size: 14px !important; font-weight: 600 !important; color: var(--p-ink) !important; }
+#createTripPage .step-compact .stc-bar { height: 3px !important; background: var(--p-line) !important; }
+#createTripPage .step-compact .stc-bar i { background: var(--a-ink) !important; }
+#createTripPage .step-dot.is-active, #createTripPage .step-dot.is-done { color: var(--p-ink) !important; }
+#createTripPage .step-h { margin: 20px 0 20px !important; font-size: 24px !important; line-height: 1.3 !important; font-weight: 800 !important; letter-spacing: -0.025em !important; color: var(--p-ink) !important; }
+#createTripPage .step-subh, #createTripPage .form-section-title { margin: 28px 0 10px !important; font-size: 17px !important; line-height: 1.35 !important; font-weight: 700 !important; letter-spacing: -0.015em !important; color: var(--p-ink) !important; }
+#createTripPage .step-h + .step-subh, #createTripPage .step-h + .form-row { margin-top: 0 !important; }
+#createTripPage #prefillBanner { display: flex !important; align-items: center !important; gap: 12px !important; padding: 0 !important; margin: 12px 0 0 !important; background: none !important; border: 0 !important; border-radius: 0 !important; font-size: 13px !important; font-weight: 400 !important; line-height: 1.5 !important; color: var(--p-ink2) !important; }
+#createTripPage #prefillBanner .btn-text { flex: none !important; font-size: 13px !important; color: var(--p-ink2) !important; }
+#createTripPage:has([data-step-pane="3"]:not([hidden])) #prefillBanner, #createTripPage:has([data-step-pane="4"]:not([hidden])) #prefillBanner { display: none !important; }
+/* 추천 도시 3×2 */
+#createTripPage #destQuick { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px !important; }
+#createTripPage #destQuick .chip, #createTripPage #destQuick button { width: 100% !important; min-height: 48px !important; border-radius: 12px !important; border: 1px solid var(--p-line) !important; background: var(--p-bg) !important; color: var(--p-ink) !important; font-size: 15px !important; font-weight: 600 !important; box-shadow: none !important; }
+#createTripPage #destQuick .is-active, #createTripPage #destQuick [aria-pressed="true"] { background: var(--a-ink) !important; border-color: var(--a-ink) !important; color: var(--a-on-ink) !important; }
+#createTripPage details.dest-advanced, #createTripPage details.budget-more { margin: 24px 0 0 !important; border: 0 !important; border-top: 1px solid var(--p-line) !important; border-bottom: 1px solid var(--p-line) !important; }
+#createTripPage details.dest-advanced > summary, #createTripPage details.budget-more > summary { margin: 0 !important; padding: 0 !important; min-height: 56px !important; display: flex !important; align-items: center !important; gap: 8px !important; font-size: 16px !important; font-weight: 600 !important; color: var(--p-ink) !important; list-style: none !important; }
+#createTripPage details > summary::-webkit-details-marker { display: none !important; }
+#createTripPage details.dest-advanced > summary::before, #createTripPage details.budget-more > summary::before { content: none !important; display: none !important; }
+#createTripPage details.dest-advanced > summary::after, #createTripPage details.budget-more > summary::after { content: '' !important; flex: none !important; width: 8px !important; height: 8px !important; margin: 0 4px 4px auto !important; border: solid var(--p-ink3) !important; border-width: 0 2px 2px 0 !important; transform: rotate(45deg) !important; position: static !important; background: none !important; }
+#createTripPage details.dest-advanced[open] > summary::after, #createTripPage details.budget-more[open] > summary::after { transform: rotate(225deg) !important; margin-bottom: -4px !important; }
+/* 누구와 — 한 줄에 다섯 */
+#createTripPage .choice-grid--3 { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 0 !important; border: 1px solid var(--p-field) !important; border-radius: 12px !important; overflow: hidden !important; }
+#createTripPage .choice-grid--3 .choice-card { min-height: 48px !important; min-width: 0 !important; padding: 0 !important; margin: 0 !important; border: 0 !important; border-radius: 0 !important; background: none !important; justify-content: center !important; }
+#createTripPage .choice-grid--3 .choice-card + .choice-card { border-left: 1px solid var(--p-line) !important; }
+#createTripPage .choice-grid--3 .choice-card .ch-label { font-size: 15px !important; font-weight: 600 !important; white-space: nowrap !important; }
+#createTripPage .choice-grid--3 .choice-card.is-active { background: var(--a-ink) !important; }
+/* 인원 — 구분선 목록 */
+#createTripPage .people-box { margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: none !important; }
+#createTripPage .people-box .step-subh { margin-bottom: 4px !important; }
+#createTripPage .stepper-row { display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 8px 0 !important; min-height: 60px !important; border: 0 !important; border-bottom: 1px solid var(--p-line) !important; }
+#createTripPage .stepper-text > span { font-size: 16px !important; font-weight: 600 !important; color: var(--p-ink) !important; }
+#createTripPage .stepper-text small { font-size: 13px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#createTripPage .stepper output { font-size: 16px !important; font-weight: 700 !important; min-width: 32px !important; text-align: center !important; }
+#createTripPage .stepper button { width: 44px !important; height: 44px !important; border: 1px solid var(--p-line) !important; border-radius: 12px !important; background: var(--p-bg) !important; color: var(--p-ink) !important; }
+#createTripPage .stepper button:disabled { color: var(--p-ink3) !important; opacity: .5 !important; }
+#createTripPage #tripDuration { font-size: 15px !important; font-weight: 600 !important; color: var(--p-ink) !important; margin: 12px 0 0 !important; }
+/* 여행 스타일 — 하나 고르는 행 */
+#createTripPage .concept-grid { display: block !important; border-top: 1px solid var(--p-line) !important; }
+#createTripPage .concept-card { position: relative !important; display: grid !important; grid-template-columns: 22px auto minmax(0, 1fr) !important; column-gap: 12px !important; align-items: center !important; width: 100% !important; min-height: 54px !important; padding: 8px 0 !important; margin: 0 !important; border: 0 !important; border-bottom: 1px solid var(--p-line) !important; border-radius: 0 !important; background: none !important; text-align: left !important; box-shadow: none !important; }
+#createTripPage .concept-card .cc-emoji { display: none !important; }
+#createTripPage .concept-card::after { content: none !important; display: none !important; }
+#createTripPage .concept-card::before { content: '' !important; display: block !important; position: static !important; width: 22px !important; height: 22px !important; box-sizing: border-box !important; border: 1.5px solid var(--p-field) !important; border-radius: 50% !important; background: var(--p-bg) !important; transition: border-width 120ms ease !important; }
+#createTripPage .concept-card.is-active::before { border: 7px solid var(--a-ink) !important; }
+#createTripPage .concept-card .cc-title { margin: 0 !important; font-size: 16px !important; font-weight: 600 !important; color: var(--p-ink) !important; text-align: left !important; }
+#createTripPage .concept-card.is-active .cc-title { font-weight: 700 !important; }
+#createTripPage .concept-card .cc-desc { margin: 0 !important; font-size: 14px !important; line-height: 1.4 !important; font-weight: 400 !important; color: var(--p-ink2) !important; text-align: right !important; }
+#createTripPage .concept-card.is-active { background: none !important; border-color: var(--p-line) !important; }
+#createTripPage .check-opt { min-height: 48px !important; font-size: 15px !important; font-weight: 500 !important; border-bottom: 1px solid var(--p-line) !important; }
+/* 예산 */
+#createTripPage .budget-field { text-align: left !important; margin: 0 !important; }
+#createTripPage .budget-field .form-label { justify-content: flex-start !important; margin: 0 !important; }
+#createTripPage .budget-field .form-hint, #createTripPage .budget-field .form-error, #createTripPage .budget-level-badge { text-align: left !important; margin: 4px 0 0 !important; }
+#createTripPage .budget-field .budget-input-wrap { margin: 12px 0 0 !important; }
+#createTripPage .budget-field #budgetPerPerson, #createTripPage .budget-level-badge { text-align: center !important; }
+#createTripPage .budget-level-badge { background: none !important; border: 0 !important; padding: 0 !important; font-size: 14px !important; font-weight: 500 !important; }
+#createTripPage .budget-suggest { margin: 32px 0 0 !important; padding: 16px !important; background: var(--p-tint) !important; border: 0 !important; border-radius: 14px !important; }
+#createTripPage .budget-suggest .form-section-title { margin: 0 !important; }
+#createTripPage .budget-suggest .money-row { padding: 7px 0 !important; border: 0 !important; }
+#createTripPage .budget-suggest .money-row dt { font-size: 14px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#createTripPage .budget-suggest .money-row dt small { display: inline !important; margin-left: 6px !important; font-size: 13px !important; }
+#createTripPage .budget-suggest .money-row dd { font-size: 15px !important; font-weight: 500 !important; font-variant-numeric: tabular-nums !important; }
+#createTripPage .budget-suggest .money-row--total { margin-top: 6px !important; padding-top: 12px !important; border-top: 1px solid var(--p-line) !important; }
+#createTripPage .budget-suggest .money-row--total dt { font-size: 15px !important; font-weight: 600 !important; color: var(--p-ink) !important; }
+#createTripPage .budget-suggest .money-row--total dd { font-size: 20px !important; font-weight: 800 !important; }
+#createTripPage .budget-suggest .budget-apply { background: var(--p-bg) !important; border: 1px solid var(--p-field) !important; }
+#createTripPage .budget-marks { display: block !important; margin: 16px 0 0 !important; border-top: 1px solid var(--p-line) !important; }
+#createTripPage .budget-marks button { display: grid !important; grid-template-columns: 76px minmax(0, 1fr) auto !important; column-gap: 8px !important; align-items: center !important; width: 100% !important; min-height: 54px !important; padding: 8px 0 !important; border: 0 !important; border-bottom: 1px solid var(--p-line) !important; border-radius: 0 !important; background: none !important; color: var(--p-ink) !important; text-align: left !important; }
+#createTripPage .budget-marks .bm-label { grid-column: 1 !important; grid-row: 1 !important; font-size: 16px !important; font-weight: 600 !important; }
+#createTripPage .budget-marks .bm-desc { grid-column: 2 !important; grid-row: 1 !important; font-size: 13px !important; line-height: 1.4 !important; opacity: 1 !important; color: var(--p-ink2) !important; word-break: keep-all !important; }
+#createTripPage .budget-marks .bm-val { grid-column: 3 !important; grid-row: 1 !important; font-size: 15px !important; font-weight: 600 !important; text-align: right !important; font-variant-numeric: tabular-nums !important; }
+#createTripPage .budget-marks button.is-active, #createTripPage .budget-marks button[aria-pressed="true"] { background: none !important; color: var(--p-link) !important; }
+#createTripPage .budget-marks button.is-active .bm-label, #createTripPage .budget-marks button.is-active .bm-val { font-weight: 800 !important; color: var(--p-link) !important; }
+#createTripPage .budget-trip-summary { padding: 0 !important; margin: 0 !important; background: none !important; border: 0 !important; border-radius: 0 !important; }
+#createTripPage .trip-summary { margin: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; border-radius: 0 !important; }
+.trip-summary .ts-rows { margin: 0 !important; }
+.trip-summary .ts-row { display: grid !important; grid-template-columns: 88px minmax(0, 1fr) !important; gap: 12px !important; padding: 10px 0 !important; border-bottom: 1px solid var(--p-line) !important; }
+.trip-summary .ts-row dt { margin: 0 !important; font-size: 14px !important; color: var(--p-ink2) !important; }
+.trip-summary .ts-row dd { margin: 0 !important; font-size: 15px !important; font-weight: 500 !important; color: var(--p-ink) !important; text-align: right !important; overflow-wrap: anywhere !important; }
+#createTripPage .form-details, #createTripPage .form-section { border: 0 !important; border-top: 1px solid var(--p-line) !important; border-radius: 0 !important; background: none !important; padding: 0 !important; margin: 0 !important; }
+#createTripPage .form-details > summary { min-height: 52px !important; display: flex !important; align-items: center !important; padding: 0 !important; margin: 0 !important; font-size: 15px !important; font-weight: 600 !important; }
+#createTripPage .budget-includes { border: 0 !important; padding: 0 !important; margin: 0 0 16px !important; }
+#createTripPage .step-nav { background: var(--p-bg) !important; border-top: 1px solid var(--p-line) !important; }
+#createTripPage .step-nav #stepPrev, #createTripPage .step-nav #stepNext, #createTripPage .step-nav #stepGenerate { min-height: 52px !important; }
+
+/* ---------- 7. 내 일정 ---------- */
+#schedulePage .schedule-head { margin: 8px 0 0 !important; padding: 0 !important; }
+#schedulePage .schedule-head .page-sub { font-size: 15px !important; color: var(--p-ink2) !important; }
+#schedulePage .schedule-actions { margin: 14px 0 0 !important; }
+#schedulePage .schedule-actions .action-icon { background: var(--p-bg) !important; border: 1px solid var(--p-line) !important; border-radius: 12px !important; }
+#schedulePage .save-status { margin: 8px 0 0 !important; font-size: 13px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#schedulePage .now-next { margin: 16px 0 0 !important; padding: 12px 0 !important; background: none !important; border: 0 !important; border-top: 2px solid var(--p-ink) !important; border-bottom: 1px solid var(--p-line) !important; border-radius: 0 !important; }
+#schedulePage .now-next .nn-label { font-weight: 600 !important; color: var(--p-ink2) !important; }
+#schedulePage .now-next .nn-name { font-size: 16px !important; }
+/* 예산 — 한 영역, 금액은 오른쪽 한 줄기준 */
+#schedulePage .budget-panel { margin: 20px 0 0 !important; padding: 14px 16px 6px !important; background: var(--p-tint) !important; border: 0 !important; border-radius: 14px !important; }
+#schedulePage .money-rows--panel .money-row { padding: 3px 0 !important; border: 0 !important; align-items: baseline !important; }
+#schedulePage .money-rows--panel .money-row dt { font-size: 14px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#schedulePage .money-rows--panel .money-row dt .money-note { display: inline !important; margin: 0 0 0 6px !important; font-size: 13px !important; color: var(--p-ink2) !important; }
+#schedulePage .money-rows--panel .money-row dd { font-size: 15px !important; font-weight: 500 !important; color: var(--p-ink) !important; font-variant-numeric: tabular-nums !important; }
+#schedulePage .money-rows--panel .money-row--total dd { font-size: 15px !important; font-weight: 500 !important; }
+#schedulePage .money-rows--panel .money-row--over dt, #schedulePage .money-rows--panel .money-row--under dt { font-weight: 600 !important; color: var(--p-ink) !important; }
+#schedulePage .money-rows--panel .money-row--over dd, #schedulePage .money-rows--panel .money-row--under dd { font-size: 22px !important; line-height: 1.3 !important; font-weight: 800 !important; letter-spacing: -0.02em !important; }
+#schedulePage .money-rows--panel .money-row--over dd { color: var(--r-danger) !important; }
+#schedulePage .money-rows--panel .money-row--over dd::before { content: none !important; }
+#schedulePage .alt-summary { margin: 8px 0 0 !important; padding: 4px 0 0 !important; border-top: 1px solid var(--p-line) !important; min-height: 48px !important; }
+#schedulePage .alt-summary-text { column-gap: 6px !important; }
+#schedulePage .alt-summary-k { display: none !important; }
+#schedulePage .alt-summary-v { font-size: 14px !important; font-weight: 600 !important; color: var(--p-ink) !important; }
+#schedulePage .alt-summary-t { font-size: 13px !important; color: var(--p-ink2) !important; }
+#schedulePage .budget-meta { margin: 4px 0 6px !important; font-size: 13px !important; color: var(--p-ink2) !important; }
+#schedulePage .budget-panel:not(.is-over) { padding-bottom: 14px !important; }
+/* 날짜 — 밑줄 탭 */
+#schedulePage .day-row { margin: 24px 0 0 !important; }
+#schedulePage .day-chips { gap: 20px !important; border-bottom: 1px solid var(--p-line) !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+#schedulePage .day-chip { min-width: 0 !important; min-height: 54px !important; padding: 4px 0 8px !important; border: 0 !important; border-radius: 0 !important; background: none !important; color: var(--p-ink2) !important; position: relative !important; align-items: flex-start !important; }
+#schedulePage .day-chip .day-chip-date { font-size: 16px !important; font-weight: 600 !important; color: inherit !important; }
+#schedulePage .day-chip .day-chip-label { font-size: 13px !important; font-weight: 400 !important; color: var(--p-ink2) !important; opacity: 1 !important; }
+#schedulePage .day-chip.is-active { background: none !important; color: var(--p-ink) !important; }
+#schedulePage .day-chip.is-active .day-chip-date { font-weight: 800 !important; }
+#schedulePage .day-chip.is-active .day-chip-label { color: var(--p-ink) !important; opacity: 1 !important; }
+#schedulePage .day-chip.is-active::after { content: '' !important; position: absolute !important; left: 0 !important; right: 0 !important; bottom: 0 !important; height: 2px !important; background: var(--p-ink) !important; }
+#schedulePage .day-sub { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; align-items: center !important; justify-content: space-between !important; gap: 0 12px !important; margin: 4px 0 0 !important; }
+#schedulePage .day-sub-cost { margin: 0 !important; font-size: 14px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#schedulePage .checks-btn { width: auto !important; min-height: 44px !important; padding: 0 !important; background: none !important; border: 0 !important; border-radius: 0 !important; font-size: 14px !important; font-weight: 600 !important; color: var(--p-link) !important; }
+#schedulePage .checks-btn.is-warn { background: none !important; color: var(--r-danger) !important; }
+#schedulePage .schedule-toolbar { margin: 4px 0 0 !important; min-height: 44px !important; }
+#schedulePage .view-toggle { height: 40px !important; padding: 2px !important; background: var(--p-tint) !important; border-radius: 10px !important; }
+#schedulePage .view-toggle button { font-weight: 500 !important; }
+#schedulePage .view-toggle button[aria-pressed="true"] { background: var(--p-bg) !important; font-weight: 700 !important; }
+#schedulePage .btn-edit { background: none !important; padding: 0 !important; height: 44px !important; min-height: 44px !important; font-size: 14px !important; font-weight: 600 !important; color: var(--p-link) !important; }
+#schedulePage .btn-edit.is-active, #schedulePage .btn-edit[aria-pressed="true"] { background: none !important; color: var(--p-ink) !important; font-weight: 800 !important; }
+/* 타임라인 — 시각 | 경로점 | 장소 */
+#schedulePage .timeline { margin: 16px 0 0 !important; }
+.timeline .schedule-card { grid-template-columns: 48px 22px minmax(0, 1fr) !important; }
+.timeline .schedule-card .sc-when { padding: 0 !important; }
+.timeline .schedule-card .schedule-time { font-size: 15px !important; line-height: 1.4 !important; font-weight: 600 !important; letter-spacing: 0 !important; color: var(--p-ink) !important; font-variant-numeric: tabular-nums !important; }
+.timeline .schedule-card::before { left: 52px !important; top: 22px !important; bottom: 0 !important; width: 3px !important; background: radial-gradient(circle, var(--p-dot) 1.4px, transparent 1.7px) center top / 3px 8px !important; background-repeat: no-repeat round !important; }
+.timeline > .schedule-card:first-of-type::before, .timeline > .add-place-top + .schedule-card::before { top: 22px !important; }
+.timeline > .schedule-card:last-child::before { display: none !important; }
+.timeline .schedule-card::after { left: 49px !important; top: 6px !important; }
+.timeline > .schedule-card:first-of-type::after { left: 48px !important; top: 5px !important; }
+.timeline .schedule-card.is-visited::after { background: var(--r-ok) !important; border-color: var(--r-ok) !important; }
+.timeline .schedule-card:has(.pin-badge)::after { background: var(--p-link) !important; border-color: var(--p-link) !important; }
+.timeline .schedule-card .schedule-card-main { margin: 0 !important; padding: 0 0 4px !important; gap: 2px !important; border: 0 !important; background: none !important; }
+.timeline .schedule-card.is-focused .schedule-card-main { background: var(--p-tint) !important; border-radius: 8px !important; box-shadow: none !important; outline: 8px solid var(--p-tint) !important; outline-offset: 0 !important; }
+.timeline .schedule-card .schedule-place-name { font-size: 16px !important; line-height: 1.4 !important; font-weight: 700 !important; letter-spacing: -0.015em !important; padding-right: 44px !important; }
+.timeline .sc-more { top: -11px !important; right: -10px !important; }
+.timeline .sc-line { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 8px !important; min-height: 32px !important; }
+.timeline .schedule-card-meta-line { column-gap: 8px !important; row-gap: 0 !important; flex: 1 1 auto !important; min-width: 0 !important; }
+.timeline .schedule-category, .timeline .sample-badge, .timeline .edited-badge, .timeline .pin-badge, .timeline .visited-badge { background: none !important; border: 0 !important; padding: 0 !important; min-height: 0 !important; border-radius: 0 !important; font-size: 14px !important; line-height: 1.45 !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+.timeline .pin-badge { color: var(--p-link) !important; font-weight: 600 !important; }
+.timeline .visited-badge { color: var(--r-ok) !important; font-weight: 600 !important; }
+.timeline .schedule-card-meta-line .schedule-cost { font-size: 14px !important; line-height: 1.45 !important; font-weight: 600 !important; color: var(--p-ink) !important; }
+.timeline .sc-line .sc-map-link { flex: none !important; min-height: 44px !important; margin: -6px 0 !important; font-size: 13px !important; }
+.timeline .sc-where { margin: 0 !important; }
+.timeline .sc-where .sc-addr, .timeline .schedule-place-subinfo { font-size: 13px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+.timeline .sc-flags { margin: 0 !important; gap: 2px !important; }
+.timeline .sc-flag { font-size: 13px !important; padding: 0 !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+.timeline .sc-flag::before { content: none !important; }
+.timeline .sc-flag--warn { color: var(--r-danger) !important; font-weight: 500 !important; }
+.timeline .tl-move { position: relative !important; margin: 0 !important; padding: 8px 0 14px 70px !important; font-size: 13px !important; line-height: 1.5 !important; font-weight: 400 !important; color: var(--p-ink2) !important; border: 0 !important; }
+.timeline .tl-move::before { left: 52px !important; top: 0 !important; bottom: 0 !important; width: 3px !important; background: radial-gradient(circle, var(--p-dot) 1.4px, transparent 1.7px) center top / 3px 8px !important; background-repeat: no-repeat round !important; }
+.timeline .add-place-top { margin: 0 0 16px !important; width: 100% !important; }
+.timeline .schedule-card .schedule-card-actions { padding: 4px 0 8px !important; }
+.timeline .tl-empty { padding: 16px 0 !important; }
+#schedulePage .day-checks { margin: 4px 0 0 !important; padding: 0 !important; background: none !important; border: 0 !important; border-radius: 0 !important; }
+@media (min-width: 1024px) { #schedulePage .schedule-actions { margin: 0 !important; } }
+
+/* 여행 도구 목록 */
+.tools-section .section-title { margin: 0 0 12px !important; }
+.tools-section { padding: 0 !important; background: none !important; border: 0 !important; }
+#schedulePage .booking-cta { display: block !important; margin: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; border-radius: 0 !important; }
+#schedulePage .booking-cta #openBookingBtn { width: 100% !important; min-height: 56px !important; background: none !important; border: 0 !important; border-bottom: 1px solid var(--p-line) !important; border-radius: 0 !important; padding: 8px 0 !important; color: var(--p-ink) !important; }
+#schedulePage .booking-cta #openBookingBtn:active { background: var(--p-tint) !important; }
+.review-form { background: none !important; border: 0 !important; padding: 0 !important; }
+
+/* 도구 창 */
+#toolSheet { top: 0 !important; bottom: 0 !important; left: 0 !important; right: 0 !important; margin: 0 auto !important; height: 100% !important; max-height: none !important; border-radius: 0 !important; box-shadow: none !important; background: var(--p-bg) !important; padding-top: env(safe-area-inset-top, 0px) !important; display: flex !important; flex-direction: column !important; transform: translateX(100%) !important; transition: transform 240ms var(--r-ease, ease) !important; }
+#toolSheet.is-visible { transform: none !important; }
+#toolSheet .sheet-head { display: grid !important; grid-template-columns: 44px 1fr 44px !important; align-items: center !important; min-height: 52px !important; padding: 4px 6px !important; border-bottom: 1px solid var(--p-line) !important; }
+#toolSheet .sheet-head h2 { margin: 0 !important; text-align: center !important; font-size: 17px !important; font-weight: 700 !important; }
+#toolSheet .window-back { display: inline-flex !important; align-items: center !important; justify-content: center !important; }
+#toolSheet .sheet-body { flex: 1 1 auto !important; min-height: 0 !important; overflow-y: auto !important; padding: 20px 16px calc(32px + env(safe-area-inset-bottom, 0px)) !important; }
+#toolSheet .cost-summary, #toolSheet .tool-card { margin: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; border-radius: 0 !important; }
+#toolSheet .trip-tools { display: block !important; }
+#toolSheet .cost-summary:not(.is-current), #toolSheet .tool-card:not(.is-current) { display: none !important; }
+#toolSheet .tool-title, #toolSheet .cost-summary-title { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; }
+#toolSheet .cost-why-h { margin: 28px 0 8px !important; font-size: 16px !important; font-weight: 700 !important; color: var(--p-ink) !important; }
+#toolSheet .money-row { padding: 10px 0 !important; border-bottom: 1px solid var(--p-line) !important; }
+#toolSheet .money-row dt { font-size: 15px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#toolSheet .money-row dd { font-size: 15px !important; font-weight: 500 !important; color: var(--p-ink) !important; text-align: right !important; font-variant-numeric: tabular-nums !important; }
+#toolSheet .money-row--total { border-bottom: 0 !important; }
+#toolSheet .money-row--total dt { font-weight: 600 !important; color: var(--p-ink) !important; }
+#toolSheet .money-row--total dd { font-size: 20px !important; font-weight: 800 !important; }
+#toolSheet .tool-check { min-height: 52px !important; display: flex !important; align-items: center !important; gap: 12px !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-bottom: 1px solid var(--p-line) !important; background: none !important; font-size: 16px !important; }
+#toolSheet .tool-check input { width: 20px !important; height: 20px !important; accent-color: var(--a-ink) !important; }
+#toolSheet .tool-day { display: grid !important; grid-template-columns: 1fr auto auto auto !important; gap: 12px !important; padding: 12px 0 !important; border: 0 !important; border-bottom: 1px solid var(--p-line) !important; border-radius: 0 !important; background: none !important; font-size: 15px !important; }
+#toolSheet .tool-row { padding: 10px 0 !important; border-bottom: 1px solid var(--p-line) !important; }
+#toolSheet .exp-field { margin: 0 0 14px !important; }
+#toolSheet .exp-form { gap: 0 12px !important; }
+#toolSheet .tool-actions { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; margin: 16px 0 0 !important; }
+#toolSheet .tool-actions .tool-note { flex: 1 1 100% !important; margin: 8px 0 0 !important; }
+#toolSheet .tool-actions .btn { flex: 1 1 140px !important; }
+#toolSheet .tool-note + .btn, #toolSheet .tool-note + .tool-actions { margin-top: 16px !important; }
+#toolSheet .tool-card[data-tool="rate"] .tool-note { font-size: 15px !important; color: var(--p-ink) !important; line-height: 1.6 !important; }
+@media (min-width: 768px) {
+  #toolSheet, #settingsSheet { left: auto !important; width: 480px !important; max-width: 480px !important; margin: 0 !important; box-shadow: -8px 0 32px rgba(20, 28, 40, .12) !important; }
+  #settingsBackdrop.is-visible { background: rgba(20, 28, 40, .32) !important; }
+}
+
+/* ---------- 8. 시트 ---------- */
+.bottom-sheet { background: var(--p-bg) !important; }
+.bottom-sheet .sheet-head h2, .bottom-sheet .sheet-head h3 { font-size: 18px !important; font-weight: 700 !important; color: var(--p-ink) !important; }
+#altSheet .alt-sheet-lead { margin: 0 0 8px !important; font-size: 14px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#altSheet .alt-opts { gap: 0 !important; border-top: 1px solid var(--p-line) !important; }
+.alt-opt { display: grid !important; grid-template-columns: 22px minmax(0, 1fr) auto !important; column-gap: 12px !important; align-items: start !important; padding: 14px 0 !important; border: 0 !important; border-bottom: 1px solid var(--p-line) !important; border-radius: 0 !important; background: none !important; }
+.alt-opt.is-on { background: none !important; border-color: var(--p-line) !important; box-shadow: none !important; }
+.alt-opt .alt-opt-mark { width: 22px !important; height: 22px !important; margin: 0 !important; border: 1.5px solid var(--p-field) !important; background: var(--p-bg) !important; }
+.alt-opt.is-on .alt-opt-mark { border: 7px solid var(--a-ink) !important; background: var(--p-bg) !important; }
+.alt-opt.is-on .alt-opt-mark::after { content: none !important; }
+.alt-opt-label { font-size: 16px !important; line-height: 1.35 !important; font-weight: 600 !important; }
+.alt-opt.is-on .alt-opt-label { font-weight: 700 !important; }
+.alt-opt-detail, .alt-opt-sub { font-size: 13px !important; line-height: 1.45 !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+.alt-opt-sub.is-over { color: var(--r-danger) !important; }
+.alt-opt-total { font-size: 16px !important; line-height: 1.35 !important; font-weight: 700 !important; text-align: right !important; white-space: nowrap !important; }
+#bookingSheet .sheet-filters .chip { min-height: 40px !important; }
+#bookingSheet .book-notice { margin: 0 !important; padding: 0 !important; background: none !important; border-radius: 0 !important; font-size: 13px !important; line-height: 1.5 !important; color: var(--p-ink2) !important; }
+#bookingSheet .book-section > h4 { margin: 24px 0 0 !important; padding: 0 0 8px !important; font-size: 16px !important; font-weight: 700 !important; color: var(--p-ink) !important; border-bottom: 1px solid var(--p-line) !important; }
+#bookingSheet .book-row { display: grid !important; grid-template-columns: 34px minmax(0, 1fr) !important; gap: 0 !important; padding: 12px 0 4px !important; border-bottom: 1px solid var(--p-line) !important; }
+#bookingSheet .book-row.is-selected { background: none !important; }
+#bookingSheet .book-check-label { min-width: 44px !important; min-height: 44px !important; margin: -11px 0 0 -11px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
+#bookingSheet .book-check { width: 22px !important; height: 22px !important; accent-color: var(--a-ink) !important; }
+#bookingSheet .book-head { display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; column-gap: 12px !important; align-items: baseline !important; }
+#bookingSheet .book-name { font-size: 16px !important; line-height: 1.4 !important; font-weight: 600 !important; color: var(--p-ink) !important; overflow-wrap: anywhere !important; }
+#bookingSheet .book-price { font-size: 16px !important; font-weight: 700 !important; color: var(--p-ink) !important; text-align: right !important; white-space: nowrap !important; font-variant-numeric: tabular-nums !important; }
+#bookingSheet .book-estimate { font-size: 13px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#bookingSheet .book-desc { font-size: 13px !important; font-weight: 400 !important; color: var(--p-ink2) !important; margin: 0 !important; }
+#bookingSheet .book-actions { display: flex !important; flex-flow: row wrap !important; align-items: center !important; justify-content: flex-start !important; gap: 0 20px !important; margin: 0 !important; }
+#bookingSheet .book-mark { background: none !important; padding: 0 !important; min-height: 44px !important; height: 44px !important; font-size: 14px !important; font-weight: 600 !important; color: var(--p-ink2) !important; border-radius: 0 !important; }
+#bookingSheet .book-mark.is-on { background: none !important; color: var(--p-ink) !important; font-weight: 700 !important; }
+#bookingSheet .book-link { min-height: 44px !important; }
+#bookingSheet .book-badge { background: none !important; border: 0 !important; padding: 0 !important; font-size: 13px !important; font-weight: 600 !important; color: var(--p-link) !important; }
+#bookingSheet .book-badge.is-booked { color: var(--r-ok) !important; }
+
+/* ---------- 9. 마이 · 설정 · 요금제 · 로그인 ---------- */
+#myPage .my-title { margin: 8px 0 0 !important; }
+#myPage .my-group { margin: 32px 0 0 !important; }
+#myPage .my-title + .my-group { margin-top: 20px !important; }
+#myPage .my-group-h { margin: 0 0 8px !important; font-size: 18px !important; line-height: 1.35 !important; font-weight: 700 !important; letter-spacing: -0.02em !important; color: var(--p-ink) !important; }
+#myPage .my-group .setting-list, #myPage .my-group:first-of-type .setting-list { border: 0 !important; border-top: 1px solid var(--p-line) !important; border-radius: 0 !important; background: none !important; }
+#myPage .my-group .setting-row { padding: 8px 0 !important; }
+#myPage .profile-card { display: grid !important; grid-template-columns: 40px minmax(0, 1fr) auto !important; gap: 12px !important; align-items: center !important; margin: 24px 0 0 !important; padding: 14px 16px !important; background: var(--p-tint) !important; border: 0 !important; border-radius: 14px !important; }
+#myPage .profile-avatar { width: 40px !important; height: 40px !important; background: var(--a-ink) !important; color: var(--a-on-ink) !important; font-size: 16px !important; font-weight: 700 !important; }
+#myPage .profile-name { font-size: 16px !important; font-weight: 700 !important; }
+#myPage .profile-email { font-size: 13px !important; line-height: 1.45 !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#myPage #profileAuthBtn { background: var(--p-bg) !important; border: 1px solid var(--p-field) !important; border-radius: 10px !important; font-weight: 600 !important; }
+#myPage .version-tag { margin: 28px 0 0 !important; font-size: 13px !important; color: var(--p-ink3) !important; text-align: left !important; }
+@media (max-width: 359px) { #myPage .profile-card { grid-template-columns: 40px minmax(0, 1fr) !important; } #myPage #profileAuthBtn { grid-column: 1 / -1 !important; width: 100% !important; } }
+@media (min-width: 1024px) {
+  #myPage .page-scroll { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; column-gap: 64px !important; align-content: start !important; }
+  #myPage .my-title, #myPage .profile-card, #myPage .version-tag { grid-column: 1 / -1 !important; }
+  #myPage .my-title + .my-group { grid-column: 1 / -1 !important; }
+}
+#settingsSheet { background: var(--p-bg) !important; }
+#settingsSheet .sheet-head { background: var(--p-bg) !important; min-height: 52px !important; }
+#settingsSheet .setting-list { border: 0 !important; border-top: 1px solid var(--p-line) !important; border-radius: 0 !important; background: none !important; }
+#settingsSheet .setting-row { padding: 8px 0 !important; }
+#settingsSheet .setting-row--block { padding: 16px 0 !important; }
+#settingsSheet .set-group-h { margin: 28px 0 8px !important; font-size: 16px !important; font-weight: 700 !important; color: var(--p-ink) !important; }
+#settingsSheet .set-view > .set-group-h:first-child { margin-top: 8px !important; }
+#settingsSheet .version-tag { margin: 24px 0 0 !important; text-align: left !important; font-size: 13px !important; color: var(--p-ink3) !important; }
+#settingsSheet .theme-seg, #settingsSheet #themeSeg { border: 0 !important; background: var(--p-tint) !important; border-radius: 12px !important; }
+
+/* 요금제 — 상자 대신 구분선, 같은 버튼 */
+#subscriptionPage .sub-hero { padding: 8px 0 0 !important; margin: 0 !important; text-align: left !important; background: none !important; border: 0 !important; }
+#subscriptionPage .sub-hero-title { text-align: left !important; font-size: 26px !important; font-weight: 800 !important; margin: 0 !important; }
+#subscriptionPage .sub-hero-desc { margin: 4px 0 0 !important; text-align: left !important; font-size: 15px !important; font-weight: 400 !important; color: var(--p-ink2) !important; max-width: none !important; }
+#subscriptionPage .sub-status { margin: 8px 0 0 !important; padding: 0 !important; background: none !important; border: 0 !important; font-size: 14px !important; color: var(--p-ink2) !important; }
+#subscriptionPage .sub-toggle { display: inline-flex !important; margin: 20px 0 0 !important; padding: 2px !important; height: 44px !important; background: var(--p-tint) !important; border: 0 !important; border-radius: 10px !important; box-shadow: none !important; }
+#subscriptionPage .sub-toggle-btn { height: 100% !important; min-height: 0 !important; padding: 0 16px !important; border: 0 !important; border-radius: 8px !important; background: none !important; color: var(--p-ink2) !important; font-size: 14px !important; font-weight: 500 !important; box-shadow: none !important; }
+#subscriptionPage .sub-toggle-btn.is-on { background: var(--p-bg) !important; color: var(--p-ink) !important; font-weight: 700 !important; }
+#subscriptionPage .sub-grid { margin: 20px 0 0 !important; padding: 0 !important; gap: 0 !important; border-top: 1px solid var(--p-line) !important; }
+#subscriptionPage .sub-card { position: relative !important; margin: 0 !important; padding: 20px 0 !important; background: none !important; border: 0 !important; border-bottom: 1px solid var(--p-line) !important; border-radius: 0 !important; box-shadow: none !important; transform: none !important; }
+#subscriptionPage .sub-badge { position: static !important; display: inline-block !important; transform: none !important; margin: 0 0 4px !important; padding: 0 !important; background: none !important; border: 0 !important; border-radius: 0 !important; font-size: 13px !important; font-weight: 600 !important; color: var(--p-link) !important; box-shadow: none !important; }
+#subscriptionPage .sub-name { margin: 0 !important; font-size: 18px !important; font-weight: 700 !important; color: var(--p-ink) !important; }
+#subscriptionPage .sub-price { margin: 4px 0 0 !important; padding: 0 !important; border: 0 !important; }
+#subscriptionPage .sub-price-num { font-size: 26px !important; font-weight: 800 !important; color: var(--p-ink) !important; }
+#subscriptionPage .sub-price-sub { font-size: 14px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#subscriptionPage .sub-features { margin: 12px 0 0 !important; padding: 0 !important; border: 0 !important; }
+#subscriptionPage .sub-features li { padding: 3px 0 !important; font-size: 14px !important; font-weight: 400 !important; border: 0 !important; color: var(--p-ink) !important; }
+#subscriptionPage .sub-features .sub-features-mute { color: var(--p-ink2) !important; }
+#subscriptionPage .sub-card .btn, #subscriptionPage .sub-cta { margin: 16px 0 0 !important; min-height: 48px !important; border-radius: 12px !important; background: var(--p-tint) !important; border: 0 !important; color: var(--p-ink2) !important; font-size: 15px !important; font-weight: 600 !important; box-shadow: none !important; }
+@media (min-width: 1024px) {
+  #subscriptionPage .sub-grid { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; column-gap: 48px !important; border: 0 !important; }
+  #subscriptionPage .sub-card { border-bottom: 0 !important; border-top: 2px solid var(--p-ink) !important; }
+}
+/* 로그인 */
+#authPage .auth-hero { padding: 16px 0 0 !important; margin: 0 !important; text-align: left !important; display: block !important; }
+#authPage .auth-logo-img { display: block !important; width: 52px !important; height: 52px !important; margin: 0 !important; border-radius: 13px !important; box-shadow: none !important; }
+#authPage .auth-title { margin: 14px 0 0 !important; font-size: 24px !important; font-weight: 800 !important; letter-spacing: -0.02em !important; }
+#authPage .auth-sub { margin: 4px 0 0 !important; font-size: 15px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#authPage .social-stack { margin: 24px 0 0 !important; gap: 8px !important; }
+#authPage .social-btn { min-height: 50px !important; border: 1px solid var(--p-line) !important; border-radius: 12px !important; background: var(--p-bg) !important; color: var(--p-ink) !important; font-size: 15px !important; font-weight: 600 !important; box-shadow: none !important; opacity: 1 !important; }
+#authPage .social-btn:disabled, #authPage .social-btn[aria-disabled="true"] { background: var(--p-tint) !important; border-color: transparent !important; color: var(--p-ink3) !important; opacity: 1 !important; filter: none !important; }
+#authPage .social-btn .social-ico { display: none !important; }
+#authPage .auth-divider { margin: 20px 0 !important; font-size: 13px !important; color: var(--p-ink2) !important; }
+#authPage .auth-form .btn { min-height: 50px !important; }
+@media (min-width: 768px) { #authPage .page-scroll > * { max-width: 420px !important; margin-left: auto !important; margin-right: auto !important; } }
+.empty-state { background: none !important; border: 0 !important; }
+.my-list { border: 0 !important; border-radius: 0 !important; background: none !important; }
+.draft-banner { border-radius: 0 !important; }
+@media (prefers-reduced-motion: reduce) { #toolSheet { transition: none !important; } }
+
+/* ---------- 10. 다듬기 ---------- */
+.search-card { padding: 0 6px 0 14px !important; }
+.search-card input, .search-card input[type="search"] { min-height: 48px !important; }
+/* 화면 이름을 본문이 갖는 화면 — 접힌 앱바에는 선을 긋지 않는다 */
+@media (max-width: 1023px) {
+  :root[data-page="explore"] .app-topbar, :root[data-page="schedule"] .app-topbar, :root[data-page="my"] .app-topbar { border-bottom: 0 !important; }
+}
+.bottom-tab-nav .tab-button.is-active .tab-ico path, .bottom-tab-nav .tab-button.is-active .tab-ico circle, .bottom-tab-nav .tab-button.is-active .tab-ico rect, .bottom-tab-nav .tab-button.is-active .tab-ico polygon { fill: none !important; }
+/* 상세 — 시각과 경로점 사이 */
+.rd-stop { grid-template-columns: 54px 22px minmax(0, 1fr) auto !important; }
+.rd-move { padding-left: 76px !important; }
+.rd-move::before { left: 58px !important; }
+.rd-cost-who { margin-left: 4px !important; }
+/* 만들기 */
+#createTripPage .step-compact { margin: 12px 0 0 !important; }
+#createTripPage .step-h { margin: 20px 0 18px !important; }
+#createTripPage details.dest-advanced, #createTripPage details.dest-advanced > summary { padding-left: 0 !important; padding-right: 0 !important; }
+#createTripPage .budget-input::placeholder { color: var(--p-ink3) !important; font-weight: 500 !important; opacity: 1 !important; }
+#createTripPage #budgetTripSummary { padding: 0 0 10px !important; border-bottom: 1px solid var(--p-line) !important; }
+#createTripPage details.budget-more { margin-top: 24px !important; border-top: 1px solid var(--p-line) !important; }
+/* 일정 */
+#schedulePage .schedule-head { gap: 0 !important; }
+#schedulePage .schedule-actions { margin: 14px 0 0 !important; }
+#schedulePage .schedule-head > div:first-child { margin: 0 !important; padding: 0 !important; }
+.timeline .schedule-card { grid-template-columns: 54px 22px minmax(0, 1fr) !important; }
+.timeline .schedule-card::before { left: 58px !important; }
+.timeline .schedule-card::after { left: 55px !important; }
+.timeline > .schedule-card:first-of-type::after { left: 54px !important; }
+.timeline .tl-move { padding-left: 76px !important; }
+.timeline .tl-move::before { left: 58px !important; }
+.timeline .sc-more, .timeline .sc-more:hover, .timeline .sc-more[aria-expanded="true"] { background: none !important; }
+.timeline .sc-more[aria-expanded="true"] { color: var(--p-ink) !important; }
+#schedulePage .checks-btn .cb-ico, #schedulePage .checks-btn::before { background: none !important; }
+#toolSheet .cost-summary { box-shadow: none !important; }
+#toolSheet .exp-actions { display: flex !important; gap: 8px !important; margin: 2px 0 12px !important; }
+#toolSheet .exp-actions .btn { flex: 1 1 0 !important; }
+/* 대안 — 예산 안에 드는 것만 진하게, 초과는 조용하게 */
+.alt-opt-sub.is-over { color: var(--p-ink2) !important; }
+.alt-opt.is-fit .alt-opt-sub { color: var(--p-link) !important; font-weight: 500 !important; }
+#bookingSheet .book-link { padding: 0 !important; }
+/* 시트가 열려 있을 때 알림은 하단 행동 바 위에 */
+body:has(.bottom-sheet.is-visible) .toast { bottom: calc(156px + env(safe-area-inset-bottom, 0px)) !important; z-index: 2000 !important; }
+#settingsSheet [class*="version"], #settingsSheet .set-version { text-align: left !important; margin-left: 0 !important; }
+#authPage .auth-divider span { background: var(--p-bg) !important; }
+
+/* ---------- 11. 데스크톱 · 안쪽 화면 ---------- */
+.step-dot.is-active, .step-dot.is-done { background: var(--a-ink) !important; border-color: var(--a-ink) !important; color: var(--a-on-ink) !important; box-shadow: none !important; }
+#createTripPage .step-dot.is-active, #createTripPage .step-dot.is-done { color: var(--a-on-ink) !important; }
+.step-dot.is-done::before { color: var(--a-on-ink) !important; }
+.step-line.is-done, .step-line.is-active { background: var(--a-ink) !important; }
+.step-line::after, .step-line::before { background: var(--a-ink) !important; }
+@media (min-width: 1024px) {
+  #createTripPage .step-nav { bottom: 0 !important; padding-bottom: 16px !important; }
+  #schedulePage .day-chips { margin: 0 !important; padding: 0 !important; }
+  #schedulePage .schedule-toolbar { justify-content: flex-end !important; }
+  #schedulePage .checks-btn { flex: none !important; width: auto !important; min-width: 0 !important; }
+  #schedulePage .day-sub-cost { flex: 1 1 auto !important; }
+  #subscriptionPage .sub-grid { grid-template-columns: repeat(2, minmax(0, 380px)) !important; }
+  #schedulePage .review-form, #schedulePage #reviewList { max-width: 560px !important; }
+}
+#schedulePage .star-row { justify-content: flex-start !important; margin: 4px 0 8px -10px !important; }
+#subscriptionPage .sub-footnote { margin: 20px 0 0 !important; padding: 0 !important; background: none !important; border: 0 !important; border-radius: 0 !important; font-size: 13px !important; line-height: 1.6 !important; color: var(--p-ink2) !important; }
+#bookingSheet .book-price .book-estimate { text-align: right !important; }
+.empty-state { padding: 48px 0 24px !important; text-align: center !important; }
+.empty-state .empty-icon { display: none !important; }
+.empty-state .empty-text { font-size: 15px !important; line-height: 1.55 !important; color: var(--p-ink2) !important; margin: 0 auto 16px !important; max-width: 30ch !important; word-break: keep-all !important; }
+.empty-route path { stroke: var(--p-dot) !important; stroke-width: 3 !important; stroke-linecap: round !important; stroke-dasharray: 0.001 0.062 !important; stroke-dashoffset: 0 !important; animation: none !important; }
+.empty-route circle { fill: var(--p-ink) !important; }
+.empty-state .btn { margin: 0 4px 8px !important; }
+#blogPage .page-header, #feedbackPage .page-header, #surveyPage .page-header { margin: 8px 0 20px !important; }
+#surveyPage .step-nav { background: var(--p-bg) !important; border-top: 0 !important; margin: 16px 0 0 !important; padding: 12px 0 0 !important; position: static !important; }
+input[type="file"].form-input { padding: 12px !important; line-height: 24px !important; font-size: 14px !important; }
+input[type="file"].form-input::file-selector-button { margin-right: 12px !important; padding: 0 12px !important; height: 28px !important; border: 0 !important; border-radius: 8px !important; background: var(--p-tint) !important; color: var(--p-ink) !important; font: inherit !important; font-weight: 600 !important; }
+.cal-summary { background: none !important; border: 0 !important; }
+@media (max-width: 359px) {
+  #createTripPage .budget-suggest .money-row dt small, #schedulePage .money-rows--panel .money-row dt .money-note { display: block !important; margin: 0 !important; }
+}
+#explorePage .sort-tabs .sort-tab { min-width: 44px !important; }
+#explorePage .sort-tabs { gap: 8px !important; }
+@media (min-width: 1024px) { #createTripPage > .page-scroll { padding-bottom: 0 !important; } }
+.rc--glow .rg-art { background: radial-gradient(90% 90% at 78% 12%, hsl(var(--h) 88% 60% / .88), transparent 62%), radial-gradient(85% 85% at 8% 98%, hsl(calc(var(--h) - 34) 82% 50% / .62), transparent 62%), #0A0F1A !important; }
+@media (max-width: 767px) {
+  .glow-grid > .rc--glow:last-child:nth-child(odd) { grid-column: 1 / -1 !important; }
+  .glow-grid > .rc--glow:last-child:nth-child(odd) .rg-art { aspect-ratio: 16 / 7 !important; }
+}
+#homePage .home-window.is-plain .hw { display: block !important; }
+#homePage .section-block, #homePage .home-window { scroll-margin-top: 96px !important; }
+:is(#homePage, #explorePage) .search-card .search-submit { border: 0 !important; box-shadow: none !important; outline-offset: 2px !important; }
+:root[data-page="home"] .topbar-brand { top: 0 !important; bottom: 0 !important; height: 100% !important; margin-top: 0 !important; margin-bottom: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+@media (max-width: 1023px) {
+  :root[data-page="home"] .topbar-brand { display: flex !important; align-items: center !important; }
+  :root:not([data-page="create-trip"]):not([data-page="roadmap-detail"]) .app-page:not(#homePage) > .page-scroll { padding-bottom: calc(var(--nav-h) + var(--safe-bottom, env(safe-area-inset-bottom, 0px)) + 40px) !important; }
+}
+
+/* =============== 12. 밤과 낮 =============== */
+/* 화면 폭과 좌우 여백 — 띠를 화면 끝까지 펼치기 위해 본문 폭을 여백으로 만든다 */
+.app-main { max-width: none !important; width: 100% !important; margin: 0 !important; }
+.app-page { left: 0 !important; right: 0 !important; }
+.app-page:not(#homePage) > .page-scroll { max-width: none !important; width: 100% !important; margin: 0 !important; padding-left: var(--gx) !important; padding-right: var(--gx) !important; padding-top: 0 !important; overflow-x: hidden !important; background: var(--day-bg) !important; }
+:root[data-page="create-trip"] .app-page:not(#homePage) > .page-scroll, :root[data-page="roadmap-detail"] .app-page:not(#homePage) > .page-scroll,
+:root[data-page="blog"] .app-page:not(#homePage) > .page-scroll, :root[data-page="feedback"] .app-page:not(#homePage) > .page-scroll, :root[data-page="survey"] .app-page:not(#homePage) > .page-scroll { --cw: 720px !important; --gx: max(16px, calc((100vw - 720px) / 2)) !important; }
+:root[data-page="auth"] .app-page:not(#homePage) > .page-scroll { --gx: max(16px, calc((100vw - 420px) / 2)) !important; }
+.app-page > .page-scroll > .night-band { max-width: none !important; }
+html, body, .app-shell { background: var(--n-bg) !important; }
+:root:not([data-page="home"]) .app-main { background: var(--day-bg) !important; }
+#explorePage, #authPage, :root[data-page="explore"] .app-main, :root[data-page="auth"] .app-main, #explorePage > .page-scroll, #authPage > .page-scroll { background: var(--n-bg) !important; }
+
+.night { color: var(--p-ink) !important; }
+/* 밤하늘 띠 — 아래 끝은 지평선 */
+.night-band { position: relative !important; z-index: 5 !important; margin: 0 calc(-1 * var(--gx)) !important; padding: 18px var(--gx) 62px !important; }
+.night-band::before { content: '' !important; position: absolute !important; z-index: -1 !important; inset: 0 !important; background: radial-gradient(120% 120% at 50% 128%, #1E4EA6 0%, #0F2654 34%, #081126 62%, var(--n-bg) 92%) !important; }
+.night-band::after { content: '' !important; position: absolute !important; z-index: -1 !important; left: -4% !important; right: -4% !important; bottom: -1px !important; height: 30px !important; background: var(--day-bg) !important; border-radius: 50% 50% 0 0 / 100% 100% 0 0 !important; box-shadow: 0 -2px 0 rgba(190, 216, 255, .75), 0 -10px 34px rgba(96, 150, 255, .6) !important; pointer-events: none !important; }
+.night .page-title, .night-band .page-title { font-size: 32px !important; line-height: 1.2 !important; font-weight: 300 !important; letter-spacing: -0.045em !important; color: #FFFFFF !important; }
+.night .page-sub { color: var(--p-ink2) !important; }
+.night .btn-primary:hover, .night #btnSave:hover { background: #E3ECFF !important; }
+.night :is(button, a, input):focus-visible { outline: 2px solid #BFD6FF !important; outline-offset: 2px !important; }
+
+/* 상단 바 — 안쪽 화면은 밤하늘과 이어진 어두운 바, 넓은 화면은 모든 화면에서 같은 유리 알약 */
+.app-topbar { background: var(--n-bg) !important; border-bottom: 0 !important; }
+.app-topbar .topbar-title, .app-topbar .icon-btn, .app-topbar .topbar-back, .app-topbar .topbar-share, .app-topbar .topbar-text-btn { color: #FFFFFF !important; }
+.topbar-title { font-weight: 600 !important; }
+.icon-btn:active, .topbar-back:active { background: rgba(255, 255, 255, .12) !important; }
+.topbar-brand-mark { filter: brightness(0) invert(1) !important; }
+@media (max-width: 1023px) { .app-topbar { width: 100% !important; max-width: none !important; } }
+@media (min-width: 1024px) {
+  .app-topbar { position: absolute !important; z-index: 40 !important; left: 50% !important; transform: translateX(-50%) !important; top: 22px !important; width: min(1120px, calc(100% - 48px)) !important; max-width: none !important; height: 60px !important; min-height: 60px !important; margin: 0 !important; padding: 0 9px 0 22px !important; background: rgba(18, 25, 42, .55) !important; -webkit-backdrop-filter: blur(20px) saturate(1.6) !important; backdrop-filter: blur(20px) saturate(1.6) !important; border: 1px solid rgba(255, 255, 255, .14) !important; border-radius: 999px !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14) !important; }
+  html body .app-topbar { padding: 0 9px 0 22px !important; }
+  .topbar-nav a:not(.topbar-cta) { color: rgba(226, 235, 255, .8) !important; }
+  .topbar-nav a:not(.topbar-cta):hover, .topbar-nav a:not(.topbar-cta).is-active, .topbar-nav a:not(.topbar-cta)[aria-current="page"] { color: #FFFFFF !important; background: none !important; }
+  .topbar-nav a:not(.topbar-cta).is-active::after { background: #9CC0FF !important; }
+  .topbar-nav .topbar-cta { background: #FFFFFF !important; color: #0A1222 !important; border-radius: 999px !important; }
+  .topbar-nav .topbar-cta:hover { background: #E3ECFF !important; }
+  .night-band { padding-top: 124px !important; padding-bottom: 96px !important; }
+  .night-band::after { height: 52px !important; left: -8% !important; right: -8% !important; }
+  .night .page-title, .night-band .page-title { font-size: 48px !important; }
+}
+@media (min-width: 768px) and (max-width: 1023px) { .night-band { padding-bottom: 80px !important; } .night-band::after { height: 42px !important; } .night .page-title, .night-band .page-title { font-size: 40px !important; } }
+
+/* --- 하단 메뉴 — 유리 --- */
+@media (max-width: 1023px) {
+  .bottom-tab-nav { position: absolute !important; left: 14px !important; right: 14px !important; bottom: max(12px, calc(env(safe-area-inset-bottom, 0px) - 8px)) !important; z-index: 50 !important; width: auto !important; max-width: 520px !important; margin: 0 auto !important; height: 64px !important; padding: 0 6px !important; isolation: isolate !important; overflow: hidden !important; background: var(--g-bg) !important; -webkit-backdrop-filter: blur(20px) saturate(1.9) !important; backdrop-filter: blur(20px) saturate(1.9) !important; border: 1px solid var(--g-line) !important; border-radius: 32px !important; box-shadow: inset 0 1.5px 0 var(--g-hi), inset 0 -1px 0 rgba(255, 255, 255, .18), inset 0 0 20px rgba(255, 255, 255, .12), 0 12px 34px var(--g-drop), 0 2px 8px var(--g-drop) !important; }
+  /* 지금 있는 탭 — 볼록한 유리 렌즈가 옮겨 간다 */
+  .bottom-tab-nav::before { content: '' !important; display: block !important; position: absolute !important; z-index: -1 !important; top: 5px !important; bottom: 5px !important; left: 6px !important; width: calc((100% - 12px) / 5) !important; border-radius: 27px !important; background: var(--g-lens) !important; box-shadow: inset 0 1px 0 var(--g-hi), inset 0 -1px 3px rgba(120, 150, 210, .18), 0 3px 10px var(--g-drop) !important; transition: transform 320ms cubic-bezier(.3, 1.25, .4, 1), opacity 160ms ease !important; opacity: 0 !important; }
+  .bottom-tab-nav:has(.tab-button.is-active)::before { opacity: 1 !important; }
+  .bottom-tab-nav:has(.tab-button:nth-child(2).is-active)::before { transform: translateX(100%) !important; }
+  .bottom-tab-nav:has(.tab-button:nth-child(3).is-active)::before { transform: translateX(200%) !important; }
+  .bottom-tab-nav:has(.tab-button:nth-child(4).is-active)::before { transform: translateX(300%) !important; }
+  .bottom-tab-nav:has(.tab-button:nth-child(5).is-active)::before { transform: translateX(400%) !important; }
+  .bottom-tab-nav .tab-button { height: 62px !important; color: var(--g-ink2) !important; }
+  .bottom-tab-nav .tab-button.is-active { color: var(--g-ink) !important; }
+  .bottom-tab-nav .tab-label { font-weight: 600 !important; }
+  .bottom-tab-nav .tab-button.is-active .tab-label { font-weight: 800 !important; }
+  :root:is([data-page="home"], [data-page="explore"], [data-page="auth"]) .bottom-tab-nav { --g-bg: linear-gradient(180deg, rgba(96, 116, 164, .34), rgba(20, 30, 58, .40)) !important; --g-line: rgba(255, 255, 255, .24) !important; --g-hi: rgba(255, 255, 255, .40) !important; --g-lens: linear-gradient(180deg, rgba(255, 255, 255, .30), rgba(255, 255, 255, .10)) !important; --g-ink: #FFFFFF !important; --g-ink2: rgba(232, 240, 255, .84) !important; --g-drop: rgba(0, 0, 0, .42) !important; }
+  .toast { bottom: calc(92px + var(--safe-bottom, env(safe-area-inset-bottom, 0px))) !important; }
+  :root:is([data-page="create-trip"], [data-page="roadmap-detail"]) .toast { bottom: calc(92px + var(--safe-bottom, env(safe-area-inset-bottom, 0px))) !important; }
+}
+@media (prefers-reduced-transparency: reduce) { .bottom-tab-nav { background: var(--day-bg) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; } }
+@media (prefers-reduced-motion: reduce) { .bottom-tab-nav::before { transition: none !important; } }
+/* 아래 행동 바 — 같은 유리 */
+#roadmapDetailPage .roadmap-cta-row, #createTripPage .step-nav { background: color-mix(in srgb, var(--day-bg) 68%, transparent) !important; -webkit-backdrop-filter: blur(22px) saturate(1.8) !important; backdrop-filter: blur(22px) saturate(1.8) !important; border-top: 1px solid var(--g-line) !important; box-shadow: 0 -8px 26px rgba(24, 44, 92, .08) !important; max-width: none !important; padding-left: var(--gx) !important; padding-right: var(--gx) !important; }
+:root:is([data-page="roadmap-detail"], [data-page="create-trip"]) { --gx: max(16px, calc((100vw - 720px) / 2)) !important; }
+:is(#roadmapDetailPage, #createTripPage) :is(#useRoadmapBtn, #stepNext, #stepGenerate, #stepPrev, #shareRoadmapBtn) { border-radius: 999px !important; }
+.btn, .btn-primary, #btnSave, #bookingConfirm, .alt-confirm { border-radius: 999px !important; }
+.btn-sm, #schedulePage .btn-edit, .tool-edit, .tool-remove { border-radius: 999px !important; }
+
+/* --- 탐색 — 밤 --- */
+#explorePage .page-header { margin: 0 !important; padding: 14px 0 18px !important; }
+#explorePage::before { content: '' !important; position: absolute !important; z-index: 0 !important; left: 0 !important; right: 0 !important; top: 0 !important; height: 360px !important; background: radial-gradient(80% 100% at 50% -30%, rgba(62, 116, 240, .55), transparent 70%) !important; pointer-events: none !important; }
+#explorePage > .page-scroll { background: none !important; }
+:root[data-page="explore"] .app-topbar { background: transparent !important; }
+#explorePage .search-card { max-width: 560px !important; margin: 0 !important; }
+#explorePage #exploreFilters { margin: 14px 0 0 !important; }
+#explorePage #exploreFilters .chip { border-radius: 999px !important; background: rgba(14, 22, 42, .5) !important; border-color: rgba(255, 255, 255, .2) !important; color: #F2F6FF !important; }
+#explorePage #exploreFilters .chip.is-active { background: #FFFFFF !important; border-color: #FFFFFF !important; color: #0A1222 !important; }
+#explorePage .explore-bar { margin: 24px 0 0 !important; }
+#explorePage .explore-count { color: #FFFFFF !important; font-weight: 500 !important; }
+#explorePage .sort-tabs .sort-tab { color: var(--p-ink2) !important; }
+#explorePage .sort-tabs .sort-tab.is-active { color: #FFFFFF !important; }
+#explorePage .sort-tabs .sort-tab.is-active::before { background: #9CC0FF !important; }
+#explorePage .glow-grid { margin: 14px 0 0 !important; }
+#explorePage .explore-state { color: var(--p-ink2) !important; background: none !important; border: 0 !important; padding: 0 !important; margin: 6px 0 0 !important; }
+.glow-grid:has(> :only-child) { grid-template-columns: minmax(0, 420px) !important; }
+@media (min-width: 1024px) { #explorePage > .page-scroll { padding-top: 118px !important; } #explorePage .page-header { text-align: center !important; } #explorePage .search-card { margin-left: auto !important; margin-right: auto !important; } #explorePage #exploreFilters { justify-content: center !important; } #explorePage::before { height: 520px !important; } }
+
+/* --- 코스 상세 — 도시마다 다른 빛 --- */
+.band-detail::before { background: radial-gradient(80% 90% at 86% 4%, hsl(var(--h, 215) 86% 56% / .62), transparent 66%), radial-gradient(110% 120% at 40% 130%, #1E4EA6 0%, #0E2350 36%, #070F22 66%, var(--n-bg) 94%) !important; }
+#roadmapDetailPage .roadmap-cover:not(.has-landmark-img) { padding: 0 !important; }
+#roadmapDetailPage .rd-native { margin: 0 0 6px !important; font-size: clamp(54px, 17vw, 96px) !important; line-height: 1.06 !important; font-weight: 600 !important; letter-spacing: -0.055em !important; color: #FFFFFF !important; overflow-wrap: anywhere !important; }
+#roadmapDetailPage .rd-city { color: var(--p-ink2) !important; }
+#roadmapDetailPage .rd-title { font-size: 24px !important; font-weight: 600 !important; color: #FFFFFF !important; }
+#roadmapDetailPage .rd-tag, #roadmapDetailPage .meta-pill { color: var(--p-ink2) !important; }
+#roadmapDetailPage .meta-pill:first-child { color: #FFFFFF !important; }
+#roadmapDetailPage .rd-cost { margin: 18px 0 0 !important; background: rgba(255, 255, 255, .09) !important; border: 1px solid rgba(255, 255, 255, .16) !important; -webkit-backdrop-filter: blur(18px) !important; backdrop-filter: blur(18px) !important; border-radius: 20px !important; }
+#roadmapDetailPage .rd-cost-num { color: #FFFFFF !important; }
+#roadmapDetailPage .rd-source > summary { color: #BFD6FF !important; }
+#roadmapBody { padding-top: 12px !important; }
+#roadmapBody > .rd-h { margin: 0 !important; }
+.rd-stop .rd-node::before { background: var(--p-select) !important; }
+.rd-stops > .rd-stop:first-child .rd-node::before { border-color: var(--p-select) !important; }
+
+/* --- 여행 만들기 — 질문은 밤하늘에, 입력은 밝은 곳에 --- */
+#createTripPage .band-create .page-header { display: none !important; }
+#createTripPage .create-q { margin: 18px 0 0 !important; font-size: 31px !important; line-height: 1.22 !important; font-weight: 300 !important; letter-spacing: -0.045em !important; color: #FFFFFF !important; word-break: keep-all !important; outline: 0 !important; }
+#createTripPage .step-pane > .step-h { display: none !important; }
+#createTripPage .step-pane > .step-h + * { margin-top: 14px !important; }
+#createTripPage .step-compact { margin: 0 !important; }
+#createTripPage .step-compact .stc-count { color: var(--p-ink2) !important; }
+#createTripPage .step-compact .stc-name { color: #FFFFFF !important; }
+#createTripPage .step-compact .stc-bar { background: rgba(255, 255, 255, .2) !important; border-radius: 2px !important; }
+#createTripPage .step-compact .stc-bar i { background: #9CC0FF !important; }
+#createTripPage #prefillBanner { color: var(--p-ink2) !important; margin: 10px 0 0 !important; }
+#createTripPage #prefillBanner .btn-text { color: #BFD6FF !important; }
+.night .step-dot { background: rgba(255, 255, 255, .1) !important; border-color: rgba(255, 255, 255, .3) !important; color: #FFFFFF !important; }
+.night .step-dot span { color: var(--p-ink2) !important; }
+.night .step-dot.is-active, .night .step-dot.is-done { background: #FFFFFF !important; border-color: #FFFFFF !important; color: #0A1222 !important; }
+.night .step-dot.is-done::before { color: #0A1222 !important; }
+.night .step-dot.is-active span { color: #FFFFFF !important; }
+.night .step-line { background: rgba(255, 255, 255, .22) !important; }
+.night .step-line.is-done { background: #9CC0FF !important; }
+#createTripPage .concept-card.is-active::before, #createTripPage .check-opt.is-active::before { border-color: var(--p-select) !important; }
+#createTripPage .check-opt.is-active::before, #createTripPage .check-opt[aria-pressed="true"]::before { background-color: var(--p-select) !important; }
+#createTripPage :is(.choice-grid--3 .choice-card.is-active, #destQuick .is-active, #destQuick [aria-pressed="true"]) { background: var(--p-select) !important; border-color: var(--p-select) !important; color: var(--p-on-select) !important; }
+#createTripPage .choice-grid--3 .choice-card.is-active .ch-label { color: var(--p-on-select) !important; }
+#createTripPage .choice-grid--3 { border-radius: 16px !important; }
+#createTripPage #destQuick .chip, #createTripPage #destQuick button, .form-input, .date-trigger, .city-search-wrap input { border-radius: 14px !important; }
+#createTripPage .budget-suggest, #myPage .profile-card { border-radius: 20px !important; }
+@media (min-width: 1024px) { #createTripPage .create-q { font-size: 44px !important; margin-top: 28px !important; text-align: center !important; } #createTripPage .step-nav { margin-left: calc(-1 * var(--gx)) !important; margin-right: calc(-1 * var(--gx)) !important; } }
+
+/* 만드는 중 — 밤하늘 */
+#genLoadingOverlay { --a-ink: #FFFFFF !important; --r-bg: #0A1833 !important; background: radial-gradient(120% 90% at 50% 120%, #1E4EA6 0%, #0F2654 34%, #081126 62%, #05070D 92%) !important; color: #FFFFFF !important; }
+#genLoadingOverlay .gl-msg { color: #FFFFFF !important; font-weight: 500 !important; }
+#genLoadingOverlay .gl-sub, #genLoadingOverlay .gl-steps { color: #A9B8D2 !important; }
+#genLoadingOverlay .gl-steps li.is-current, #genLoadingOverlay .gl-steps li.is-done { color: #FFFFFF !important; }
+
+/* --- 내 일정 --- */
+#schedulePage .band-trip .schedule-head { margin: 6px 0 0 !important; }
+#schedulePage .band-trip .schedule-head .page-sub { color: var(--p-ink2) !important; }
+#schedulePage .band-trip #btnSave { background: #FFFFFF !important; color: #0A1222 !important; border-radius: 999px !important; }
+#schedulePage .band-trip #btnSave.is-active { background: rgba(255, 255, 255, .16) !important; color: #FFFFFF !important; border: 1px solid rgba(255, 255, 255, .3) !important; }
+#schedulePage .band-trip #btnSave.is-active svg { fill: #FFFFFF !important; stroke: #FFFFFF !important; }
+#schedulePage .band-trip .action-icon { background: rgba(255, 255, 255, .1) !important; border: 1px solid rgba(255, 255, 255, .22) !important; border-radius: 50% !important; color: #FFFFFF !important; -webkit-backdrop-filter: blur(16px) !important; backdrop-filter: blur(16px) !important; }
+#schedulePage .band-trip .save-status { color: var(--p-ink2) !important; }
+#schedulePage .band-trip .budget-panel { margin: 18px 0 0 !important; padding: 16px 18px 8px !important; background: rgba(255, 255, 255, .09) !important; border: 1px solid rgba(255, 255, 255, .16) !important; border-radius: 22px !important; -webkit-backdrop-filter: blur(18px) !important; backdrop-filter: blur(18px) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16) !important; }
+#schedulePage .band-trip .budget-panel:not(.is-over) { padding-bottom: 16px !important; }
+#schedulePage .band-trip .money-row dt, #schedulePage .band-trip .money-row dt .money-note { color: var(--p-ink2) !important; }
+#schedulePage .band-trip .money-row dd, #schedulePage .band-trip .money-row--over dt, #schedulePage .band-trip .money-row--under dt { color: #FFFFFF !important; }
+#schedulePage .band-trip .money-row--over dd, #schedulePage .band-trip .money-row--under dd { font-size: 28px !important; font-weight: 600 !important; }
+#schedulePage .band-trip .money-row--over dd { color: #FFA69B !important; }
+#schedulePage .band-trip .alt-summary { border-top: 1px solid rgba(255, 255, 255, .16) !important; }
+#schedulePage .band-trip .alt-summary-v { color: #FFFFFF !important; }
+#schedulePage .band-trip .alt-summary-t { color: var(--p-ink2) !important; }
+#schedulePage .band-trip .budget-alts-more { color: #BFD6FF !important; }
+#schedulePage .band-trip .now-next { border-top-color: #9CC0FF !important; border-bottom-color: rgba(255, 255, 255, .16) !important; }
+#schedulePage .band-trip :is(.nn-name, .nn-head strong) { color: #FFFFFF !important; }
+#schedulePage .band-trip :is(.nn-meta, .nn-label, .nn-head, .nn-done) { color: var(--p-ink2) !important; }
+#schedulePage .band-trip .more-menu { background: rgba(24, 34, 60, .92) !important; border-color: rgba(255, 255, 255, .2) !important; -webkit-backdrop-filter: blur(22px) !important; backdrop-filter: blur(22px) !important; border-radius: 18px !important; }
+#schedulePage .band-trip .more-item { color: #FFFFFF !important; }
+#schedulePage .band-trip .more-item:hover, #schedulePage .band-trip .more-item:focus-visible { background: rgba(255, 255, 255, .12) !important; }
+#schedulePage .band-trip .shared-banner { background: rgba(255, 255, 255, .1) !important; border: 0 !important; color: #FFFFFF !important; }
+#schedulePage .day-row { margin: 8px 0 0 !important; }
+#schedulePage .day-chips { margin: 0 calc(-1 * var(--gx)) !important; padding: 0 var(--gx) !important; border-bottom: 0 !important; gap: 8px !important; }
+#schedulePage .day-chip { min-width: 74px !important; padding: 7px 14px !important; align-items: center !important; border-radius: 18px !important; background: var(--p-tint) !important; color: var(--p-ink) !important; text-align: center !important; }
+#schedulePage .day-chip.is-active { background: var(--p-ink) !important; color: var(--day-bg) !important; }
+#schedulePage .day-chip.is-active .day-chip-label { color: inherit !important; opacity: .8 !important; }
+#schedulePage .day-chip.is-active::after { content: none !important; }
+#schedulePage .view-toggle { border-radius: 999px !important; }
+#schedulePage .view-toggle button { border-radius: 999px !important; }
+.timeline .schedule-card::after { background: var(--p-select) !important; }
+.timeline > .schedule-card:first-of-type::after { background: var(--day-bg) !important; border-color: var(--p-select) !important; }
+#schedulePage .empty-state { padding-top: 40px !important; }
+@media (min-width: 1024px) { #schedulePage .day-chips { margin: 0 !important; padding: 0 !important; } #schedulePage .band-trip .schedule-head { align-items: end !important; } #schedulePage .day-row { margin-top: 0 !important; } }
+
+/* --- 마이 --- */
+#myPage .my-title { margin: 6px 0 0 !important; }
+#myPage .profile-card { margin: 18px 0 0 !important; background: rgba(255, 255, 255, .09) !important; border: 1px solid rgba(255, 255, 255, .16) !important; -webkit-backdrop-filter: blur(18px) !important; backdrop-filter: blur(18px) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16) !important; }
+#myPage .profile-avatar { background: #FFFFFF !important; color: #0A1222 !important; }
+#myPage .profile-name { color: #FFFFFF !important; }
+#myPage .profile-email { color: var(--p-ink2) !important; }
+#myPage #profileAuthBtn { background: #FFFFFF !important; border: 0 !important; color: #0A1222 !important; border-radius: 999px !important; }
+#myPage .band-my + .my-group { margin-top: 12px !important; }
+@media (min-width: 1024px) { #myPage .night-band { grid-column: 1 / -1 !important; } #myPage .band-my + .my-group { grid-column: 1 / -1 !important; } }
+
+/* --- 요금제 · 로그인 · 기타 --- */
+#subscriptionPage .sub-hero-title { color: #FFFFFF !important; font-weight: 300 !important; font-size: 32px !important; }
+#subscriptionPage .band-sub :is(.sub-hero-desc, .sub-status) { color: var(--p-ink2) !important; }
+#subscriptionPage .band-sub .sub-toggle { background: rgba(255, 255, 255, .1) !important; border-radius: 999px !important; }
+#subscriptionPage .band-sub .sub-toggle-btn { color: var(--p-ink2) !important; border-radius: 999px !important; }
+#subscriptionPage .band-sub .sub-toggle-btn.is-on { background: #FFFFFF !important; color: #0A1222 !important; }
+#subscriptionPage .sub-grid { margin-top: 8px !important; border-top: 0 !important; }
+#subscriptionPage .sub-card .btn, #subscriptionPage .sub-cta { border-radius: 999px !important; }
+@media (max-width: 1023px) { #subscriptionPage .sub-hero { padding: 0 !important; } }
+#authPage > .page-scroll { background: radial-gradient(130% 60% at 50% 112%, #1E4EA6 0%, #0F2654 36%, #081126 66%, var(--n-bg) 94%) !important; min-height: 100% !important; }
+#authPage .auth-title { font-weight: 300 !important; font-size: 32px !important; color: #FFFFFF !important; }
+#authPage .auth-sub { color: var(--p-ink2) !important; }
+#authPage .social-btn, #authPage .social-btn:disabled, #authPage .social-btn[aria-disabled="true"] { background: rgba(255, 255, 255, .09) !important; border: 1px solid rgba(255, 255, 255, .16) !important; color: rgba(226, 235, 255, .74) !important; border-radius: 999px !important; }
+#authPage .social-btn * { color: inherit !important; }
+#authPage .auth-divider, #authPage .auth-divider span { color: var(--p-ink2) !important; background: none !important; }
+#authPage .auth-divider::before, #authPage .auth-divider::after { background: rgba(255, 255, 255, .18) !important; }
+#authPage .form-label, #authPage .check-row, #authPage .auth-reset-title { color: #FFFFFF !important; }
+#authPage .form-input { background: rgba(255, 255, 255, .1) !important; border-color: rgba(255, 255, 255, .24) !important; color: #FFFFFF !important; }
+#authPage .form-input::placeholder { color: rgba(226, 235, 255, .62) !important; }
+#authPage .btn-primary { background: #FFFFFF !important; color: #0A1222 !important; }
+#authPage .btn-ghost { background: rgba(255, 255, 255, .1) !important; color: #FFFFFF !important; }
+#authPage .link-btn, #authPage a { color: #BFD6FF !important; }
+@media (min-width: 1024px) { #authPage > .page-scroll { padding-top: 110px !important; } }
+.band-form .page-header { margin: 0 !important; padding: 0 !important; }
+.band-form + * { margin-top: 12px !important; }
+@media (max-width: 1023px) { .band-form { padding-top: 8px !important; padding-bottom: 50px !important; } }
+#surveyPage .band-form .survey-count { color: var(--p-ink2) !important; margin-top: 12px !important; }
+/* 창(설정·도구) — 머리는 밤, 본문은 밝게 */
+#settingsSheet .sheet-head, #toolSheet .sheet-head { background: var(--n-bg) !important; border-bottom: 0 !important; color: #FFFFFF !important; }
+#settingsSheet .sheet-head :is(h2, h3, .icon-btn), #toolSheet .sheet-head :is(h2, h3, .icon-btn) { color: #FFFFFF !important; }
+#settingsSheet, #toolSheet { background: linear-gradient(var(--n-bg) 0, var(--n-bg) 120px, var(--day-bg) 120px) !important; }
+#settingsSheet .sheet-body, #toolSheet .sheet-body { background: var(--day-bg) !important; }
+.bottom-sheet:not(#settingsSheet):not(#toolSheet) { background: color-mix(in srgb, var(--day-bg) 92%, transparent) !important; -webkit-backdrop-filter: blur(26px) saturate(1.6) !important; backdrop-filter: blur(26px) saturate(1.6) !important; border-radius: 28px 28px 0 0 !important; }
+
+#explorePage.app-page > .page-scroll { background: transparent !important; }
+#authPage.app-page > .page-scroll { background: radial-gradient(130% 60% at 50% 112%, #1E4EA6 0%, #0F2654 36%, #081126 66%, var(--n-bg) 94%) !important; }
+#explorePage.app-page, #authPage.app-page { background: var(--n-bg) !important; }
+.night-band::after { clip-path: inset(-80px 0 0 0) !important; }
+.night-band::before { background: linear-gradient(180deg, var(--n-bg) 0, transparent 70px), radial-gradient(120% 120% at 50% 128%, #1E4EA6 0%, #0F2654 34%, #081126 62%, var(--n-bg) 92%) !important; }
+.band-detail.night-band::before { background: linear-gradient(180deg, var(--n-bg) 0, transparent 80px), radial-gradient(80% 90% at 86% 4%, hsl(var(--h, 215) 86% 56% / .62), transparent 66%), radial-gradient(110% 120% at 40% 130%, #1E4EA6 0%, #0E2350 36%, #070F22 66%, var(--n-bg) 94%) !important; }
+@media (max-width: 767px) { .night-band { padding-top: 12px !important; padding-bottom: 54px !important; } .band-form { padding-top: 4px !important; padding-bottom: 46px !important; } }
+.bottom-sheet:not(#settingsSheet):not(#toolSheet) { background: color-mix(in srgb, var(--day-bg) 97%, transparent) !important; }
+#schedulePage .band-trip .schedule-actions { margin-top: 12px !important; }
+#schedulePage .band-trip .budget-panel { margin-top: 12px !important; padding-top: 12px !important; }
+#schedulePage .band-trip .money-row--over dd, #schedulePage .band-trip .money-row--under dd { font-size: 25px !important; }
+
+#authPage .auth-divider { display: flex !important; align-items: center !important; gap: 12px !important; position: static !important; }
+#authPage .auth-divider::before, #authPage .auth-divider::after { content: '' !important; position: static !important; flex: 1 1 0 !important; width: auto !important; height: 1px !important; margin: 0 !important; }
+#authPage .auth-divider span { padding: 0 !important; }
+@media (min-width: 1024px) {
+  #explorePage.app-page:not(#homePage) > .page-scroll { padding-top: 118px !important; }
+  #authPage.app-page:not(#homePage) > .page-scroll { padding-top: 112px !important; }
+}
+.rc--glow .rc-days::after, .rc--row .rc-days::after { content: ' ·' !important; color: var(--p-ink2) !important; font-weight: 400 !important; }
+.roadmap-card .rc-days + .rc-style::before { content: none !important; }
+@media (min-width: 768px) { .rc--row .rc-days::after { content: none !important; } }
+.night-band::before { bottom: 3px !important; }
+.night-band::after { bottom: -2px !important; }
+@media (max-width: 1023px) { #explorePage::before { -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 90px) !important; mask-image: linear-gradient(180deg, transparent 0, #000 90px) !important; } }
+/* 화면이 바뀔 때 밤하늘이 흰 바탕에서 떠오르며 번쩍이지 않게 */
+.app-page.is-active > .page-scroll { animation: none !important; }
+#genLoadingOverlay { --a-on-ink: #0A1222 !important; --p-ink: #FFFFFF !important; --p-tint: rgba(255, 255, 255, .12) !important; --p-bg: #0B1222 !important; }
+#genLoadingOverlay .btn-primary { background: #FFFFFF !important; color: #0A1222 !important; }
+#genLoadingOverlay .btn-ghost { background: rgba(255, 255, 255, .12) !important; border: 0 !important; color: #FFFFFF !important; }
+#genLoadingOverlay .gl-steps li::before { border-color: rgba(156, 192, 255, .7) !important; background: transparent !important; }
+#genLoadingOverlay .gl-steps li.is-current::before, #genLoadingOverlay .gl-steps li.is-done::before { border-color: #9CC0FF !important; background: #9CC0FF !important; }
+}

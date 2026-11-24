@@ -7,19 +7,19 @@
  * 홈 화면 앱을 오프라인에서 처음 열 때 빈 오류 화면이 뜬다.
  * 새 JS·CSS 파일을 추가하면 SHELL 목록에도 넣는다.
  */
-const CACHE = 'tst-shell-v10';
+const CACHE = 'tst-shell-v11';
 const SHELL = [
   '/index-redesign.html',
   '/manifest.webmanifest',
   '/css/redesign-reset.css', '/css/redesign-layout.css', '/css/redesign-components.css',
-  '/css/redesign-responsive.css', '/css/redesign-effects.css', '/css/redesign-system.css', '/css/redesign-refine.css',
+  '/css/redesign-responsive.css', '/css/redesign-effects.css', '/css/redesign-system.css', '/css/redesign-refine.css', '/css/redesign-app.css', '/css/redesign-product.css',
   '/js/redesign-main.js', '/js/redesign-api-adapter.js', '/js/redesign-app-shell.js',
   '/js/redesign-auth.js', '/js/redesign-blog.js', '/js/redesign-calendar.js', '/js/redesign-cities.js',
   '/js/redesign-collab.js', '/js/redesign-course-samples.js', '/js/redesign-feedback.js',
   '/js/redesign-my-pages.js', '/js/redesign-navigation.js', '/js/redesign-reviews.js',
   '/js/redesign-roadmaps.js', '/js/redesign-schedule.js', '/js/redesign-settings.js',
   '/js/redesign-subscription.js', '/js/redesign-survey.js', '/js/redesign-trip-flow.js',
-  '/js/redesign-ui.js', '/js/redesign-hours.js', '/js/redesign-native.js', '/js/redesign-booking.js', '/js/redesign-map.js', '/js/redesign-trip-tools.js',
+  '/js/redesign-ui.js', '/js/redesign-hours.js', '/js/redesign-native.js', '/js/redesign-booking.js', '/js/redesign-map.js', '/js/redesign-globe.js', '/js/redesign-trip-tools.js',
   '/assets/logo-3secondtrip.png', '/assets/icon-192.png', '/assets/apple-touch-icon.png', '/assets/favicon-32.png',
 ];
 

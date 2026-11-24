@@ -1072,7 +1072,7 @@ function _showPrefillBanner(title) {
   document.getElementById('prefillBanner')?.remove();
   if (!title) return;
   const bar = el('div', { id: 'prefillBanner', class: 'draft-banner', role: 'status' }, [
-    el('span', {}, `‘${title}’의 도시·기간·여행 스타일을 채웠어요. 날짜는 임시로 넣었으니 2단계에서 바꿔 주세요.`),
+    el('span', {}, `‘${title}’에서 도시·기간·스타일을 가져왔어요. 날짜는 임시라 2단계에서 바꿔 주세요.`),
     el('button', { type: 'button', class: 'btn-text', onclick: () => bar.remove() }, '닫기'),
   ]);
   $('#tripStepProgress')?.before(bar);
@@ -1095,7 +1095,6 @@ function _refreshSummary() {
   const h = t.hotelP || {};
   const routeLbl = { any: '노선 상관없음', direct: '직항만', transit: '경유 포함' }[f.route] || '노선 미선택';
   const clsLbl   = { any: '등급 상관없음', lcc: '저가 (LCC)', fsc: '대형 (FSC)' }[f.classType] || '등급 미선택';
-  const airlines = (f.airlines && f.airlines.length) ? f.airlines.join(', ') : '선호 항공사 -';
   const hotelTypeLbl = {
     luxury: '5성급', upscale: '4성급', midscale: '3성급', budget: '2성급', boutique: '부티크',
     resort: '리조트', ryokan: '료칸', bnb: 'B&B', hostel: '호스텔', apt: '아파트', capsule: '캡슐',
@@ -1107,20 +1106,20 @@ function _refreshSummary() {
     breakfast: '조식', pool: '수영장', spa: '스파', gym: '피트니스', parking: '주차',
     petfriendly: '반려동물', kitchen: '취사', laundry: '세탁', kids: '키즈',
   };
-  const types = (h.types || []).map(x => hotelTypeLbl[x] || x).join(', ') || '유형 -';
-  const locs  = (h.locations || []).map(x => hotelLocLbl[x]  || x).join(', ') || '위치 -';
-  const amens = (h.amenities || []).map(x => hotelAmenLbl[x] || x).join(', ') || '편의시설 -';
-
-  s.innerHTML = `
-    <strong>${escapeHtml(t.cityName || '도시 미선택')}</strong> · ${escapeHtml(t.days || '-')}일 ·
-    <strong>${escapeHtml(t.concept || '컨셉 미선택')}</strong><br/>
-    예산 <strong>${escapeHtml(t.budget||0)}만원</strong> (${escapeHtml({ '낮음': '추천 예산보다 낮아요', '보통': '추천 예산과 비슷해요', '높음': '추천 예산보다 여유 있어요' }[t.budgetLevel] || '추천 예산 계산 전')}) · ${escapeHtml(t.currency)}<br/>
-    동행 ${escapeHtml(_companionLabel(t.companion))} · 스타일 ${escapeHtml(t.styles.length ? t.styles.join(', ') : '-')}<br/>
-    ✈ ${escapeHtml(routeLbl)} · ${escapeHtml(clsLbl)}<br/>
-    ✈ ${escapeHtml(airlines)}<br/>
-    🏨 ${escapeHtml(types)} · ${escapeHtml(locs)}<br/>
-    🏨 ${escapeHtml(amens)}
-  `;
+  const types = (h.types || []).map(x => hotelTypeLbl[x] || x).join(', ');
+  const locs  = (h.locations || []).map(x => hotelLocLbl[x]  || x).join(', ');
+  const amens = (h.amenities || []).map(x => hotelAmenLbl[x] || x).join(', ');
+  // 고른 것만 — 비어 있는 항목은 줄을 만들지 않는다
+  const flight = [f.route && f.route !== 'any' ? routeLbl : '', f.classType && f.classType !== 'any' ? clsLbl : '', (f.airlines || []).join(', ')].filter(Boolean).join(', ');
+  const rows = [
+    ['여행 스타일', [t.concept, ...(t.styles || [])].filter(Boolean).join(', ')],
+    ['함께', t.companion ? _companionLabel(t.companion) : ''],
+    ['예산', Number(t.budget) > 0 ? `${t.budget}만원` : ''],
+    ['항공', flight],
+    ['숙소', [types, locs, amens].filter(Boolean).join(', ')],
+  ].filter(([, v]) => v && v !== '-');
+  s.hidden = !rows.length;
+  s.innerHTML = `<dl class="ts-rows">${rows.map(([k, v]) => `<div class="ts-row"><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>`;
 }
 
 function _companionLabel(k) { return ({ solo:'혼자', friend:'친구', couple:'커플', family:'가족', group:'단체' })[k] || '-'; }
@@ -1148,6 +1147,9 @@ function _showStep() {
     p.classList.toggle('is-active', on);
     p.hidden = !on;
   });
+  // 질문은 위쪽 밤하늘에 크게 — 화면 안의 같은 제목은 숨긴다
+  const q = $('#createQ');
+  if (q) q.textContent = $(`#createTripPage [data-step-pane="${step}"] .step-h`)?.textContent || names[step - 1];
   // 첫 단계는 앱바의 닫기(×)와 결과가 같으므로 하단 ‘취소’를 두지 않는다.
   $('#stepPrev').textContent = '이전';
   $('#stepPrev').hidden = step === 1;
@@ -1178,7 +1180,7 @@ function _validateStep() {
     const err = _dateError(t);
     if (err) {
       const e = $('#dateError'); if (e) { e.hidden = false; e.textContent = err; }
-      (t.startDate && !/출발일/.test(err) ? $('#tripEndTrigger') : $('#tripStartTrigger'))?.focus();
+      (t.startDate && !/출국일/.test(err) ? $('#tripEndTrigger') : $('#tripStartTrigger'))?.focus();
       return false;
     }
   }
@@ -1205,10 +1207,10 @@ function _validateStep() {
 
 /** 날짜 순서·지난 날짜·최대 기간을 검사한다. 문제가 없으면 빈 문자열. */
 function _dateError(t) {
-  if (!t.startDate) return '출발일을 골라 주세요.';
-  if (!t.endDate) return '귀국일을 골라 주세요. 당일치기라면 출발일과 같은 날을 고르면 돼요.';
-  if (t.endDate < t.startDate) return '귀국일이 출발일보다 빨라요. 날짜를 다시 골라 주세요.';
-  if (t.startDate < _isoLocal(new Date())) return '출발일이 이미 지났어요. 오늘 이후 날짜로 다시 골라 주세요.';
+  if (!t.startDate) return '출국일을 골라 주세요.';
+  if (!t.endDate) return '귀국일을 골라 주세요. 당일치기라면 출국일과 같은 날을 고르면 돼요.';
+  if (t.endDate < t.startDate) return '귀국일이 출국일보다 빨라요. 날짜를 다시 골라 주세요.';
+  if (t.startDate < _isoLocal(new Date())) return '출국일이 이미 지났어요. 오늘 이후 날짜로 다시 골라 주세요.';
   if (diffDays(t.startDate, t.endDate) > MAX_TRIP_DAYS) return `여행 기간은 최대 ${MAX_TRIP_DAYS}일까지 만들 수 있어요.`;
   return '';
 }
