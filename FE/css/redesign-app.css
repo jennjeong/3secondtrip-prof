@@ -858,3 +858,5 @@
   .topbar-spacer.topbar-actions { width: auto !important; min-width: 0 !important; }
   :root:not([data-page="my-blogs"]) .topbar-spacer.topbar-actions { display: none !important; }
 }
+/* ‘여행 스타일로 찾기’와 ‘전체 스타일’을 같은 중심선에 — 제목의 바깥 여백은 줄(row)이 갖는다 */
+#homePage .home-subh-row .home-subh { margin: 0 !important; }
