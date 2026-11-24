@@ -444,3 +444,7 @@
 /* 아이콘만 있는 일정 버튼은 좁은 화면에서도 아이콘을 보인다 */
 #schedulePage .schedule-actions .action-icon svg, #schedulePage .schedule-actions #btnSave svg { display: block !important; width: 20px; height: 20px; }
 @media (max-width: 359px) { #schedulePage .schedule-actions #btnSave svg { display: none !important; } }
+/* 장소 — 카테고리 · 비용 한 줄 */
+.timeline .schedule-card-meta-line { display: flex !important; flex-wrap: wrap; align-items: center; column-gap: 8px !important; row-gap: 4px; }
+.timeline .schedule-card-meta-line .schedule-cost { font-size: 15px !important; font-weight: 700 !important; color: var(--r-text) !important; margin: 0; font-variant-numeric: tabular-nums; }
+.timeline .schedule-card-meta-line .schedule-price-tag { font-size: 13px; font-weight: 500; color: var(--r-text-3); }

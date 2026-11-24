@@ -588,12 +588,13 @@ function _renderTimeline(g) {
           a.visited ? el('span', { class: 'visited-badge' }, '다녀옴') : null,
           a.sample ? el('span', { class: 'sample-badge', title: '실제 검색 결과가 없어 넣은 예시 장소예요' }, '예시 장소') : null,
           a.edited ? el('span', { class: 'edited-badge' }, '직접 수정') : null,
+          // 카테고리와 비용은 한 줄에
+          costText ? el('span', { class: 'schedule-cost' }, [
+            el('span', { class: 'sr-only' }, '예상 비용 '), costText,
+            costTag ? el('span', { class: 'schedule-price-tag' + (costTag === '실시간' ? ' is-live' : '') }, ' · ' + costTag) : null,
+          ]) : null,
         ].filter(Boolean)),
         n.memo ? el('p', { class: 'schedule-place-subinfo schedule-memo' }, '메모 · ' + n.memo) : null,
-        costText ? el('p', { class: 'schedule-place-subinfo schedule-cost' }, [
-          el('span', { class: 'sr-only' }, '예상 비용 '), costText,
-          costTag ? el('span', { class: 'schedule-price-tag' + (costTag === '실시간' ? ' is-live' : '') }, ' · ' + costTag) : null,
-        ]) : null,
         flags.length ? el('ul', { class: 'sc-flags' }, flags.map(f => el('li', { class: 'sc-flag sc-flag--' + f.lvl }, f.text))) : null,
         el('div', { class: 'sc-where' }, details),
       ]),

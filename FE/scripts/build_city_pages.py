@@ -127,7 +127,7 @@ def main() -> None:
         nights = nights_label(days)
         desc = f"{city} {nights} {concept} 여행 코스 — {s['tagline']}. 날짜별 장소와 이동 시간, 예상 비용을 확인하고 내 일정으로 만들어 보세요."
         html = PAGE.format(
-            site=SITE, url=url, title=escape(title), place=escape(f"{city} · {country}"),
+            site=SITE, url=url, title=escape(title), place=escape(f"{country} · {city}"),
             nights=nights, concept=escape(concept), tagline=escape(s["tagline"]), desc=escape(desc),
             cost=round(s["cost"]["amount"] / 10000), cost_note=escape(s["cost"]["note"]),
             days_html=days_html(s["days"]), city_q=escape(city),

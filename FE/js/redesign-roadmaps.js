@@ -341,7 +341,7 @@ function _cardEl(m, opts = {}) {
   }, [
     media,
     el('div', { class: 'rc-bottom' }, [
-      el('div', { class: 'rc-place' }, [m.city, m.country].filter(Boolean).join(' · ')),
+      el('div', { class: 'rc-place' }, [m.country, m.city].filter(Boolean).join(' · ')),
       el('div', { class: 'rc-title' }, m.title),
       el('div', { class: 'rc-info' }, [el('span', { class: 'nowrap' }, _daysLabel(m.days)), ' · ', el('span', { class: 'nowrap' }, m.concept),
         m.isSample ? el('span', { class: 'rc-sample-tag', 'aria-hidden': 'true' }, '예시') : null]),
@@ -565,7 +565,7 @@ function _renderRoadmapDetail(m) {
   const cover = document.getElementById('roadmapCover');
   const meta  = document.getElementById('roadmapMeta');
   const body  = document.getElementById('roadmapBody');
-  const place = [m.city, m.country].filter(Boolean).join(' · ');
+  const place = [m.country, m.city].filter(Boolean).join(' · ');
   _setDocMeta(`${m.title} · 3초 여행`, `${place} ${_daysLabel(m.days)} ${m.concept} 여행 코스${m.tagline ? ' — ' + m.tagline : ''}`);
   if (cover) {
     cover.style.background = m.gradient;
