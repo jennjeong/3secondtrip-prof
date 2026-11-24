@@ -1105,7 +1105,9 @@ function _showStep() {
     p.classList.toggle('is-active', on);
     p.hidden = !on;
   });
-  $('#stepPrev').textContent = step === 1 ? '취소' : '이전';
+  // 첫 단계는 앱바의 닫기(×)와 결과가 같으므로 하단 ‘취소’를 두지 않는다.
+  $('#stepPrev').textContent = '이전';
+  $('#stepPrev').hidden = step === 1;
   $('#stepNext').hidden = step === 4;
   $('#stepGenerate').hidden = step !== 4;
   if (step === 4) { _refreshBudget(); _refreshSummary(); }

@@ -595,6 +595,11 @@ function _renderTimeline(g) {
           ]) : null,
         ].filter(Boolean)),
         n.memo ? el('p', { class: 'schedule-place-subinfo schedule-memo' }, '메모 · ' + n.memo) : null,
+        _tripStarted(g) && !g.sharedView ? el('button', {
+          type: 'button', class: 'visit-btn visit-inline' + (a.visited ? ' is-on' : ''), 'aria-pressed': String(!!a.visited),
+          'aria-label': `${placeName} 다녀옴 ${a.visited ? '표시 지우기' : '표시'}`,
+          onclick: (e) => { e.stopPropagation(); _toggleVisited(activeDay, ai); },
+        }, a.visited ? '다녀옴' : '다녀옴 표시') : null,
         flags.length ? el('ul', { class: 'sc-flags' }, flags.map(f => el('li', { class: 'sc-flag sc-flag--' + f.lvl }, f.text))) : null,
         el('div', { class: 'sc-where' }, details),
       ]),
@@ -609,11 +614,6 @@ function _renderTimeline(g) {
           title: '다시 만들기를 해도 이 장소를 남겨요',
           onclick: (e) => { e.stopPropagation(); a.pinned = !a.pinned; renderSchedule(); showToast(a.pinned ? '고정했어요. 다시 만들어도 이 장소는 남아요' : '고정을 풀었어요'); },
         }, a.pinned ? '고정됨' : '고정')] : []),
-        ...(_tripStarted(g) && !g.sharedView ? [el('button', {
-          type: 'button', class: 'visit-btn' + (a.visited ? ' is-on' : ''), 'aria-pressed': String(!!a.visited),
-          'aria-label': `${placeName} 다녀옴 ${a.visited ? '표시 지우기' : '표시'}`,
-          onclick: (e) => { e.stopPropagation(); _toggleVisited(activeDay, ai); },
-        }, a.visited ? '✓ 다녀옴' : '다녀옴')] : []),
         ...(editMode && movable ? [
           el('button', { type: 'button', class: 'move-btn', 'aria-label': `${placeName} 위로 이동`, disabled: !movables[ai - 1] || null,
             onclick: (e) => { e.stopPropagation(); _moveActivity(ai, ai - 1, false); _focusCard(ai - 1, '위'); } }, '▲'),
@@ -702,7 +702,6 @@ function _renderNowNext(g) {
   } else if (cur) rows.push(el('p', { class: 'nn-done' }, '오늘 남은 일정이 없어요.'));
   if (!rows.length) { hide(); return; }
   const actions = [];
-  if (cur && !cur.a.visited) actions.push(el('button', { type: 'button', class: 'btn btn-soft', onclick: () => _toggleVisited(di, cur.i) }, '지금 장소 다녀왔어요'));
   if (activeDay !== di) actions.push(el('button', { type: 'button', class: 'btn-text', onclick: () => { activeDay = di; renderSchedule(); } }, `${di + 1}일차 일정 보기`));
   const done = acts.filter(a => a.visited).length;
   box.replaceChildren(
@@ -929,69 +928,85 @@ function _renderBudgetPanel(g) {
   const best = plans.find(a => a.fits) || plans[0] || limit;
   alts.hidden = !list.length;
   alts.replaceChildren(...(list.length ? [
-    el('p', { class: 'budget-alts-title' }, best === limit ? '예산에 맞추는 방법' : '추천 대안'),
-    _altCard(best, g, null, true),
-    list.length > 1 ? el('button', { type: 'button', class: 'btn-text budget-alts-more', onclick: () => _openAltSheet(list, g, plans.length) }, `다른 대안 보기 (${list.length - 1})`) : null,
+    el('div', { class: 'alt-summary' }, [
+      el('p', { class: 'alt-summary-text' }, [
+        el('span', { class: 'alt-summary-k' }, best === limit ? '맞추는 방법' : '추천'),
+        el('span', { class: 'alt-summary-v' }, best.isLimitChange ? `예산 한도 ${_shortMoney(best.apply.budget * 10000, g)}` : `${best.label} → ${_shortMoney(best.total, g)}`),
+      ]),
+      el('button', { type: 'button', class: 'btn-text budget-alts-more', onclick: () => _openAltSheet(list, g, plans.length, best) },
+        list.length > 1 ? `대안 ${list.length}개 보기` : '대안 보기'),
+    ]),
   ] : []));
 }
 
-/** 대안 하나 — 무엇이 바뀌는지, 새 총액, 절감액, 남은 초과액, ‘이 조합 적용’ */
-function _altCard(alt, g, onPick, compact = false) {
-  const rows = alt.isLimitChange
-    ? [['새 예산 한도', _shortMoney(alt.apply.budget * 10000, g)], ['예상 총액', _shortMoney(alt.total, g) + ' · 일정 그대로']]
-    : [['새 총액', _shortMoney(alt.total, g)], ['절감액', alt.saving ? _shortMoney(alt.saving, g) : '—'],
-       [alt.fits ? '예산' : '남은 초과액', alt.fits ? '✓ 예산 안' : _shortMoney(alt.over, g)]];
-  if (compact) {
-    // 한 줄 요약 + 적용(보조 버튼) — 첫 장소를 밀어내지 않도록 작게
-    const line = alt.isLimitChange
-      ? `예산 한도 ${_shortMoney(alt.apply.budget * 10000, g)} · 일정 그대로`
-      : [`새 총액 ${_shortMoney(alt.total, g)}`, alt.saving ? `${_shortMoney(alt.saving, g)} 절감` : '', alt.fits ? '예산 안' : `아직 ${_shortMoney(alt.over, g)} 초과`].filter(Boolean).join(' · ');
-    return el('div', { class: 'alt-card alt-card--compact' + (alt.fits ? ' is-fit' : '') }, [
-      el('div', { class: 'alt-card-text' }, [
-        el('p', { class: 'alt-card-title' }, alt.label),
-        el('p', { class: 'alt-card-line' }, line),
-      ]),
-      el('button', { type: 'button', class: 'btn btn-soft btn-sm alt-apply', onclick: () => _applyAlternative(alt) },
-        alt.isLimitChange ? '한도 바꾸기' : '이 조합 적용'),
-    ]);
-  }
-  return el('div', { class: 'alt-card' + (alt.fits ? ' is-fit' : '') }, [
-    el('p', { class: 'alt-card-title' }, alt.label),
-    alt.detail ? el('p', { class: 'alt-card-detail' }, alt.detail) : null,
-    el('dl', { class: 'alt-card-rows' }, rows.map(([k, v]) => el('div', { class: 'alt-row' + (k === '남은 초과액' ? ' is-over' : '') }, [el('dt', {}, k), el('dd', {}, v)]))),
-    el('button', { type: 'button', class: 'btn btn-primary alt-apply', onclick: () => { onPick?.(); _applyAlternative(alt); } },
-      alt.isLimitChange ? '예산 한도 바꾸기' : '이 조합 적용'),
-  ]);
-}
-
-function _openAltSheet(list, g, planCount) {
+function _openAltSheet(list, g, planCount, preferred) {
   let bd = document.getElementById('altBackdrop');
   let sh = document.getElementById('altSheet');
   if (!sh) {
     bd = el('div', { class: 'sheet-backdrop', id: 'altBackdrop', hidden: true });
     sh = el('aside', { class: 'bottom-sheet', id: 'altSheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'altSheetTitle', hidden: true }, [
       el('div', { class: 'sheet-handle' }),
-      el('header', { class: 'sheet-head' }, [el('h2', { id: 'altSheetTitle' }, '예산 대안 비교'),
-        el('button', { type: 'button', class: 'icon-btn', 'aria-label': '닫기', onclick: () => close() }, '×')]),
+      el('header', { class: 'sheet-head' }, [el('h2', { id: 'altSheetTitle' }, '예산 대안'),
+        el('button', { type: 'button', class: 'icon-btn', 'aria-label': '닫기', onclick: () => sh._close() }, '×')]),
       el('div', { class: 'sheet-body' }),
+      el('footer', { class: 'sheet-foot alt-foot' }),
     ]);
     document.body.append(bd, sh);
-    bd.addEventListener('click', () => close());
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sh.hidden) close(); });
+    bd.addEventListener('click', () => sh._close());
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sh.hidden) sh._close(); });
   }
-  function close() {
+  sh._close = () => {
     bd.classList.remove('is-visible'); sh.classList.remove('is-visible');
     setTimeout(() => { bd.hidden = true; sh.hidden = true; }, 220);
-  }
+  };
   const plans = list.filter(a => !a.isLimitChange);
   const limit = list.find(a => a.isLimitChange);
-  sh.querySelector('.sheet-body').replaceChildren(
-    el('p', { class: 'alt-sheet-lead' }, '항공·숙소·활동 중 무엇이 바뀌는지와 새 총액을 비교해 고르세요. 적용하면 일정과 예산이 함께 바뀌고, 실패하면 지금 일정은 그대로예요.'),
-    ...(planCount ? [el('h3', { class: 'alt-sheet-h' }, `일정을 바꾸는 방법 ${planCount}가지`), ...plans.map(a => _altCard(a, g, close))] : []),
-    ...(limit ? [el('h3', { class: 'alt-sheet-h' }, '또는 예산 한도 변경'), _altCard(limit, g, close)] : []),
-  );
+  const ordered = [...plans, ...(limit ? [limit] : [])];
+  let picked = ordered.indexOf(preferred);
+  if (picked < 0) picked = Math.max(0, ordered.findIndex(a => a.fits));
+  const budget = Number(g.budget) || 0;
+
+  const foot = sh.querySelector('.alt-foot');
+  const paintFoot = () => {
+    const a = ordered[picked];
+    foot.replaceChildren(
+      el('div', { class: 'sheet-total' }, [
+        el('span', {}, a.isLimitChange ? '예산 한도만 변경' : '선택한 조합 예상 총액'),
+        el('strong', {}, a.isLimitChange ? _shortMoney(a.apply.budget * 10000, g) : _shortMoney(a.total, g)),
+      ]),
+      el('button', { type: 'button', class: 'btn btn-primary btn-block alt-confirm', onclick: () => { sh._close(); _applyAlternative(a); } },
+        a.isLimitChange ? '예산 한도 바꾸기' : '이 조합 적용'),
+    );
+  };
+  const row = (a, i) => {
+    const on = i === picked;
+    const sub = a.isLimitChange
+      ? '일정은 그대로 두고 예산만 바꿔요'
+      : [a.saving ? `${_shortMoney(a.saving, g)} 절감` : '', a.fits ? '예산 안' : `아직 ${_shortMoney(a.over, g)} 초과`].filter(Boolean).join(' · ');
+    return el('button', {
+      type: 'button', role: 'radio', 'aria-checked': String(on), class: 'alt-opt' + (on ? ' is-on' : '') + (a.fits ? ' is-fit' : ''),
+      onclick: () => { picked = i; paint(); },
+    }, [
+      el('span', { class: 'alt-opt-mark', 'aria-hidden': 'true' }),
+      el('span', { class: 'alt-opt-main' }, [
+        el('span', { class: 'alt-opt-total' }, a.isLimitChange ? `한도 ${_shortMoney(a.apply.budget * 10000, g)}` : _shortMoney(a.total, g)),
+        el('span', { class: 'alt-opt-label' }, a.label),
+        el('span', { class: 'alt-opt-sub' + (a.fits ? '' : ' is-over') }, sub),
+      ]),
+    ]);
+  };
+  const body = sh.querySelector('.sheet-body');
+  const paint = () => {
+    body.replaceChildren(
+      el('p', { class: 'alt-sheet-lead' }, `지금 예산 ${_shortMoney(budget, g)} · 하나를 고르고 아래에서 적용하면 일정이 다시 만들어져요.`),
+      el('div', { class: 'alt-opts', role: 'radiogroup', 'aria-label': '예산 대안' }, ordered.map(row)),
+    );
+    paintFoot();
+  };
+  void planCount;
+  paint();
   bd.hidden = false; sh.hidden = false;
-  requestAnimationFrame(() => { bd.classList.add('is-visible'); sh.classList.add('is-visible'); sh.querySelector('.icon-btn')?.focus(); });
+  requestAnimationFrame(() => { bd.classList.add('is-visible'); sh.classList.add('is-visible'); sh.querySelector('.alt-opt.is-on')?.focus(); });
 }
 
 async function _applyAlternative(alt) {

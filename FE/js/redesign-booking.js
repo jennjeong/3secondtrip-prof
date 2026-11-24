@@ -389,15 +389,15 @@ function _rowEl(it) {
     it.url ? el('a', {
       class: 'book-link', href: it.url, target: '_blank',
       rel: it.url.includes('aid=') ? 'noopener noreferrer sponsored' : 'noopener noreferrer',
-      ariaLabel: `${it.name} 외부 사이트에서 찾기 (새 창)`,
+      ariaLabel: `${it.name} 예약 사이트 새 창으로 열기`,
       onclick: () => trackEvent('booking_link_clicked'),
-    }, '외부에서 찾기 ↗') : el('span', { class: 'book-desc' }, '연결된 예약처 없음'),
+    }, '예약 사이트 열기 ↗') : el('span', { class: 'book-desc' }, '연결된 예약처 없음'),
     el('button', {
       type: 'button', class: 'book-mark' + (st?.status === 'booked' ? ' is-on' : ''),
       ariaPressed: String(st?.status === 'booked'),
       ariaLabel: st?.status === 'booked' ? `${it.name} 예약 완료 표시 취소` : `${it.name} 외부에서 예약을 마쳤다고 표시`,
       onclick: () => _toggleBooked(it),
-    }, st?.status === 'booked' ? '예약 표시 취소' : '예약했어요'),
+    }, st?.status === 'booked' ? '예약 완료 취소' : '예약 완료로 표시'),
   ]);
 
   const refBox = st?.status === 'booked' ? el('div', { class: 'book-ref' }, [

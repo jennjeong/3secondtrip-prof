@@ -168,6 +168,7 @@ export function initRoadmaps(state) {
     }));
   });
   $('#shareRoadmapBtn')?.addEventListener('click', _shareCurrent);
+  $('#topbarShare')?.addEventListener('click', _shareCurrent);
 
   // 카드 → 상세 (주소에 코스 id 를 남겨 새로고침·공유가 되게 한다)
   document.addEventListener('click', (e) => {
@@ -535,6 +536,8 @@ async function _openDetail(id, city) {
 function _toggleDetailActions(on) {
   const row = document.querySelector('#roadmapDetailPage .roadmap-cta-row');
   if (row) row.hidden = !on;
+  const share = document.getElementById('topbarShare');
+  if (share) share.hidden = !on;
 }
 
 function _renderMissing(opts = {}) {
@@ -584,24 +587,25 @@ function _renderRoadmapDetail(m) {
       ['좋아요', `♥ ${m.likes.toLocaleString('ko-KR')}`],
     ];
     meta.replaceChildren(...pills.map(([k, v]) => el('span', { class: 'meta-pill' }, [el('span', { class: 'sr-only' }, k + ' '), v])),
-      ...(m.isSample ? [el('span', { class: 'meta-pill meta-pill--sample' }, '예시')] : []));
+      ...(m.isSample && !m.cost?.amount ? [el('span', { class: 'meta-pill meta-pill--sample' }, '예시')] : []));
   }
   if (!body) return;
   const parts = [];
-  if (m.isSample) {
-    parts.push(el('p', { class: 'rd-note' }, '운영팀이 만든 예시 코스예요. 좋아요 수와 금액은 참고용 예시 값이에요.'));
-  }
-
-  // 예상 비용과 출처
+  // 예상 비용 — 금액(먼저) · 포함 항목(보조) · 추정 근거(펼침)
   if (m.cost?.amount) {
     parts.push(el('section', { class: 'rd-cost', 'aria-labelledby': 'rdCostH' }, [
-      el('h2', { class: 'rd-h', id: 'rdCostH' }, '예상 비용'),
-      el('p', { class: 'rd-cost-num' }, [`성인 1명 ${_won(m.cost.amount)}`]),
-      el('p', { class: 'rd-cost-note' }, m.cost.note || ''),
-      el('p', { class: 'rd-source' }, m.isSample
-        ? '출처: 3초 여행 예시 기준(2026년, 대중교통·중간 가격대 숙소). 실제 가격은 날짜와 환율에 따라 달라요.'
-        : '출처: 코스 작성자가 입력한 금액이에요.'),
+      el('h2', { class: 'rd-h', id: 'rdCostH' }, m.isSample ? '예상 비용 · 예시' : '예상 비용'),
+      el('p', { class: 'rd-cost-num' }, [el('span', { class: 'rd-cost-who' }, '성인 1명 '), _won(m.cost.amount)]),
+      m.cost.note ? el('p', { class: 'rd-cost-note' }, m.cost.note) : null,
+      el('details', { class: 'rd-source' }, [
+        el('summary', {}, '금액 기준'),
+        el('p', {}, m.isSample
+          ? '운영팀이 만든 예시 코스예요. 3초 여행 예시 기준(2026년, 대중교통·중간 가격대 숙소)이고, 실제 가격은 날짜와 환율에 따라 달라요. 좋아요 수도 예시 값이에요.'
+          : '코스 작성자가 입력한 금액이에요.'),
+      ]),
     ]));
+  } else if (m.isSample) {
+    parts.push(el('p', { class: 'rd-note' }, '운영팀이 만든 예시 코스예요. 좋아요 수는 예시 값이에요.'));
   }
 
   // 날짜별 코스

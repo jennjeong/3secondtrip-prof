@@ -126,7 +126,9 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
       <a href="#page=my" data-nav-to="my">마이</a>
       <a href="#page=create-trip" class="topbar-cta" data-nav-to="create-trip">+ 여행 만들기</a>
     </nav>
-    <div class="topbar-spacer" aria-hidden="true"></div>
+    <div class="topbar-spacer topbar-actions">
+      <button type="button" class="icon-btn topbar-share" id="topbarShare" aria-label="이 코스 공유" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><polyline points="7 8 12 3 17 8"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
+    </div>
   </header>
 
   <p class="offline-banner" id="offlineBanner" role="status" aria-live="polite" hidden></p>
@@ -1279,7 +1281,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
       <button type="button" class="chip" data-book-cat="airport" aria-pressed="false">공항이동</button>
     </div>
     <div class="sheet-body book-scroll">
-    <p class="book-notice">3초 여행에서는 결제·예약을 하지 않아요. <strong>외부에서 찾기</strong>로 예약 사이트를 열고, 마음에 드는 항목은 <strong>후보로 저장</strong>, 직접 예약을 마쳤다면 <strong>예약했어요</strong>로 표시해 두세요. 금액은 참고용이에요.</p>
+    <p class="book-notice">결제는 3초 여행이 아닌 예약 사이트에서 해요. 항목을 체크해 <strong>후보로 저장</strong>하고, 예약을 마치면 <strong>예약 완료로 표시</strong>하세요. 금액은 참고용이에요.</p>
     <p class="book-saved" id="bookingSaved" role="status" hidden></p>
     <div class="book-list" id="bookingList"></div>
     </div>
