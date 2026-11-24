@@ -809,3 +809,13 @@ h1, h2, h3, .rc-title, .schedule-place-name, .mlc-title { word-break: keep-all; 
   .money-rows--panel .money-row--total dd { font-size: 17px; }
 }
 .timeline .schedule-card .schedule-card-actions { grid-column: 3 !important; grid-row: 2 !important; }
+
+
+/* ===== 헤더 로고 — 3secondtrip 글자 + 비행기 점선(그림 한 장) ===== */
+.topbar-brand-mark {
+  display: block; height: 28px; width: auto; aspect-ratio: 724 / 128;
+}
+:root.theme-dark .topbar-brand-mark { filter: brightness(0) invert(.94); }
+@media (prefers-color-scheme: dark) { :root.allow-dark .topbar-brand-mark { filter: brightness(0) invert(.94); } }
+@media (min-width: 768px) { .topbar-brand-mark { height: 32px; } }
+.auth-logo-img { padding: 0; background: none; object-fit: cover; border-radius: 16px; box-shadow: none; }

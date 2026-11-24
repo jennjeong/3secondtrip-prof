@@ -1,5 +1,5 @@
 // 앱 아이콘·시작 화면 이미지를 FE/assets 의 원본으로 만든다(macOS sips 사용).
-//  node scripts/make-icons.mjs <아이콘 1024px PNG(꽉 찬 정사각형)>
+//  node scripts/make-icons.mjs <아이콘 1024px PNG(꽉 찬 정사각형)> [시작 화면용 로고 PNG(둥근 모서리, 배경색 위)]
 //  - iOS: AppIcon(1024, 투명 없음) · Splash(2732², 가운데 로고)
 //  - Android: mipmap 아이콘 5종 · 시작 화면 splash.png(각 폴더 크기에 맞춤)
 import { execFileSync } from 'node:child_process';
@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const APP = join(here, '..');
 const src = process.argv[2];
+const splashSrc = process.argv[3];
 if (!src) throw new Error('아이콘 PNG 경로를 넣어 주세요');
 const BG = 'F7F8FA';
 const tmp = mkdtempSync(join(tmpdir(), 'tst-icons-'));
@@ -30,7 +31,7 @@ copyFileSync(flat, join(APP, 'ios/App/App/Assets.xcassets/AppIcon.appiconset/App
 function splash(out, w, h) {
   const logo = Math.round(Math.min(w, h) * 0.18);
   const f = join(tmp, `s-${w}x${h}.png`);
-  sips('-z', String(logo), String(logo), flat, '--out', f);
+  sips('-z', String(logo), String(logo), splashSrc || flat, '--out', f);
   sips('--padToHeightWidth', String(h), String(w), '--padColor', BG, f, '--out', out);
 }
 for (const n of ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-2732x2732-2.png']) {
