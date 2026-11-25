@@ -8,6 +8,7 @@ import { api, trackEvent } from './redesign-api-adapter.js';
 import { $, el, formatCurrency, showToast } from './redesign-ui.js';
 import { timeZoneFor, utcOffsetMin, utcLabel } from './redesign-cities.js';
 import { RIDE, rideOf } from './redesign-ground.js';
+import { askConfirm } from './redesign-dialog.js';
 
 const STORE_KEY = 'tst_trip_tools_v1';
 const MAX_STORED_TRIPS = 20;
@@ -418,7 +419,7 @@ async function _swapIndoor(di) {
   if (!day) return;
   const targets = day.activities.map((a, i) => ({ a, i })).filter(({ a }) => OUTDOOR_CATS.has(a.category) && !a.pinned && !INDOOR_RE.test(a.name || ''));
   if (!targets.length) return false;
-  if (!confirm(`${di + 1}일차 야외 일정 ${targets.length}곳을 실내 장소로 바꿀까요?\n고정한 장소와 숙소·이동은 그대로 두고, 시각도 그대로예요.`)) return false;
+  if (!await askConfirm(`${di + 1}일차 야외 일정 ${targets.length}곳을 실내 장소로 바꿀까요?\n고정한 장소와 숙소·이동은 그대로 두고, 시각도 그대로예요.`, { ok: '바꾸기' })) return false;
   // 실내 후보 — 장소 검색이 되면 실제 장소, 안 되면 예시 장소
   let cands = [];
   try {

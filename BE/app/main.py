@@ -30,6 +30,7 @@ from app.routers import admin as admin_router
 from app.routers import shared_trips as shared_trips_router
 from app.routers import events as events_router
 from app.routers import features as features_router
+from app.routers import local_courses as local_courses_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
@@ -84,6 +85,7 @@ app.include_router(users_router.router)
 app.include_router(trips_router.router)
 app.include_router(schedules_router.router)
 app.include_router(roadmaps_router.router)
+app.include_router(local_courses_router.router)
 app.include_router(bookings_router.router)
 app.include_router(blogs_router.router)
 app.include_router(reviews_router.router)

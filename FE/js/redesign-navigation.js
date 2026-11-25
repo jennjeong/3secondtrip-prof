@@ -19,7 +19,8 @@ const PAGE_TITLES = {
   feedback: '의견 보내기',
   survey: '취향 분석',
   'my-saved': '계정에 보관한 일정',
-  'my-roadmaps': '내가 공개한 코스',
+  'my-roadmaps': '내가 쓴 코스',
+  'local-write': '우리 동네 코스 쓰기',
   'my-reviews': '내 후기',
   'my-blogs': '내 블로그',
   subscription: '요금제',
@@ -129,7 +130,7 @@ function _goByHistory(data) {
 
 function _syncTabs(pageId) {
   // 상세·하위 화면에서도 어느 메뉴 아래인지 보이게 한다.
-  const parent = { 'roadmap-detail': 'explore', 'my-saved': 'my', 'my-roadmaps': 'my', 'my-reviews': 'my', 'my-blogs': 'my',
+  const parent = { 'roadmap-detail': 'explore', 'local-write': 'explore', 'my-saved': 'my', 'my-roadmaps': 'my', 'my-reviews': 'my', 'my-blogs': 'my',
     subscription: 'my', survey: 'my', feedback: 'my', blog: 'my', auth: 'my' }[pageId] || pageId;
   document.querySelectorAll('.bottom-tab-nav [data-nav-to], .topbar-nav [data-nav-to]').forEach(btn => {
     if (btn.classList.contains('topbar-cta')) return;

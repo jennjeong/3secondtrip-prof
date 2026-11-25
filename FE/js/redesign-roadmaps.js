@@ -12,6 +12,7 @@ import { searchCities } from './redesign-cities.js';
 import { prepare, prepareQuery, matchKey, sameText } from './redesign-search.js';
 import { sampleCourseFor } from './redesign-course-samples.js';
 import { publicLink, publicPath, shareLink } from './redesign-native.js';
+import { askForm, showCopy } from './redesign-dialog.js';
 
 // In-memory cache for landmark image URLs we've already verified loadable.
 const LANDMARK_OK = new Set();
@@ -62,6 +63,7 @@ export const POPULAR_ROADMAPS = [
 let appState = null;
 let roadmaps = POPULAR_ROADMAPS.map(m => ({ ...m, isSample: true }));   // loadRoadmaps() 가 서버 데이터로 교체
 let loaded = null;                 // loadRoadmaps() 진행 중인 Promise
+let locals = [];                   // 동네 사람이 쓴 코스(운영자가 확인한 글)
 const explore = {
   sort: 'popular',   // popular(좋아요 많은 순, 같으면 최신) | recent(게시일 최신 순)
   concept: 'all',
@@ -93,6 +95,7 @@ export function initRoadmaps(state) {
     renderHomeRoadmaps();
     renderExplore();
   });
+  loadLocals();
 
   // 홈의 여행 스타일 칩·도시 바로가기 → 탐색으로 이동하며 조건 적용
   document.addEventListener('click', (e) => {
@@ -258,6 +261,22 @@ function _fromApi(r) {
   };
 }
 
+/** 동네 사람이 쓴 코스 → 카드 모양. 좋아요는 없다. */
+export function fromLocal(r) {
+  const known = POPULAR_ROADMAPS.find(p => p.city === r.city);
+  return {
+    id: `l${r.id}`, isLocal: true, city: r.city, country: r.country || '', area: r.area || '', title: r.title, concept: r.concept || '균형',
+    days: r.days.length, likes: 0, tagline: '', gradient: known?.gradient || DEFAULT_GRADIENT, createdAt: r.created_at || '', isSample: false,
+    author: r.author, lived: r.lived, note: r.note, cost: null,
+    plan: r.days.map(d => d.map(s => ({ time: s.time || '', name: s.name, cat: s.cat || '', tip: s.tip || '', move: '' }))),
+  };
+}
+async function loadLocals() {
+  try { locals = ((await api.listLocalCourses()) || []).map(fromLocal); }
+  catch (e) { console.warn('[local-courses] 불러오지 못했어요:', e?.message); return; }
+  renderExplore();
+}
+
 /** 서버 코스의 roadmap_data 에서 날짜별 장소 목록을 꺼낸다. 형식이 맞지 않으면 null. */
 function _parseDays(data) {
   const days = data?.days;
@@ -347,7 +366,7 @@ function _daysLabel(d) {
 }
 
 /* 코스 한 건의 글자 조각 — 홈 목록·추천·노선도와 탐색 목록이 같은 조각을 쓴다. */
-const _place = (m) => [m.country, m.city].filter(Boolean).join(' · ');
+const _place = (m) => [m.country, m.city, m.area].filter(Boolean).join(' · ');
 const _styleEl = (m) => el('span', { class: 'rc-style' }, [m.concept, m.isSample ? el('span', { class: 'rc-sample-tag' }, '예시') : null].filter(Boolean));
 const _goEl = () => el('span', { class: 'rc-go', 'aria-hidden': 'true' });
 
@@ -360,7 +379,7 @@ const _hue = (city) => CITY_HUE[city] ?? [...String(city)].reduce((a, ch) => (a 
 function _cardEl(m, opts = {}) {
   const glow = opts.variant === 'glow';
   // 예시 코스의 좋아요 수는 실제 기록이 아니라 보여 주지 않는다(서버에 올라온 코스만 실제 수).
-  const likes = m.isSample ? null : el('span', { class: 'rc-likes' }, [
+  const likes = m.isSample || m.isLocal ? null : el('span', { class: 'rc-likes' }, [
     el('span', { 'aria-hidden': 'true' }, '♥ '), el('span', { class: 'sr-only' }, '좋아요 '), (Number(m.likes) || 0).toLocaleString('ko-KR'),
   ]);
   const card = el('button', { type: 'button', class: 'roadmap-card ' + (glow ? 'rc--glow' : 'rc--row'), dataset: { roadmapId: m.id } });
@@ -555,14 +574,17 @@ export function renderExplore() {
   const count = document.getElementById('exploreCount');
   if (!grid) return;
   const items = _filterAndSort(roadmaps);
+  const mine = _filterAndSort(locals);
+  _renderLocals(mine);
   grid.replaceChildren(...items.map(m => _cardEl(m, { variant: 'glow' })));
-  if (empty) empty.hidden = items.length > 0;
+  const total = items.length + mine.length;
+  if (empty) empty.hidden = total > 0;
   // 아는 도시인데 코스가 없으면 그 도시로 바로 여행을 만들 수 있게 한다.
   const make = document.getElementById('exploreMake');
   if (make) {
     const q = explore.query.trim();
     const city = q ? searchCities(q, 3).find(c => [c.name, ...(c.aliases || [])].some(n => sameText(n, q))) : null;
-    make.hidden = !city || items.length > 0;
+    make.hidden = !city || total > 0;
     make.textContent = city ? `${city.name} 여행 만들기` : '';
     make.onclick = city ? () => { document.dispatchEvent(new CustomEvent('redesign:trip-prefill', { detail: { city: city.name } })); navigate('create-trip', { meta: { prefill: true } }); } : null;
     const msg = empty?.querySelector('.empty-text');
@@ -572,11 +594,20 @@ export function renderExplore() {
     const parts = [];
     if (explore.query) parts.push(`‘${explore.query}’`);
     if (explore.concept !== 'all') parts.push(`${explore.concept} 스타일`);
-    count.textContent = (parts.length ? parts.join(' · ') + ' 결과 ' : '여행 코스 ') + `${items.length}개`;
+    count.textContent = (parts.length ? parts.join(' · ') + ' 결과 ' : '여행 코스 ') + `${total}개`;
   }
   const reset = document.getElementById('exploreResetInline');
   if (reset) reset.hidden = !(explore.query || explore.concept !== 'all' || explore.sort !== 'popular');
   _replaceExploreHash();
+}
+
+/** 동네 사람이 쓴 코스 — 있으면 맨 위에, 없으면 쓰기 안내 한 줄만. */
+function _renderLocals(list) {
+  const sec = document.getElementById('localSection');
+  if (!sec) return;
+  document.getElementById('localGrid').replaceChildren(...list.map(m => _cardEl(m, { variant: 'glow' })));
+  document.getElementById('localHead').hidden = !list.length;
+  document.getElementById('localGrid').hidden = !list.length;
 }
 
 let _filtersOpen = false;
@@ -629,6 +660,21 @@ async function _openDetail(id, city) {
     }
   }
   if (!id) { _renderMissing(); return; }
+  if (/^l\d+$/.test(String(id))) {
+    let x = locals.find(r => r.id === id);
+    if (!x) {
+      body?.replaceChildren(el('p', { class: 'rd-loading', role: 'status' }, '코스를 불러오는 중이에요…'));
+      $('#roadmapCover')?.replaceChildren(); $('#roadmapMeta')?.replaceChildren(); $('#roadmapCost')?.replaceChildren();
+      _toggleDetailActions(false);
+      try { x = fromLocal(await api.getLocalCourse(String(id).slice(1))); }
+      catch (e) { if (seq === detailSeq) _renderMissing(e?.status === 404 ? {} : { retry: id }); return; }
+    }
+    if (seq !== detailSeq) return;
+    window.__redesign = window.__redesign || {};
+    window.__redesign.__currentRoadmap = x;
+    _renderRoadmapDetail(x);
+    return;
+  }
   let m = roadmaps.find(r => r.id === String(id));
   if (!m) {
     body?.replaceChildren(el('p', { class: 'rd-loading', role: 'status' }, '코스를 불러오는 중이에요…'));
@@ -687,7 +733,7 @@ function _renderRoadmapDetail(m) {
   const cover = document.getElementById('roadmapCover');
   const meta  = document.getElementById('roadmapMeta');
   const body  = document.getElementById('roadmapBody');
-  const place = [m.country, m.city].filter(Boolean).join(' · ');
+  const place = _place(m);
   _setDocMeta(`${m.title} · 3초 여행`, `${place} ${_daysLabel(m.days)} ${m.concept} 여행 코스${m.tagline ? ' — ' + m.tagline : ''}`);
   if (cover) {
     cover.style.background = m.gradient;
@@ -705,7 +751,7 @@ function _renderRoadmapDetail(m) {
     const pills = [
       ['기간', _daysLabel(m.days)],
       ['여행 스타일', m.concept],
-      ['좋아요', `♥ ${m.likes.toLocaleString('ko-KR')}`],
+      m.isLocal ? ['작성자', '동네 사람이 씀'] : ['좋아요', `♥ ${m.likes.toLocaleString('ko-KR')}`],
     ];
     meta.replaceChildren(...pills.map(([k, v]) => el('span', { class: 'meta-pill' }, [el('span', { class: 'sr-only' }, k + ' '), v])),
       ...(m.isSample && !m.cost?.amount ? [el('span', { class: 'meta-pill meta-pill--sample' }, '예시')] : []));
@@ -731,6 +777,12 @@ function _renderRoadmapDetail(m) {
     parts.push(el('p', { class: 'rd-note' }, '운영팀이 만든 예시 코스예요. 좋아요 수는 예시 값이에요.'));
   }
 
+  if (m.isLocal) parts.push(el('section', { class: 'rd-author', 'aria-labelledby': 'rdAuthorH' }, [
+    el('h2', { class: 'rd-author-h', id: 'rdAuthorH' }, [m.author, el('span', {}, ` · ${m.city} ${m.lived === '나고 자랐어요' ? '토박이' : `${m.lived} 거주`}`)]),
+    el('p', { class: 'rd-author-note' }, m.note),
+    el('p', { class: 'rd-author-src' }, '거주 기간은 작성자가 밝힌 것이고, 운영팀이 확인하지는 않았어요.'),
+  ]));
+
   // 날짜별 코스
   const plan = m.plan || [];
   const partial = plan.length > 0 && plan.length < m.days;
@@ -745,7 +797,7 @@ function _renderRoadmapDetail(m) {
       items.push(el('li', { class: 'rd-stop' }, [
         el('span', { class: 'rd-time' }, s.time),
         el('span', { class: 'rd-node', 'aria-hidden': 'true' }),
-        el('span', { class: 'rd-name' }, s.name),
+        el('span', { class: 'rd-name' }, [s.name, s.tip ? el('span', { class: 'rd-tip' }, s.tip) : null]),
         s.cat ? el('span', { class: 'rd-cat' }, s.cat) : null,
       ]));
       if (s.move && j < day.length - 1) items.push(el('li', { class: 'rd-move' }, [el('span', { class: 'sr-only' }, '다음 장소까지 '), s.move]));
@@ -756,7 +808,17 @@ function _renderRoadmapDetail(m) {
     ]));
   });
   if (partial) parts.push(el('p', { class: 'rd-note' }, `나머지 ${m.days - 1}일은 이 코스로 여행을 만들면 채워져요.`));
+  if (m.isLocal) parts.push(el('p', { class: 'rd-report' }, [el('button', { type: 'button', class: 'btn-text', onclick: () => _report(m) }, '이 코스 신고')]));
   body.replaceChildren(...parts);
+}
+
+async function _report(m) {
+  const v = await askForm({ title: '이 코스를 신고할까요?', text: '운영팀이 내용을 다시 확인해요.', ok: '신고', fields: [
+    { name: 'reason', label: '이유', type: 'choice', options: ['광고', '사실과 달라요', '부적절해요', '개인정보'], check: (x) => x ? '' : '이유를 골라 주세요' },
+  ] });
+  if (!v) return;
+  try { await api.reportLocalCourse(m.id.slice(1), v.reason); showToast('신고했어요. 운영팀이 확인할게요', 2600); }
+  catch (e) { showToast(e?.status === 429 ? '잠시 뒤 다시 시도해 주세요' : '신고하지 못했어요. 잠시 뒤 다시 시도해 주세요'); }
 }
 
 // 예시 코스는 미리보기(제목·설명)가 붙는 정적 코스 페이지 주소로 공유한다.
@@ -771,5 +833,5 @@ async function _shareCurrent() {
   const data = { title: m.title, text: `${m.city} ${_daysLabel(m.days)} 여행 코스`, url };
   if (await shareLink(data)) return;
   try { await navigator.clipboard.writeText(url); showToast('코스 주소를 복사했어요'); }
-  catch (_) { window.prompt('이 주소를 복사해 공유하세요', url); }
+  catch (_) { showCopy('이 주소를 복사해 공유하세요', url); }
 }

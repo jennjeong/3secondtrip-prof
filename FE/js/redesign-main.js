@@ -13,6 +13,7 @@ import { initReviews, renderReviewPreview, renderReviewSection } from './redesig
 import { initSurvey, renderSurvey } from './redesign-survey.js';
 import { initLanguage } from './redesign-ui.js';
 import { showToast, initDialogs } from './redesign-ui.js';
+import { initLocalCourse } from './redesign-local-course.js';
 import { initCalendar } from './redesign-calendar.js';
 import { initSettings } from './redesign-settings.js';
 import { initMyPages } from './redesign-my-pages.js';
@@ -175,6 +176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initSettings(appState);
   initAuth(appState);
   initRoadmaps(appState);
+  initLocalCourse(appState);
   initTripFlow(appState);
   initSchedule(appState);
   initBlog(appState);

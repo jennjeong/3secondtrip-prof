@@ -7,6 +7,7 @@
 import { api, trackEvent } from './redesign-api-adapter.js';
 import { $, el, showToast } from './redesign-ui.js';
 import { publicLink } from './redesign-native.js';
+import { askConfirm, showCopy } from './redesign-dialog.js';
 
 const TOKEN_KEY = 'tst_collab_v1';
 const MANAGE_KEY = 'tst_collab_manage_v1';   // 내가 만든 링크의 관리 키(회수용) — 이 기기에만 둔다
@@ -41,7 +42,7 @@ function _manageKey() {
 async function _revoke() {
   const key = _manageKey();
   if (!token || !key) return;
-  if (!confirm('편집 링크를 회수할까요?\n받은 사람은 더 이상 이 링크로 일정을 보거나 고칠 수 없어요. 내 기기의 일정은 그대로 남아요.')) return;
+  if (!await askConfirm('편집 링크를 회수할까요?\n받은 사람은 더 이상 이 링크로 일정을 보거나 고칠 수 없어요. 내 기기의 일정은 그대로 남아요.', { ok: '회수', danger: true })) return;
   try {
     await api.revokeSharedTrip(token, key);
     trackEvent('collab_revoked');
@@ -144,7 +145,7 @@ async function _copy() {
     await navigator.clipboard.writeText(_link());
     showToast('편집 링크를 복사했어요. 링크를 아는 사람은 누구나 고칠 수 있어요');
   } catch (_) {
-    window.prompt('이 링크를 복사해 주세요', _link());
+    showCopy('이 링크를 복사해 주세요', _link());
   }
 }
 

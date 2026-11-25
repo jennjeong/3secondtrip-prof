@@ -2,7 +2,7 @@
  *
  *  4 pages, all keyed off the My tile clicks:
  *    my-saved      — saved schedules (api.listSchedules + filter is_saved)
- *    my-roadmaps   — user's own roadmaps (api.getRoadmaps mine=true)
+ *    my-roadmaps   — 내가 쓴 코스 (redesign-local-course.js)
  *    my-reviews    — user's own reviews (api.listReviews mine=true)
  *    my-blogs      — user's own blogs incl. drafts (api.listBlogs mine=true)
  *
@@ -13,6 +13,8 @@
 import { api, API_URL } from './redesign-api-adapter.js';
 import { navigate, getCurrent } from './redesign-navigation.js';
 import { $, $$, el, showToast, formatCurrency } from './redesign-ui.js';
+import { renderMyCourses } from './redesign-local-course.js';
+import { askConfirm, askForm } from './redesign-dialog.js';
 
 let appState = null;
 
@@ -22,7 +24,7 @@ export function initMyPages(state) {
   const render = (page) => {
     switch (page) {
       case 'my-saved':    renderMySaved();    break;
-      case 'my-roadmaps': renderMyRoadmaps(); break;
+      case 'my-roadmaps': renderMyCourses(); break;
       case 'my-reviews':  renderMyReviews();  break;
       case 'my-blogs':    renderMyBlogs();    break;
     }
@@ -33,7 +35,7 @@ export function initMyPages(state) {
   document.addEventListener('redesign:nav', (e) => {
     switch (e.detail.page) {
       case 'my-saved':    renderMySaved();    break;
-      case 'my-roadmaps': renderMyRoadmaps(); break;
+      case 'my-roadmaps': renderMyCourses(); break;
       case 'my-reviews':  renderMyReviews();  break;
       case 'my-blogs':    renderMyBlogs();    break;
     }
@@ -172,7 +174,7 @@ export async function renderMySaved() {
           catch (_) { showToast('되살리지 못했어요. 다시 시도해 주세요'); }
         } }, '되살리기'),
         el('button', { type: 'button', class: 'btn-text is-danger', onclick: async () => {
-          if (!confirm(`‘${s.title || '이 일정'}’을 완전히 지울까요? 지우면 되살릴 수 없어요.`)) return;
+          if (!await askConfirm(`‘${s.title || '이 일정'}’을 완전히 지울까요?\n지우면 되살릴 수 없어요.`, { ok: '지우기', danger: true })) return;
           try { await api.deleteSchedule(s.id); showToast('완전히 지웠어요'); renderMySaved(); }
           catch (_) { showToast('지우지 못했어요. 다시 시도해 주세요'); }
         } }, '완전히 삭제'),
@@ -206,10 +208,9 @@ function _savedCard(s) {
   const data = s.schedule_data || {};
   return _card({ title: s.title, data, meta: '수정 ' + _fmtDate(_dateOf(s)) }, () => _openSchedule(data, s.id, s.title), [
     el('button', { type: 'button', class: 'btn-text', onclick: async () => {
-      const name = prompt('새 일정 이름', s.title || '');
-      if (name == null) return;
-      const title = name.trim().slice(0, 80);
-      if (!title) { showToast('이름을 입력해 주세요'); return; }
+      const v = await askForm({ title: '일정 이름 바꾸기', ok: '바꾸기', fields: [{ name: 'title', label: '새 이름', value: s.title || '', max: 80, check: (x) => x ? '' : '이름을 입력해 주세요' }] });
+      if (!v) return;
+      const { title } = v;
       try {
         await api.updateSchedule(s.id, { title });
         if (appState.generated?.savedScheduleId === s.id) { appState.generated.title = title; document.dispatchEvent(new CustomEvent('redesign:trip-changed')); }
@@ -217,44 +218,13 @@ function _savedCard(s) {
       } catch (_) { showToast('이름을 바꾸지 못했어요'); }
     } }, '이름 바꾸기'),
     el('button', { type: 'button', class: 'btn-text is-danger', onclick: async () => {
-      if (!confirm(`‘${s.title || '이 일정'}’을 저장 목록에서 뺄까요?\n아래 ‘저장 해제한 일정’에서 되살릴 수 있어요.`)) return;
+      if (!await askConfirm(`‘${s.title || '이 일정'}’을 저장 목록에서 뺄까요?\n아래 ‘저장 해제한 일정’에서 되살릴 수 있어요.`, { ok: '빼기' })) return;
       try {
         await api.unsaveSchedule(s.id);
         if (appState.generated?.savedScheduleId === s.id) { appState.generated.savedScheduleId = null; document.dispatchEvent(new CustomEvent('redesign:trip-changed')); }
         showToast('저장 목록에서 뺐어요'); renderMySaved();
       } catch (_) { showToast('저장 해제에 실패했어요'); }
     } }, '저장 해제'),
-  ]);
-}
-
-/* ============ 2) MY ROADMAPS ============ */
-export async function renderMyRoadmaps() {
-  if (_requireLogin('myRoadmapsEmpty', '공개한 여행 코스를 보려면 로그인해 주세요')) return;
-  try {
-    const rows = await api.getRoadmaps?.({ mine: 'true' }) ?? [];
-    _showState('myRoadmapsList', 'myRoadmapsEmpty', rows, _roadmapCard);
-  } catch (e) {
-    showToast('여행 코스를 불러오지 못했어요');
-    console.warn('[my-roadmaps]', e);
-  }
-}
-
-function _roadmapCard(r) {
-  return el('button', {
-    type: 'button',
-    class: 'roadmap-card',
-    style: { background: r.gradient || 'linear-gradient(135deg,#3A4652 0%,#111418 100%)' },
-    dataset: { roadmapId: r.id },
-  }, [
-    el('div', { class: 'rc-top' }, [
-      el('span', { class: 'rc-concept-badge' }, r.concept || '-'),
-      el('span', { class: 'rc-likes' }, '♥ ' + (r.likes || 0)),
-    ]),
-    el('div', { class: 'rc-bottom' }, [
-      el('div', { class: 'rc-city' }, r.city || r.title),
-      el('div', { class: 'rc-tagline' }, r.title),
-      el('div', { class: 'rc-days' }, (r.days || 1) + '일'),
-    ]),
   ]);
 }
 
@@ -282,14 +252,12 @@ function _reviewItem(r) {
     ])]),
     el('div', { class: 'mlc-actions' }, [
       act('내용 고치기', async () => {
-        const text = prompt('후기 내용', r.content || '');
-        if (text == null) return;
-        if (text.trim().length < 3) { showToast('세 글자 이상 적어 주세요'); return; }
-        const rate = prompt('별점 (1~5)', String(r.rating || 5));
-        if (rate == null) return;
-        const n = Number(rate);
-        if (!(n >= 1 && n <= 5)) { showToast('별점은 1~5 사이로 적어 주세요'); return; }
-        try { await api.updateReview(r.id, { content: text.trim(), rating: Math.round(n) }); showToast('후기를 고쳤어요'); renderMyReviews(); }
+        const v = await askForm({ title: '후기 고치기', ok: '저장', fields: [
+          { name: 'rating', label: '별점', type: 'stars', value: r.rating || 5 },
+          { name: 'content', label: '내용', type: 'textarea', value: r.content || '', check: (x) => x.length < 3 ? '세 글자 이상 적어 주세요' : '' },
+        ] });
+        if (!v) return;
+        try { await api.updateReview(r.id, v); showToast('후기를 고쳤어요'); renderMyReviews(); }
         catch (_) { showToast('고치지 못했어요. 다시 시도해 주세요'); }
       }),
       act(r.is_public ? '나만 보기로 바꾸기' : '공개로 바꾸기', async () => {
@@ -297,7 +265,7 @@ function _reviewItem(r) {
         catch (_) { showToast('바꾸지 못했어요. 다시 시도해 주세요'); }
       }),
       act('삭제', async () => {
-        if (!confirm('이 후기를 삭제할까요? 삭제하면 되돌릴 수 없어요.')) return;
+        if (!await askConfirm('이 후기를 삭제할까요?\n삭제하면 되돌릴 수 없어요.', { ok: '삭제', danger: true })) return;
         try { await api.deleteReview(r.id); showToast('삭제했어요'); renderMyReviews(); }
         catch (_) { showToast('삭제하지 못했어요. 다시 시도해 주세요'); }
       }, true),

@@ -297,6 +297,15 @@ export const api = {
   getPopularRoadmaps: (limit = 8) => apiRequest(`/roadmaps/popular?limit=${limit}`),
   getRoadmap:         (id) => apiRequest(`/roadmaps/${id}`),
 
+  // ===== 동네 사람이 쓴 코스 =====
+  listLocalCourses:  () => tolerant(apiRequest('/local-courses?limit=100', { quiet: true })),     // 예전 서버에 없으면 null
+  getLocalCourse:    (id) => apiRequest(`/local-courses/${id}`),
+  myLocalCourses:    () => apiRequest('/local-courses/mine'),
+  createLocalCourse: (payload) => apiRequest('/local-courses', { method: 'POST', body: JSON.stringify(payload) }),
+  updateLocalCourse: (id, payload) => apiRequest(`/local-courses/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteLocalCourse: (id) => apiRequest(`/local-courses/${id}`, { method: 'DELETE' }),
+  reportLocalCourse: (id, reason) => apiRequest(`/local-courses/${id}/report`, { method: 'POST', body: JSON.stringify({ reason }) }),
+
   // ===== Bookings =====
   saveBooking: (payload) => apiRequest('/bookings', { method: 'POST', body: JSON.stringify(payload) }),
   listBookings: () => apiRequest('/bookings'),

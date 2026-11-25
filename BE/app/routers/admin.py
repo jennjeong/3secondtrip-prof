@@ -3,6 +3,7 @@
 모든 엔드포인트는 get_current_admin 의존성을 통해 보호됨.
 JWT + is_admin=True 인 사용자만 호출 가능.
 """
+import json
 from datetime import date, datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -13,7 +14,9 @@ from app.db.database import get_db
 from app.models.user import User
 from app.models.trip import Trip
 from app.models.schedule import Schedule
+from app.models.local_course import LocalCourse
 from app.models.roadmap import Roadmap
+from app.schemas.local_course_schema import LocalCourseReview
 from app.models.review import Review
 from app.models.blog import Blog
 from app.models.feedback import Feedback
@@ -338,6 +341,48 @@ def delete_roadmap(rid: int, db: Session = Depends(get_db), _: User = Depends(ge
     obj = db.query(Roadmap).filter(Roadmap.id == rid).first()
     if not obj: raise HTTPException(404, "Not found")
     db.delete(obj); db.commit()
+    return {"ok": True}
+
+
+# ── 동네 사람이 쓴 코스 — 확인한 글만 공개된다 ──
+@router.get("/local-courses")
+def list_local_courses(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=200), status: Optional[str] = None,
+                       db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+    q = db.query(LocalCourse)
+    if status:
+        q = q.filter(LocalCourse.status == status)
+    total = q.count()
+    items = []
+    for c in q.order_by(LocalCourse.id.desc()).offset((page - 1) * size).limit(size).all():
+        nick, email = _attach_user(db, c.user_id)
+        items.append({
+            "id": c.id, "title": c.title, "city": c.city, "country": c.country, "area": c.area, "lived": c.lived,
+            "concept": c.concept, "note": c.note, "days": json.loads(c.plan_json), "status": c.status,
+            "review_note": c.review_note, "reports": c.reports, "user_nickname": nick, "user_email": email,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        })
+    return {"total": total, "page": page, "size": size, "items": items}
+
+
+@router.patch("/local-courses/{cid}")
+def review_local_course(cid: int, payload: LocalCourseReview, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+    c = db.query(LocalCourse).filter(LocalCourse.id == cid).first()
+    if not c:
+        raise HTTPException(404, "Not found")
+    c.status = payload.status
+    c.review_note = (payload.review_note or "").strip() or None
+    if payload.status == "approved":
+        c.reports = 0
+    db.commit()
+    return {"ok": True, "status": c.status}
+
+
+@router.delete("/local-courses/{cid}")
+def delete_local_course(cid: int, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+    c = db.query(LocalCourse).filter(LocalCourse.id == cid).first()
+    if not c:
+        raise HTTPException(404, "Not found")
+    db.delete(c); db.commit()
     return {"ok": True}
 
 

@@ -8,6 +8,8 @@
  * 플러그인은 window.Capacitor.Plugins 로 쓴다(번들러 없이).
  */
 
+import { closeTopDialog } from './redesign-dialog.js';
+
 const cap = (typeof window !== 'undefined') ? window.Capacitor : null;
 export const NATIVE = !!cap?.isNativePlatform?.();
 export const PLATFORM = NATIVE ? cap.getPlatform() : 'web';
@@ -67,6 +69,7 @@ export function initNative({ goBack } = {}) {
 
   // Android 뒤로 가기
   P().App?.addListener?.('backButton', () => {
+    if (closeTopDialog()) return;
     const sheet = _openSheet();
     if (sheet) {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));

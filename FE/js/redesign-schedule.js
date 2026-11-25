@@ -25,6 +25,7 @@ import {
   getSchedulePlaceName, normalizeScheduleItem,
 } from './redesign-ui.js';
 import { regenerateSchedule, applyBudgetAlternative, budgetAlternativesFor, retryProvider } from './redesign-trip-flow.js';
+import { askConfirm, showCopy } from './redesign-dialog.js';
 
 let appState = null;
 let activeDay = 0;
@@ -52,11 +53,11 @@ export function initSchedule(state) {
     const g0 = appState.generated;
     const pinned = g0 ? g0.days.reduce((n, d) => n + d.activities.filter(a => a.pinned).length, 0) : 0;
     const edited = g0 ? g0.days.reduce((n, d) => n + d.activities.filter(a => !a.pinned && (a.edited || a.memo)).length, 0) : 0;
-    const msg = `같은 조건(도시·날짜·예산·스타일)으로 ${g0?.days.length || ''}일 일정을 새로 만들어요.`
+    const msg = `일정을 새로 만들까요?\n같은 조건(도시·날짜·예산·스타일)으로 ${g0?.days.length || ''}일 일정을 새로 만들어요.`
       + (pinned ? `\n📌 고정한 장소 ${pinned}곳은 같은 날짜·시간에 그대로 남겨요.` : '\n남기고 싶은 장소는 먼저 ‘고정’을 눌러 두세요.')
       + (edited ? `\n고정하지 않고 직접 고치거나 메모를 단 장소 ${edited}곳은 새 장소로 바뀌어요.` : '')
       + '\n\n장소 하나만 바꾸려면 취소하고 그 장소의 [편집 › 비슷한 곳 추천]을 써 보세요.';
-    if (!confirm(msg)) return;
+    if (!await askConfirm(msg, { ok: '새로 만들기' })) return;
     // Have current trip params (city / days / concept / budget) → regen in place.
     if (appState.generated?.days?.length || (appState.trip?.cityName && appState.trip?.days)) {
       const btn = $('#btnRegen');
@@ -370,12 +371,14 @@ function _checkNote(di) {
 }
 
 /** 출국 준비 시간을 위해 장소 하나를 뺀다 — 고정한 장소면 한 번 더 묻는다. */
-function _dropForDeparture(di, ai) {
+async function _dropForDeparture(di, ai) {
   const day = appState.generated?.days?.[di];
   const a = day?.activities?.[ai];
   if (!a) return;
-  if (!confirm(`${_josa(a.name, '을', '를')} 이 날 일정에서 뺄까요?${a.pinned ? '\n고정한 장소예요.' : ''}`)) return;
-  day.activities.splice(ai, 1);
+  if (!await askConfirm(`${_josa(a.name, '을', '를')} 이 날 일정에서 뺄까요?${a.pinned ? '\n고정한 장소예요.' : ''}`, { ok: '빼기', danger: true })) return;
+  const at = day.activities.indexOf(a);            // 묻는 동안 순서가 바뀌었을 수 있다
+  if (at < 0) return;
+  day.activities.splice(at, 1);
   _persist();
   renderSchedule();
   showToast(`${_josa(_short(a.name), '을', '를')} 뺐어요${_checkNote(di)}`);
@@ -1352,12 +1355,16 @@ function _commitEdit() {
   }
 }
 
-function _deleteEdit() {
+async function _deleteEdit() {
   if (!editing) return;
   if (editing.isNew) { _closeEdit(); return; }   // 추가 모드: 취소만 함
   const { di, ai } = editing;
-  if (!confirm('이 장소를 삭제할까요?')) return;
-  appState.generated.days[di].activities.splice(ai, 1);
+  const day = appState.generated.days[di];
+  const target = day.activities[ai];
+  if (!await askConfirm('이 장소를 삭제할까요?', { ok: '삭제', danger: true })) return;
+  const at = day.activities.indexOf(target);
+  if (at < 0) return;
+  day.activities.splice(at, 1);
   _closeEdit();
   renderSchedule();
   showToast('삭제했어요' + _checkNote(di));
@@ -1606,7 +1613,7 @@ async function _toggleSave() {
   if (!g) { showToast('저장할 일정이 없어요'); return; }
   if (!appState.currentUser) { _openSaveChoice(); return; }
   if (g.savedScheduleId) {
-    if (!confirm('이 일정을 ‘계정에 보관한 일정’에서 뺄까요?\n이 기기에서는 그대로 볼 수 있고, 다시 저장하면 되살아나요.')) return;
+    if (!await askConfirm('이 일정을 ‘계정에 보관한 일정’에서 뺄까요?\n이 기기에서는 그대로 볼 수 있고, 다시 저장하면 되살아나요.', { ok: '빼기' })) return;
     try {
       await api.unsaveSchedule(g.savedScheduleId);
       g.savedScheduleId = null;
@@ -1753,7 +1760,7 @@ function _openShareSheet() {
     const title = `${_scheduleTitle(g)} · 3초 여행`;
     if (await shareLink({ title, url: link })) { _closeSheet(); return; }
     try { await navigator.clipboard.writeText(link); showToast('보기 전용 링크를 복사했어요'); _closeSheet(); }
-    catch (_) { trackEvent('trip_share_fail'); window.prompt('이 링크를 복사해 공유하세요', link); }
+    catch (_) { trackEvent('trip_share_fail'); showCopy('이 링크를 복사해 공유하세요', link); }
   };
   sheet.querySelector('.sheet-body').replaceChildren(
     el('section', { class: 'share-sec', 'aria-labelledby': 'shareViewH' }, [

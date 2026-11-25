@@ -149,6 +149,7 @@ const ROUTES = {
   dashboard: { title: '대시보드', load: renderDashboard },
   users:     { title: '사용자 관리', load: () => renderList('users', 1) },
   roadmaps:  { title: '로드맵 관리', load: () => renderList('roadmaps', 1) },
+  local:     { title: '동네 코스 확인', load: () => renderList('local', 1) },
   reviews:   { title: '리뷰 관리', load: () => renderList('reviews', 1) },
   blogs:     { title: '블로그 관리', load: () => renderList('blogs', 1) },
   feedback:  { title: '사용자 피드백', load: () => renderList('feedback', 1) },
@@ -318,6 +319,37 @@ const LIST_CFG = {
         <td><button class="btn mini danger" data-act="delete" data-id="${r.id}">삭제</button></td>
       </tr>`,
     actions: { 'delete': (id) => confirm(`로드맵 #${id} 삭제할까요?`) ? api(`/admin/roadmaps/${id}`, { method: 'DELETE' }) : null },
+  },
+  local: {
+    endpoint: '/admin/local-courses',
+    toolbar: `
+      <select id="lf_lstatus">
+        <option value="pending">확인 기다림</option>
+        <option value="approved">공개 중</option>
+        <option value="rejected">돌려보냄</option>
+        <option value="">전체</option>
+      </select>`,
+    qsBuilder: () => { const v = $('#lf_lstatus')?.value; return v ? { status: v } : {}; },
+    cols: ['ID', '코스', '내용', '작성자', '신고', '상태', ''],
+    row: (c) => `
+      <tr>
+        <td>#${c.id}</td>
+        <td><b>${escapeHtml(c.title)}</b><br><span class="muted">${escapeHtml([c.country, c.city, c.area].filter(Boolean).join(' · '))} · ${escapeHtml(c.concept)} · 거주 ${escapeHtml(c.lived)}</span></td>
+        <td style="max-width:420px">${escapeHtml(c.note)}<br>${c.days.map((d, i) => `<span class="muted">${i + 1}일차</span> ${d.map(s => escapeHtml([s.time, s.name, s.tip && `(${s.tip})`].filter(Boolean).join(' '))).join(' → ')}`).join('<br>')}</td>
+        <td>${escapeHtml(c.user_nickname || '-')}<br><span class="muted">${escapeHtml(c.user_email || '')}</span></td>
+        <td>${c.reports ? `<span class="badge r">${c.reports}</span>` : 0}</td>
+        <td>${({ pending: '<span class="badge a">확인 기다림</span>', approved: '<span class="badge g">공개 중</span>', rejected: '<span class="badge gray">돌려보냄</span>' })[c.status] || escapeHtml(c.status)}</td>
+        <td>
+          ${c.status !== 'approved' ? `<button class="btn mini" data-act="approve" data-id="${c.id}">공개</button>` : ''}
+          ${c.status !== 'rejected' ? `<button class="btn mini" data-act="reject" data-id="${c.id}">돌려보내기</button>` : ''}
+          <button class="btn mini danger" data-act="delete" data-id="${c.id}">삭제</button>
+        </td>
+      </tr>`,
+    actions: {
+      'approve': (id) => api(`/admin/local-courses/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'approved' }) }),
+      'reject': (id) => { const why = prompt('돌려보내는 이유(작성자에게 보여요)', ''); return why === null ? null : api(`/admin/local-courses/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'rejected', review_note: why.slice(0, 200) }) }); },
+      'delete': (id) => confirm(`동네 코스 #${id} 삭제할까요?`) ? api(`/admin/local-courses/${id}`, { method: 'DELETE' }) : null,
+    },
   },
   reviews: {
     endpoint: '/admin/reviews',
