@@ -404,24 +404,33 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           </form>
           <p class="form-hint" id="styleHint" aria-live="polite">‘여유로운 일정’과 ‘빽빽한 일정’은 둘 중 하나만 고를 수 있어요.</p>
           <h4 class="step-subh" id="mustH">꼭 갈 장소 <span class="form-label-meta">선택 · 쉼표로 구분, 최대 5곳</span></h4>
-          <input class="form-input" type="text" id="mustVisit" maxlength="200" placeholder="예: 시부야 스카이, 츠키지 시장" aria-labelledby="mustH" aria-describedby="mustHint"/>
+          <input class="form-input" type="text" id="mustVisit" maxlength="200" placeholder="예: 가고 싶은 장소 이름" aria-labelledby="mustH" aria-describedby="mustHint"/>
           <p class="form-hint" id="mustHint">일정을 만들 때 먼저 넣고 고정해 둬요. ‘장소 확인’으로 실제 장소를 골라 둘 수 있어요(안 해도 돼요).</p>
           <button type="button" class="btn btn-soft btn-sm" id="mustResolve">장소 확인</button>
           <div class="must-list" id="mustList" aria-live="polite"></div>
-          <h4 class="step-subh" id="needsH">이동·식사 조건 <span class="form-label-meta">선택 · 여러 개 가능</span></h4>
-          <div class="check-list" id="needsChips" role="group" aria-labelledby="needsH">
+          <h4 class="step-subh" id="moveH">이동 조건 <span class="form-label-meta">선택 · 여러 개 가능</span></h4>
+          <div class="check-list needs-list" id="needsMove" role="group" aria-labelledby="moveH">
             <button type="button" class="check-opt" data-need="lessWalk" aria-pressed="false">걷기 적게</button>
             <button type="button" class="check-opt" data-need="stepFree" aria-pressed="false">계단 피하기·휠체어</button>
+          </div>
+          <form class="check-add" id="moveAdd" novalidate>
+            <label class="sr-only" for="moveAddInput">이동 조건 기타 입력</label>
+            <input class="form-input" type="text" id="moveAddInput" maxlength="20" placeholder="기타 — 예: 유모차, 반려견 동반" enterkeyhint="done"/>
+            <button type="submit" class="btn btn-soft btn-sm">추가</button>
+          </form>
+          <p class="form-hint">‘걷기 적게’는 하루 장소 수를 줄여요. 접근성은 장소 검색에 반영하지만 방문 전에 확인해 주세요.</p>
+          <h4 class="step-subh" id="dietH">식사 조건 <span class="form-label-meta">선택 · 여러 개 가능</span></h4>
+          <div class="check-list needs-list" id="needsDiet" role="group" aria-labelledby="dietH">
             <button type="button" class="check-opt" data-need="veg" aria-pressed="false">채식</button>
             <button type="button" class="check-opt" data-need="halal" aria-pressed="false">할랄</button>
             <button type="button" class="check-opt" data-need="gluten" aria-pressed="false">글루텐 프리</button>
           </div>
-          <form class="check-add" id="needsAdd" novalidate>
-            <label class="sr-only" for="needsAddInput">이동·식사 조건 기타 입력</label>
-            <input class="form-input" type="text" id="needsAddInput" maxlength="20" placeholder="기타 — 예: 유모차, 반려견 동반" enterkeyhint="done"/>
+          <form class="check-add" id="dietAdd" novalidate>
+            <label class="sr-only" for="dietAddInput">식사 조건 기타 입력</label>
+            <input class="form-input" type="text" id="dietAddInput" maxlength="20" placeholder="기타 — 예: 견과류 알레르기, 저염식" enterkeyhint="done"/>
             <button type="submit" class="btn btn-soft btn-sm">추가</button>
           </form>
-          <p class="form-hint" id="needsHint">‘걷기 적게’는 하루 장소 수를 줄이고, 식단·접근성은 장소 검색에 반영해요. 실제 메뉴와 접근성은 방문 전에 확인해 주세요.</p>
+          <p class="form-hint">식당을 찾을 때만 반영해요. 실제 메뉴와 재료는 방문 전에 확인해 주세요.</p>
         </div>
 
         <!-- Step 4 — Budget (direct input + smart suggestion) -->
@@ -445,7 +454,9 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
             <div class="budget-suggest-head">
               <h4 class="form-section-title" id="budgetSuggestH">추천 예산</h4>
             </div>
-            <dl class="money-rows" id="budgetSuggestRows"></dl>
+            <p class="bs-total" id="budgetSuggestTotal"></p>
+            <div class="bs-bar" id="budgetSuggestBar" aria-hidden="true"></div>
+            <dl class="bs-grid" id="budgetSuggestRows"></dl>
             <p class="form-hint" id="budgetSuggestText"></p>
             <button type="button" class="btn btn-soft btn-block budget-apply" id="budgetApplyBtn">추천 예산 적용</button>
           </section>

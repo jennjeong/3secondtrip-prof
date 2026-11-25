@@ -10,6 +10,7 @@ import { el, $, $$, setActiveByData, setMultiActive, diffDays, showToast, format
 import { CITIES, listCountries, citiesIn, searchCities, findCity, timeZoneFor, utcOffsetMin } from './redesign-cities.js';
 import { openCalendar } from './redesign-calendar.js';
 import { api, trackEvent } from './redesign-api-adapter.js';
+import { mustPlaceholder } from './redesign-landmarks.js';
 import { checkTrip, repairTrip, timeToMin, minToTime, travelMinutes, dwellMinutes, landingMinutes, beforeFlight } from './redesign-plan-check.js';
 import { COMPONENTS, costBreakdown, costScope, scopeText, projectCost, compareCost, diffReasons } from './redesign-plan-cost.js';
 import { openState } from './redesign-hours.js';
@@ -201,7 +202,7 @@ function _initQuickDates() {
   });
 }
 function _initNeeds() {
-  $('#needsChips')?.addEventListener('click', (e) => {
+  ['#needsMove', '#needsDiet'].forEach(sel => $(sel)?.addEventListener('click', (e) => {
     const b = e.target.closest?.('[data-need]');
     if (!b) return;
     const t = appState.trip;
@@ -212,7 +213,7 @@ function _initNeeds() {
     const on = t.needs.includes(k);
     b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on));
     _saveDraft();
-  });
+  }));
   $('#mustVisit')?.addEventListener('input', (e) => {
     const t = appState.trip;
     t.mustVisit = e.target.value;
@@ -323,13 +324,16 @@ function _buildStyles() {
   });
   _syncChecks(wrap, 'data-style-key', appState?.trip?.styles || []);
 }
-/** 이동·식사 조건의 ‘기타’(직접 입력) — needs 에 'custom:글자' 로 저장한다. */
+/** 이동·식사 조건의 ‘기타’(직접 입력) — 이동은 'custom:글자', 식사는 'diet:글자' 로 저장한다. */
+const _NEED_CUSTOM = [['#needsMove', 'custom:'], ['#needsDiet', 'diet:']];
 function _renderCustomNeeds() {
-  const wrap = $('#needsChips');
-  if (!wrap) return;
-  wrap.querySelectorAll('.is-custom').forEach(b => b.remove());
-  (appState?.trip?.needs || []).filter(n => n.startsWith('custom:')).forEach(n => {
-    wrap.appendChild(el('button', { type: 'button', class: 'check-opt is-custom is-active', 'aria-pressed': 'true', dataset: { need: n } }, n.slice(7)));
+  _NEED_CUSTOM.forEach(([sel, pre]) => {
+    const wrap = $(sel);
+    if (!wrap) return;
+    wrap.querySelectorAll('.is-custom').forEach(b => b.remove());
+    (appState?.trip?.needs || []).filter(n => n.startsWith(pre)).forEach(n => {
+      wrap.appendChild(el('button', { type: 'button', class: 'check-opt is-custom is-active', 'aria-pressed': 'true', dataset: { need: n } }, n.slice(pre.length)));
+    });
   });
 }
 function _initCheckAdds() {
@@ -347,12 +351,13 @@ function _initCheckAdds() {
     if (!t.styles.includes(v)) t.styles.push(v);
     _buildStyles(); _saveDraft();
   });
-  add('#needsAdd', '#needsAddInput', (v) => {
+  const addNeed = (pre) => (v) => {
     const t = appState.trip; t.needs = Array.isArray(t.needs) ? t.needs : [];
-    const k = 'custom:' + v;
-    if (!t.needs.includes(k)) t.needs.push(k);
+    if (!t.needs.includes(pre + v)) t.needs.push(pre + v);
     _renderCustomNeeds(); _saveDraft();
-  });
+  };
+  add('#moveAdd', '#moveAddInput', addNeed('custom:'));
+  add('#dietAdd', '#dietAddInput', addNeed('diet:'));
 }
 
 /* ============ 출발·도착 검색 (도시·국가·공항 코드·현지어·한글 별칭) ============
@@ -452,11 +457,12 @@ function _renderPlaceList(kind, query) {
     const pick = (ap) => () => (kind === 'origin' ? _applyOrigin(c, ap) : _applyCity(c, ap));
     if (airport) {
       sugg.append(option('city-sug-item is-airport', [
-        el('span', { class: 'csa-icon', ariaHidden: 'true' }, '✈'),
+        el('span', { class: 'csa-icon', ariaHidden: 'true' }),
         el('div', { class: 'csi-text' }, [
-          el('span', { class: 'csi-name' }, `${airport.ko} 공항 (${airport.iata})`),
-          el('span', { class: 'csi-country' }, `공항 · ${c.name}, ${c.country}`),
+          el('span', { class: 'csi-name' }, `${airport.ko} 공항`),
+          el('span', { class: 'csi-country' }, `${c.name}, ${c.country}`),
         ]),
+        el('span', { class: 'csa-code' }, airport.iata),
       ], pick(airport)));
       return;
     }
@@ -464,14 +470,14 @@ function _renderPlaceList(kind, query) {
       el('span', { class: 'csi-flag', ariaHidden: 'true' }, c.flag),
       el('div', { class: 'csi-text' }, [
         el('span', { class: 'csi-name' }, c.name),
-        el('span', { class: 'csi-country' }, `도시 · ${c.country}${nameCount[c.name] > 1 ? ` · ${c.region}` : ''}`),
+        el('span', { class: 'csi-country' }, `${c.country}${nameCount[c.name] > 1 ? ` · ${c.region}` : ''}`),
       ]),
       el('span', { class: 'csi-region' }, c.region),
     ], pick(null)));
     // 공항이 여러 개인 도시는 공항도 고를 수 있게 (예: 서울 → 인천 · 김포)
     (_CITY_AIRPORTS[c.key] || []).forEach(([iata, ko]) => {
       sugg.append(option('city-sug-airport', [
-        el('span', { class: 'csa-icon', ariaHidden: 'true' }, '✈'),
+        el('span', { class: 'csa-icon', ariaHidden: 'true' }),
         el('span', { class: 'csa-name' }, `${ko} 공항`),
         el('span', { class: 'csa-code' }, iata),
       ], pick({ iata, ko })));
@@ -847,11 +853,11 @@ function _refreshAirlineChipFilter() {
 const _STEP_EVENTS = { 1: 'trip_step_city', 2: 'trip_step_dates', 3: 'trip_step_concept' };
 
 function _bindStepHandlers() {
-  $('#stepPrev')?.addEventListener('click', () => { if (step > 1) { step--; _showStep(); } else { navigate('home'); } });
+  $('#stepPrev')?.addEventListener('click', () => { if (step > 1) { step--; _showStep(); _stepTop(); } else { navigate('home'); } });
   $('#stepNext')?.addEventListener('click', () => {
     if (!_validateStep()) return;
     trackEvent(_STEP_EVENTS[step]);
-    if (step < 4) { step++; _showStep(); }
+    if (step < 4) { step++; _showStep(); _stepTop(); }
   });
   $('#stepGenerate')?.addEventListener('click', async () => {
     if (!_validateStep()) return;
@@ -885,8 +891,12 @@ function _computeSuggested() {
   return { low: _round10(_manwon(low.total)), mid: _round10(_manwon(mid.total)), high: _round10(_manwon(high.total)) };
 }
 
-function _suggestRow(label, value, note) {
-  return `<div class="money-row"><dt>${escapeHtml(label)}${note ? ` <small>${escapeHtml(note)}</small>` : ''}</dt><dd>${escapeHtml(_won(value))}</dd></div>`;
+/** ‘741만 원’ — 자세한 금액은 title 에 둔다. */
+function _wonShort(v) {
+  const n = Math.round((Number(v) || 0) / 1000) * 1000;
+  if (n >= 1000000) return `${Math.round(n / 10000).toLocaleString('ko-KR')}만 원`;
+  const man = Math.floor(n / 10000), cheon = Math.round((n % 10000) / 1000);
+  return n < 10000 ? `${cheon}천 원` : `${man}만${cheon ? ` ${cheon}천` : ''} 원`;
 }
 
 function _refreshBudget() {
@@ -897,6 +907,7 @@ function _refreshBudget() {
 
   const inp = $('#tripBudgetInput');
   if (inp && document.activeElement !== inp) inp.value = t.budget ? String(t.budget) : '';
+  _fitBudgetInput();
 
   const people = _peopleCount(t);
   const days = Math.max(1, t.days || 1);
@@ -912,22 +923,28 @@ function _refreshBudget() {
 
   const rows = $('#budgetSuggestRows');
   if (rows) {
-    const html = [];
-    if (plan.flight) html.push(_suggestRow('항공', plan.flight, `왕복 ${people}명`));
-    if (plan.hotel) html.push(_suggestRow('숙소', plan.hotel, `1박 ${_won(plan.perRoomNight)} × ${plan.nights}박 × ${plan.rooms}실`));
-    html.push(_suggestRow('식비', plan.food));
-    html.push(_suggestRow('입장·체험', plan.entry));
-    if (plan.shopping) html.push(_suggestRow('쇼핑', plan.shopping));
-    html.push(_suggestRow('현지 교통', plan.transport));
-    html.push(`<div class="money-row money-row--total"><dt>합계 (보통 기준)</dt><dd>${escapeHtml(_won(plan.total))}</dd></div>`);
-    rows.innerHTML = html.join('');
+    const items = [
+      ['항공', plan.flight, `왕복 ${people}명`], ['숙소', plan.hotel, `${plan.nights}박 · ${plan.rooms}실`], ['식비', plan.food],
+      ['쇼핑', plan.shopping], ['입장·체험', plan.entry], ['현지 교통', plan.transport],
+    ].filter(x => x[1] > 0);
+    const total = $('#budgetSuggestTotal');
+    if (total) { total.title = _won(plan.total); total.textContent = `약 ${sug.mid.toLocaleString('ko-KR')}만 원`; }
+    $('#budgetSuggestBar')?.replaceChildren(...items.map(([, v], k) => {
+      const bar = el('i', { class: `bs-c${k + 1}` });
+      bar.style.flexGrow = String(Math.max(1, Math.round(v / plan.total * 100)));
+      return bar;
+    }));
+    rows.replaceChildren(...items.map(([label, v, note], k) => el('div', { class: 'bs-item' }, [
+      el('dt', {}, [el('i', { class: `bs-dot bs-c${k + 1}`, 'aria-hidden': 'true' }), label, note ? el('small', {}, note) : null].filter(Boolean)),
+      el('dd', { title: _won(v) }, _wonShort(v)),
+    ])));
   }
   const sText = $('#budgetSuggestText');
   if (sText) {
     const sm = _seasonMult(t.startDate);
     const season = sm > 1.2 ? '성수기' : (sm < 1 ? '비수기' : '준성수기');
     const tier = ({ high: '물가 높은 도시', mid: '물가 보통 도시', low: '물가 낮은 도시' })[t.cityTier] || '';
-    sText.textContent = `${[t.cityName, tier, season, t.concept && `${t.concept} 스타일`].filter(Boolean).join(' · ')} 기준 추정치예요. 실제 요금과 다를 수 있어요.`;
+    sText.textContent = `${[t.cityName, tier, season, t.concept && `${t.concept} 스타일`].filter(Boolean).join(' · ')} · 보통 지출 기준 추정치예요. 실제 요금과 다를 수 있어요.`;
   }
   const lowEl = $('#bmLow'); const midEl = $('#bmMid'); const highEl = $('#bmHigh');
   if (lowEl)  lowEl.textContent  = `${sug.low}만원`;
@@ -971,11 +988,21 @@ function _refreshLevelBadge() {
   badge.dataset.level = lvl;
 }
 
+/** 입력칸을 글자 수만큼만 넓혀 ‘숫자 + 만원’이 늘 가운데에 오게 한다. */
+function _fitBudgetInput() {
+  const inp = $('#tripBudgetInput');
+  if (!inp) return;
+  const v = inp.value.trim();
+  const ch = v ? Math.min(8, Math.max(1, Array.from(v).reduce((n, c) => n + (/[0-9]/.test(c) ? 1 : c === ',' ? 0.5 : 1.6), 0))) : 3.7;
+  inp.style.setProperty('--ch', String(ch));
+}
+
 function _setBudget(v) {
   const t = appState.trip;
   t.budget = v;
   const inp = $('#tripBudgetInput');
   if (inp) inp.value = v ? String(v) : '';
+  _fitBudgetInput();
   const err = $('#budgetError');
   if (err) { err.hidden = true; err.textContent = ''; }
   inp?.removeAttribute('aria-invalid');
@@ -986,6 +1013,7 @@ function _setBudget(v) {
 
 function _bindBudgetHandlers() {
   $('#tripBudgetInput')?.addEventListener('input', (e) => {
+    _fitBudgetInput();
     const raw = e.target.value;
     const err = _budgetError(raw);
     appState.trip.budget = err ? 0 : Number(String(raw).replace(/[,\s]/g, ''));
@@ -1127,6 +1155,13 @@ function _refreshSummary() {
 function _companionLabel(k) { return ({ solo:'혼자', friend:'친구', couple:'커플', family:'가족', group:'단체' })[k] || '-'; }
 function _companionLabelShort(k) { return ({ solo:'1인', friend:'친구', couple:'커플', family:'가족', group:'단체' })[k] || ''; }
 
+/** 단계를 넘기면 맨 위에서 시작한다. */
+function _stepTop() {
+  const sc = $('#createTripPage .page-scroll');
+  if (sc) sc.scrollTop = 0;
+  window.scrollTo(0, 0);
+}
+
 function _showStep() {
   $$('#tripStepProgress .step-dot').forEach(d => {
     const n = Number(d.dataset.step);
@@ -1157,6 +1192,7 @@ function _showStep() {
   $('#stepPrev').hidden = step === 1;
   $('#stepNext').hidden = step === 4;
   $('#stepGenerate').hidden = step !== 4;
+  const mv = $('#mustVisit'); if (mv) mv.placeholder = mustPlaceholder(appState.trip?.city, appState.trip?.cityName);
   if (step === 4) { _refreshBudget(); _refreshSummary(); }
   _saveDraft();
 }
@@ -1322,7 +1358,7 @@ function _applyState() {
   _buildStyles();
   _renderCustomNeeds();
   const mv = $('#mustVisit'); if (mv) mv.value = t.mustVisit || '';
-  $$('#needsChips [data-need]').forEach(b => { const on = (t.needs || []).includes(b.dataset.need); b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on)); });
+  $$('.needs-list [data-need]').forEach(b => { const on = (t.needs || []).includes(b.dataset.need); b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on)); });
   if (t.currency) $('#tripCurrency').value = t.currency;
 
   // 항공·호텔 상태 → UI 복원
@@ -2199,9 +2235,10 @@ function _queryFor(slot, t, level) {
   const diet = !food ? '' : needs.includes('veg') ? '채식' : needs.includes('halal') ? '할랄' : needs.includes('gluten') ? '글루텐 프리' : '';
   const access = needs.includes('stepFree') && !food ? '휠체어 접근 가능' : '';
   // 직접 입력한 세부 스타일·조건(기타) — 검색어가 길어지지 않게 하나씩 돌려 쓴다.
-  const extras = [...(t.styles || []).filter(s => !STYLES.includes(s)), ...needs.filter(n => n.startsWith('custom:')).map(n => n.slice(7))];
+  const extras = [...(t.styles || []).filter(s => !STYLES.includes(s)), ...(food ? [] : needs.filter(n => n.startsWith('custom:')).map(n => n.slice(7)))];
+  const dietCustom = food ? (needs.find(n => n.startsWith('diet:')) || '').slice(5) : '';   // 식사 조건은 식당 검색에만
   const extra = extras.length ? extras[Math.floor(Math.random() * extras.length)] : '';
-  return [t.cityName, diet, access, extra, conceptHint, budgetHint, base].filter(Boolean).join(' ').trim();
+  return [t.cityName, diet, dietCustom, access, extra, conceptHint, budgetHint, base].filter(Boolean).join(' ').trim();
 }
 
 /** Pick the next Places result that hasn't been used today. */

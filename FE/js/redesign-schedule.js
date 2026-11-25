@@ -201,7 +201,7 @@ export function renderSchedule() {
   if (sub) sub.textContent = [
     nDays <= 1 ? '당일치기' : `${nDays - 1}박 ${nDays}일`,
     g.people ? `${g.people}명` : _companion(g.companion),
-    g.concept && `${g.concept} 스타일`,
+    g.concept,
   ].filter(Boolean).join(' · ');
 
   if (g.hideCost) { const panel = $('#budgetPanel'); if (panel) panel.hidden = true; }
@@ -808,12 +808,15 @@ function _renderBudgetPanel(g) {
   const scope = costScope(g, bd);
   const rows = $('#budgetPanelRows');
   rows.replaceChildren(
-    _amountRow('입력 예산', budget, g),
-    _amountRow('예상 총액', bd.total, g, 'money-row--total', _scopeNote(g, scope)),
     diff < 0
       ? _amountRow('예산 초과', -diff, g, 'money-row--over', scope.excluded.length ? scope.text : '')
       : _amountRow('남는 금액', diff, g, 'money-row--under', scope.excluded.length ? scope.text : ''),
+    _amountRow('예상 총액', bd.total, g, 'money-row--total', _scopeNote(g, scope)),
+    _amountRow('입력 예산', budget, g),
   );
+  // 예산 막대 — 안쪽이면 쓴 만큼, 넘으면 예산 자리까지 채우고 넘은 만큼 붉게
+  const used = budget > 0 ? bd.total / budget : 0;
+  rows.style.setProperty('--used', `${Math.round((used > 1 ? 1 / used : used) * 100)}%`);
 
   const bp = g.budgetPlan;
   const plan = $('#budgetPanelPlan');

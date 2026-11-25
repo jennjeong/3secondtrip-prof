@@ -1384,4 +1384,129 @@ html, body, .app-shell { background: var(--n-bg) !important; }
 .alt-cmp-row { grid-template-columns: auto minmax(0, 1fr) !important; }
 .alt-cmp-row dt { white-space: nowrap !important; }
 .alt-cmp-row dd :is(b, s) { white-space: nowrap !important; }
+
+/* ===== 16. 다듬기 — 검색 목록 · 인원 · 예산 · 날짜 · 지도 도구 ===== */
+/* 검색 목록 — 한 줄에 이름·나라, 공항은 도시 아래 들여 쓴다. 구분선 없이 여백으로 나눈다 */
+#createTripPage .city-suggestions { margin-top: 8px !important; padding: 8px !important; max-height: min(46vh, 340px) !important; border: 0 !important; border-radius: 22px !important; background: var(--p-bg) !important; box-shadow: 0 0 0 1px var(--p-line), 0 18px 44px -12px rgba(16, 36, 84, .28) !important; scrollbar-width: thin !important; }
+.city-suggestions [role="option"] { display: grid !important; grid-template-columns: 24px minmax(0, 1fr) auto !important; column-gap: 12px !important; align-items: center !important; width: 100% !important; min-height: 48px !important; padding: 0 12px !important; margin: 0 !important; border: 0 !important; border-radius: 14px !important; background: none !important; text-align: left !important; }
+.city-suggestions .city-sug-airport { min-height: 44px !important; padding-left: 12px !important; }
+.city-suggestions [role="option"]:hover, .city-suggestions [role="option"][aria-selected="true"], .city-suggestions [role="option"]:focus-visible { background: color-mix(in srgb, var(--p-select) 8%, transparent) !important; }
+.city-suggestions .csi-flag { grid-column: 1 !important; width: 24px !important; font-size: 18px !important; line-height: 24px !important; text-align: center !important; }
+.city-suggestions .csi-text { display: contents !important; }
+.city-suggestions .csi-name, .city-suggestions .csa-name { grid-column: 2 !important; margin: 0 !important; padding: 0 !important; font-size: 16px !important; line-height: 24px !important; font-weight: 600 !important; color: var(--p-ink) !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+.city-suggestions .csa-name { font-size: 15px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+.city-suggestions .csi-country, .city-suggestions .csa-code { grid-column: 3 !important; margin: 0 !important; padding: 0 !important; font-size: 13px !important; line-height: 24px !important; font-weight: 400 !important; letter-spacing: 0 !important; color: var(--p-ink2) !important; text-align: right !important; max-width: 42vw !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+.city-suggestions .csa-code { font-weight: 600 !important; letter-spacing: .04em !important; font-variant-numeric: tabular-nums !important; }
+.city-suggestions .is-airport .csi-country { display: none !important; }
+.city-suggestions .csa-icon { grid-column: 1 !important; justify-self: center !important; width: 6px !important; height: 6px !important; border-radius: 50% !important; background: var(--p-field) !important; font-size: 0 !important; }
+
+/* 도착 도시 추천 */
+#createTripPage #destQuick { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; }
+#createTripPage #destQuick :is(.chip, button) { width: auto !important; min-height: 44px !important; padding: 0 18px !important; border: 0 !important; border-radius: 999px !important; background: var(--p-tint) !important; font-size: 15px !important; font-weight: 500 !important; color: var(--p-ink) !important; }
+#createTripPage #destQuick :is(.is-active, [aria-pressed="true"]) { background: color-mix(in srgb, var(--p-select) 12%, transparent) !important; color: var(--p-link) !important; font-weight: 700 !important; }
+
+/* 고르는 칸 — 옅은 홈 안에서 흰 조각이 움직인다(일정/지도와 같은 모양) */
+#createTripPage .choice-grid--3 { gap: 0 !important; padding: 4px !important; border: 0 !important; border-radius: 999px !important; background: var(--p-tint) !important; }
+#createTripPage .choice-grid--3 .choice-card, #createTripPage .choice-grid--3 .choice-card + .choice-card { min-height: 44px !important; border: 0 !important; border-radius: 999px !important; background: none !important; transition: background .25s ease, box-shadow .25s ease !important; }
+#createTripPage .choice-grid--3 .choice-card .ch-label { font-size: 15px !important; font-weight: 500 !important; color: var(--p-ink2) !important; }
+#createTripPage .choice-grid--3 .choice-card.is-active { background: var(--p-bg) !important; box-shadow: 0 1px 2px rgba(16, 36, 84, .08), 0 4px 12px -2px rgba(16, 36, 84, .16) !important; }
+#createTripPage .choice-grid--3 .choice-card.is-active .ch-label { font-weight: 700 !important; color: var(--p-link) !important; }
+
+/* 인원·객실 — 설명은 이름 옆, 숫자는 한 알약 안에 */
+#createTripPage .stepper-row { min-height: 64px !important; padding: 0 !important; border-bottom: 1px solid var(--p-line) !important; }
+#createTripPage .people-box .stepper-row:last-of-type { border-bottom: 0 !important; }
+#createTripPage .stepper-text { display: flex !important; flex-wrap: wrap !important; align-items: baseline !important; gap: 0 8px !important; min-width: 0 !important; }
+#createTripPage .stepper-text > span { font-size: 16px !important; font-weight: 600 !important; }
+#createTripPage .stepper-text small { font-size: 13px !important; line-height: 20px !important; }
+#createTripPage .stepper { flex: none !important; display: inline-grid !important; grid-template-columns: 44px 32px 44px !important; align-items: center !important; gap: 0 !important; height: 44px !important; border-radius: 999px !important; background: var(--p-tint) !important; }
+#createTripPage .stepper output { min-width: 0 !important; font-size: 17px !important; line-height: 44px !important; font-weight: 600 !important; text-align: center !important; font-variant-numeric: tabular-nums !important; }
+#createTripPage .stepper button { width: 44px !important; height: 44px !important; border: 0 !important; border-radius: 50% !important; background: none !important; font-size: 20px !important; line-height: 1 !important; font-weight: 400 !important; color: var(--p-link) !important; }
+#createTripPage .stepper button:not(:disabled):active { background: color-mix(in srgb, var(--p-select) 14%, transparent) !important; }
+#createTripPage .stepper button:disabled { color: var(--p-ink3) !important; opacity: .45 !important; }
+#createTripPage #peopleSummary { margin-top: 8px !important; word-break: keep-all !important; }
+
+/* 예산 입력 — 숫자와 단위를 한 덩어리로 가운데 */
+#createTripPage .budget-field { display: flex !important; flex-direction: column !important; align-items: center !important; text-align: center !important; padding: 8px 0 0 !important; }
+#createTripPage .budget-field .form-label { justify-content: center !important; }
+#createTripPage .budget-field :is(.form-hint, .form-error), #createTripPage .budget-level-badge { text-align: center !important; word-break: keep-all !important; }
+#createTripPage .budget-field .budget-input-wrap { display: inline-flex !important; align-items: baseline !important; justify-content: center !important; gap: 8px !important; width: auto !important; max-width: 100% !important; margin: 20px auto 4px !important; padding: 0 4px 8px !important; border: 0 !important; border-radius: 0 !important; border-bottom: 1.5px solid var(--p-field) !important; background: none !important; box-shadow: none !important; outline: 0 !important; }
+#createTripPage .budget-field .budget-input-wrap:focus-within { border-bottom-color: var(--p-select) !important; outline: 0 !important; box-shadow: none !important; }
+#createTripPage .budget-input-wrap .budget-input { grid-column: auto !important; flex: none !important; width: calc(var(--ch, 3.7) * .64em + 6px) !important; max-width: 62vw !important; min-height: 0 !important; height: auto !important; margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; outline: 0 !important; font-size: clamp(44px, 13vw, 60px) !important; line-height: 1.15 !important; font-weight: 300 !important; letter-spacing: -0.04em !important; text-align: center !important; color: var(--p-ink) !important; font-variant-numeric: tabular-nums !important; }
+#createTripPage .budget-input::placeholder { font-weight: 300 !important; color: var(--p-field) !important; }
+#createTripPage .budget-input-wrap .bd-unit-fixed { grid-column: auto !important; padding: 0 !important; font-size: 20px !important; line-height: 1.15 !important; font-weight: 500 !important; color: var(--p-ink2) !important; }
+#createTripPage .budget-field #budgetPerPerson:empty, #createTripPage .budget-level-badge:empty { display: none !important; }
+
+/* 추천 예산 — 상자 없이 합계 · 비율 막대 · 두 칸 목록 */
+#createTripPage .budget-suggest { display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; align-items: baseline !important; column-gap: 12px !important; margin: 36px 0 0 !important; padding: 20px 0 0 !important; border: 0 !important; border-top: 1px solid var(--p-line) !important; border-radius: 0 !important; background: none !important; }
+#createTripPage .budget-suggest > * { grid-column: 1 / -1 !important; }
+#createTripPage .budget-suggest .budget-suggest-head { grid-column: 1 !important; margin: 0 !important; }
+#createTripPage .budget-suggest .bs-total { grid-column: 2 !important; margin: 0 !important; font-size: 26px !important; line-height: 32px !important; font-weight: 300 !important; letter-spacing: -0.03em !important; font-variant-numeric: tabular-nums !important; color: var(--p-ink) !important; white-space: nowrap !important; }
+.bs-bar { display: flex !important; gap: 2px !important; height: 8px !important; margin: 12px 0 14px !important; border-radius: 999px !important; overflow: hidden !important; }
+.bs-bar i { flex-basis: 0 !important; flex-shrink: 1 !important; min-width: 4px !important; }
+.bs-c1 { background: #2456C7 !important; } .bs-c2 { background: #5584E6 !important; } .bs-c3 { background: #8CAEF3 !important; } .bs-c4 { background: #BDD0F8 !important; } .bs-c5 { background: #8894AC !important; } .bs-c6 { background: #C6CEDB !important; }
+.bs-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; column-gap: 28px !important; margin: 0 !important; }
+.bs-item { display: flex !important; align-items: baseline !important; justify-content: space-between !important; gap: 8px !important; min-height: 40px !important; padding: 9px 0 !important; }
+.bs-item dt { display: flex !important; align-items: baseline !important; gap: 0 6px !important; min-width: 0 !important; font-size: 14px !important; line-height: 22px !important; font-weight: 400 !important; color: var(--p-ink2) !important; white-space: nowrap !important; }
+.bs-item dt small { display: none !important; font-size: 13px !important; color: var(--p-ink2) !important; }
+.bs-item dd { margin: 0 !important; font-size: 15px !important; line-height: 22px !important; font-weight: 500 !important; color: var(--p-ink) !important; white-space: nowrap !important; font-variant-numeric: tabular-nums !important; }
+.bs-dot { flex: none !important; align-self: center !important; width: 8px !important; height: 8px !important; border-radius: 50% !important; }
+#createTripPage .budget-suggest .form-hint { margin: 8px 0 0 !important; word-break: keep-all !important; }
+#createTripPage .budget-suggest .budget-apply { min-height: 48px !important; margin: 16px 0 0 !important; border: 0 !important; border-radius: 999px !important; background: color-mix(in srgb, var(--p-select) 10%, transparent) !important; color: var(--p-link) !important; font-weight: 600 !important; }
+#createTripPage .budget-marks { margin-top: 24px !important; }
+@media (max-width: 350px) { .bs-grid { grid-template-columns: minmax(0, 1fr) !important; } .bs-item dt small { display: inline !important; } }
+@media (min-width: 768px) { .bs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; column-gap: 40px !important; } .bs-item dt small { display: inline !important; } }
+
+/* 내 일정 — 예산 */
+#schedulePage .band-trip .budget-panel { padding: 14px 16px 8px !important; border: 1px solid rgba(160, 190, 255, .18) !important; border-radius: 22px !important; background: linear-gradient(180deg, rgba(126, 164, 255, .16), rgba(126, 164, 255, .07)) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08) !important; }
+#schedulePage .band-trip .budget-panel:not(.is-over) { padding-bottom: 14px !important; }
+#schedulePage .money-rows--panel { display: flex !important; flex-direction: column !important; gap: 0 !important; }
+#schedulePage .money-rows--panel .money-row { order: 3 !important; }
+#schedulePage .money-rows--panel .money-row:first-child { order: 1 !important; min-height: 36px !important; }
+#schedulePage .money-rows--panel::after { content: '' !important; order: 2 !important; display: block !important; height: 4px !important; margin: 8px 0 8px !important; border-radius: 999px !important; background: linear-gradient(90deg, #9CC0FF var(--used, 0%), rgba(255, 255, 255, .16) var(--used, 0%)) !important; }
+#schedulePage .budget-panel.is-over .money-rows--panel::after { background: linear-gradient(90deg, #9CC0FF calc(var(--used, 0%) - 1px), transparent calc(var(--used, 0%) - 1px) calc(var(--used, 0%) + 1px), #FF9C90 calc(var(--used, 0%) + 1px)) !important; }
+#schedulePage .band-trip :is(.money-row--over, .money-row--under) dt { font-size: 14px !important; font-weight: 500 !important; color: var(--p-ink2) !important; }
+#schedulePage .band-trip .money-row--over dd, #schedulePage .band-trip .money-row--under dd { font-size: 28px !important; line-height: 36px !important; font-weight: 300 !important; letter-spacing: -0.03em !important; }
+#schedulePage .money-rows--panel .money-row:not(:first-child) dd { font-size: 14px !important; font-weight: 500 !important; }
+@media (min-width: 768px) {
+  #schedulePage .money-rows--panel { display: grid !important; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) !important; column-gap: 24px !important; align-items: end !important; }
+  #schedulePage .money-rows--panel .money-row:first-child { order: 0 !important; }
+  #schedulePage .money-rows--panel::after { order: 9 !important; grid-column: 1 / -1 !important; margin: 12px 0 2px !important; }
+}
+
+/* 날짜 — 검은 상자 대신 고른 날만 옅은 푸른 알약 */
+#schedulePage .day-chips { gap: 2px !important; scroll-padding: 0 16px !important; }
+#schedulePage .day-chip { min-width: 72px !important; min-height: 54px !important; padding: 0 12px !important; border-radius: 18px !important; background: none !important; color: var(--p-ink) !important; transition: background .25s ease !important; }
+#schedulePage .day-chip .day-chip-date { font-size: 16px !important; line-height: 22px !important; font-weight: 500 !important; letter-spacing: -0.01em !important; font-variant-numeric: tabular-nums !important; }
+#schedulePage .day-chip .day-chip-label { font-size: 13px !important; line-height: 18px !important; color: var(--p-ink2) !important; }
+#schedulePage .day-chip.is-active { background: color-mix(in srgb, var(--p-select) 10%, transparent) !important; color: var(--p-link) !important; }
+#schedulePage .day-chip.is-active .day-chip-date { font-weight: 700 !important; color: var(--p-link) !important; }
+#schedulePage .day-chip.is-active .day-chip-label, #schedulePage .day-chip.is-today.is-active .day-chip-label { color: var(--p-link) !important; opacity: 1 !important; }
+
+/* 지도 도구 */
+#schedulePage .schedule-map-card { border: 1px solid var(--p-line) !important; border-radius: 22px !important; box-shadow: none !important; overflow: hidden !important; }
+#schedulePage .smc-toolbar { display: block !important; padding: 14px 16px 16px !important; border: 0 !important; background: none !important; }
+#schedulePage .smc-toolbar .map-mode-row { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 0 !important; margin: 0 !important; padding: 4px !important; border: 0 !important; border-radius: 999px !important; background: var(--p-tint) !important; overflow: visible !important; }
+#schedulePage .smc-toolbar .map-mode-row .chip { min-width: 0 !important; min-height: 44px !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 999px !important; background: none !important; box-shadow: none !important; font-size: 14px !important; font-weight: 500 !important; color: var(--p-ink2) !important; white-space: nowrap !important; justify-content: center !important; }
+#schedulePage .smc-toolbar .map-mode-row .chip.is-active { background: var(--p-bg) !important; color: var(--p-link) !important; font-weight: 700 !important; box-shadow: 0 1px 2px rgba(16, 36, 84, .08), 0 4px 12px -2px rgba(16, 36, 84, .16) !important; }
+#schedulePage .smc-toolbar .route-info { display: grid !important; grid-template-columns: 1fr 1.25fr .8fr !important; gap: 0 !important; margin: 16px 0 0 !important; padding: 0 !important; border: 0 !important; background: none !important; }
+#schedulePage .smc-toolbar .route-info .ri-row { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 0 !important; min-width: 0 !important; margin: 0 !important; padding: 0 0 0 16px !important; border: 0 !important; border-left: 1px solid var(--p-line) !important; border-radius: 0 !important; background: none !important; text-align: left !important; box-shadow: none !important; }
+#schedulePage .smc-toolbar .route-info .ri-row:first-child { padding-left: 0 !important; border-left: 0 !important; }
+#schedulePage .smc-toolbar .route-info .ri-label { margin: 0 !important; font-size: 13px !important; line-height: 18px !important; font-weight: 400 !important; color: var(--p-ink2) !important; }
+#schedulePage .smc-toolbar .route-info .ri-val { margin: 2px 0 0 !important; font-size: 19px !important; line-height: 26px !important; font-weight: 400 !important; letter-spacing: -0.02em !important; color: var(--p-ink) !important; white-space: nowrap !important; font-variant-numeric: tabular-nums !important; }
+#schedulePage .smc-toolbar #scheduleMapOpenExt { min-height: 48px !important; margin: 16px 0 0 !important; padding: 0 16px !important; border: 0 !important; border-radius: 999px !important; background: color-mix(in srgb, var(--p-select) 10%, transparent) !important; color: var(--p-link) !important; font-size: 15px !important; font-weight: 600 !important; }
+#schedulePage .smc-warning { margin: 0 !important; padding: 10px 16px !important; border: 0 !important; background: var(--p-tint) !important; color: var(--p-ink2) !important; font-size: 14px !important; line-height: 20px !important; text-align: left !important; }
+
+#createTripPage:not(#_a) .choice-grid--3 .choice-card.is-active { background: var(--p-bg) !important; color: var(--p-link) !important; }
+#createTripPage:not(#_a) .choice-grid--3 .choice-card.is-active .ch-label { color: var(--p-link) !important; }
+#createTripPage:not(#_a) #destQuick :is(.is-active, [aria-pressed="true"]) { background: color-mix(in srgb, var(--p-select) 12%, transparent) !important; color: var(--p-link) !important; }
+#createTripPage .stepper-text { flex-direction: row !important; }
+#createTripPage .stepper-text > * { display: inline !important; margin: 0 !important; }
+#createTripPage .form-row:has(.city-suggestions:not([hidden])) :is(.form-hint, .field-message, [id$="Message"]) { visibility: hidden !important; }
+#schedulePage .band-trip .money-row--over:first-child dd, #schedulePage .band-trip .money-row--under:first-child dd { font-size: 28px !important; line-height: 36px !important; font-weight: 300 !important; }
+@media (max-width: 360px) { #schedulePage .smc-toolbar .route-info { grid-template-columns: 1fr 1.2fr .6fr !important; } #schedulePage .smc-toolbar .route-info .ri-row { padding-left: 10px !important; } #schedulePage .smc-toolbar .route-info .ri-val { font-size: 16px !important; } #schedulePage .smc-toolbar .map-mode-row .chip { font-size: 13px !important; } }
+/* 지평선 곡선이 화면 밖으로 나가 옆으로 밀리지 않게 */
+.night-band { overflow-x: clip !important; overflow-y: visible !important; }
+/* 시스템 어두운 화면 — 밝은 버튼은 올렸을 때도 밝게(글자가 묻히지 않게) */
+@media (prefers-color-scheme: dark) { :root.allow-dark :is(.btn-primary, #stepNext, #stepGenerate, #btnSave, .hero-cta, .topbar-cta):hover:not(:disabled) { background: #FFFFFF !important; } }
+:root.theme-dark :is(#stepGenerate, .hero-cta, .topbar-cta):hover:not(:disabled) { background: #FFFFFF !important; }
 }
