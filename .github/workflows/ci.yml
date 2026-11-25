@@ -1,0 +1,51 @@
+# main 에 올리거나 PR 을 열면 서버·화면 테스트를 돌린다.  비밀값은 쓰지 않는다
+# (BE/tests/conftest.py 가 임시 DB 와 테스트용 키를 만든다).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: BE
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: BE/requirements*.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Run tests
+        run: python -m pytest -q -p no:warnings
+
+  frontend:
+    name: Frontend (node --test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run tests
+        run: node --test tests/fe/*.test.mjs
+      - name: Check that shipped JS parses and is in the offline shell
+        run: node tests/fe/check-shell.mjs
