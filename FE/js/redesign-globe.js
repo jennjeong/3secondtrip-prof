@@ -2,7 +2,8 @@
  *
  * 바깥 라이브러리·이미지 없이 캔버스에 점으로 그린다. 서울에서 코스가 있는 도시까지 점선 항로를 잇고,
  * 도시를 누르면 그 도시의 코스로 간다(같은 동작의 글자 버튼이 ‘도시 바로가기’에 있어 그림은 장식으로 숨긴다).
- * 화면에 보일 때만 30fps 로 돌고, 모션 감소가 켜져 있으면 한 번만 그린다.
+ * 남북 축으로 천천히 한 바퀴(360도) 계속 돌고, 손으로 끌면 어느 방향으로든 돌아간다. 놓으면 남은 힘만큼 더 돌다가 다시 제자리 기울기로 돌아온다.
+ * 화면에 보일 때만 30fps 로 돌고, 모션 감소가 켜져 있으면 저절로 돌지 않는다.
  */
 
 // 대륙 윤곽(위도, 경도) — 점 간격보다 거친 자료로 충분하다.
@@ -23,8 +24,21 @@ export const CITY_POS = {
   서울: [37.57, 126.98], 부산: [35.18, 129.08], 제주: [33.5, 126.53], 도쿄: [35.68, 139.69], 오사카: [34.69, 135.5], 교토: [35.01, 135.77], 후쿠오카: [33.59, 130.4], 삿포로: [43.06, 141.35],
   방콕: [13.76, 100.5], 치앙마이: [18.79, 98.98], 다낭: [16.05, 108.2], 하노이: [21.03, 105.85], 호치민: [10.82, 106.63], 싱가포르: [1.35, 103.82], 발리: [-8.65, 115.22], 세부: [10.32, 123.9], 마닐라: [14.6, 120.98],
   타이베이: [25.03, 121.57], 홍콩: [22.32, 114.17], 상하이: [31.23, 121.47], 베이징: [39.9, 116.4], 시드니: [-33.87, 151.21], 멜버른: [-37.81, 144.96], 괌: [13.44, 144.79],
+  강릉: [37.75, 128.88], 경주: [35.86, 129.22], 여수: [34.76, 127.66], 나고야: [35.18, 136.91], 오키나와: [26.21, 127.68], 히로시마: [34.39, 132.46], 가나자와: [36.56, 136.66], 센다이: [38.27, 140.87],
+  청두: [30.57, 104.07], 시안: [34.34, 108.94], 광저우: [23.13, 113.26], 칭다오: [36.07, 120.38], 하얼빈: [45.8, 126.53], 장가계: [29.12, 110.48], 라싸: [29.65, 91.14], 가오슝: [22.63, 120.3], 마카오: [22.2, 113.54], 울란바토르: [47.89, 106.91],
+  푸켓: [7.88, 98.39], 나트랑: [12.24, 109.19], 푸꾸옥: [10.22, 103.96], 쿠알라룸푸르: [3.14, 101.69], 코타키나발루: [5.98, 116.07], 자카르타: [-6.21, 106.85], 족자카르타: [-7.8, 110.36], 시엠립: [13.36, 103.86], 루앙프라방: [19.89, 102.13], 보라카이: [11.97, 121.92],
+  델리: [28.61, 77.21], 뭄바이: [19.08, 72.88], 콜롬보: [6.93, 79.86], 카트만두: [27.72, 85.32], 말레: [4.18, 73.51], 타슈켄트: [41.3, 69.24], 알마티: [43.24, 76.89], 트빌리시: [41.72, 44.83], 바쿠: [40.41, 49.87],
+  아부다비: [24.45, 54.38], 도하: [25.29, 51.53], 무스카트: [23.59, 58.41], 예루살렘: [31.77, 35.21], 카이로: [30.04, 31.24], 마라케시: [31.63, -7.99], 카사블랑카: [33.57, -7.59], 튀니스: [36.81, 10.18], 나이로비: [-1.29, 36.82], 잔지바르: [-6.17, 39.2], 케이프타운: [-33.92, 18.42], 다카르: [14.72, -17.47], 아디스아바바: [9.03, 38.74], 모리셔스: [-20.35, 57.55],
+  에든버러: [55.95, -3.19], 더블린: [53.35, -6.26], 암스테르담: [52.37, 4.9], 베를린: [52.52, 13.41], 뮌헨: [48.14, 11.58], 취리히: [47.38, 8.54], 비엔나: [48.21, 16.37], 부다페스트: [47.5, 19.04], 바르샤바: [52.23, 21.01], 코펜하겐: [55.68, 12.57], 스톡홀름: [59.33, 18.07], 오슬로: [59.91, 10.75], 헬싱키: [60.17, 24.94], 레이캬비크: [64.15, -21.94], 트롬쇠: [69.65, 18.96],
+  마드리드: [40.42, -3.7], 리스본: [38.72, -9.14], 베네치아: [45.44, 12.32], 두브로브니크: [42.65, 18.09], 아테네: [37.98, 23.73], 산토리니: [36.39, 25.46], 부쿠레슈티: [44.43, 26.1], 모스크바: [55.76, 37.62], 발레타: [35.9, 14.51],
+  시카고: [41.88, -87.63], 마이애미: [25.76, -80.19], 라스베이거스: [36.17, -115.14], 샌프란시스코: [37.77, -122.42], 시애틀: [47.61, -122.33], 밴쿠버: [49.28, -123.12], 토론토: [43.65, -79.38], 몬트리올: [45.5, -73.57], 밴프: [51.18, -115.57], 옐로나이프: [62.45, -114.37], 앵커리지: [61.22, -149.9], 뉴올리언스: [29.95, -90.07], 덴버: [39.74, -104.99], 호놀룰루: [21.31, -157.86],
+  멕시코시티: [19.43, -99.13], 칸쿤: [21.16, -86.85], 아바나: [23.11, -82.37], 산호세: [9.93, -84.08], 보고타: [4.71, -74.07], 리마: [-12.05, -77.04], 쿠스코: [-13.53, -71.97], 우유니: [-20.46, -66.83], 리우: [-22.91, -43.17], 상파울루: [-23.55, -46.63], 부에노스아이레스: [-34.6, -58.38], 산티아고: [-33.45, -70.67], 우슈아이아: [-54.8, -68.3], 이스터섬: [-27.11, -109.35], 갈라파고스: [-0.74, -90.31],
+  브리즈번: [-27.47, 153.03], 케언스: [-16.92, 145.77], 퍼스: [-31.95, 115.86], 다윈: [-12.46, 130.84], 호바트: [-42.88, 147.33], 오클랜드: [-36.85, 174.76], 퀸스타운: [-45.03, 168.66], 피지: [-17.71, 178.07], 타히티: [-17.65, -149.43], 팔라우: [7.5, 134.62], 누벨칼레도니: [-22.27, 166.46],
   파리: [48.86, 2.35], 런던: [51.51, -0.13], 로마: [41.9, 12.5], 바르셀로나: [41.39, 2.17], 프라하: [50.08, 14.44], 이스탄불: [41.01, 28.98], 두바이: [25.2, 55.27], 뉴욕: [40.71, -74.01], 로스앤젤레스: [34.05, -118.24], 하와이: [21.31, -157.86],
 };
+// 이름이 겹칠 때 먼저 보이는 도시(코스가 있는 도시 다음)이자, 대륙마다 항로를 하나씩 잇는 도시
+const HUBS = ['파리', '뉴욕', '런던', '시드니', '두바이', '로스앤젤레스', '로마', '이스탄불', '바르셀로나', '카이로', '케이프타운', '리우', '멕시코시티', '호놀룰루', '밴쿠버', '오클랜드', '델리', '싱가포르', '발리', '레이캬비크', '나이로비', '리마'];
+const SKIP = new Set(['하와이']);              // 호놀룰루와 같은 자리 — 코스가 있을 때만 쓴다
 const HOME = '서울';
 const D = Math.PI / 180;
 
@@ -56,13 +70,19 @@ export function initGlobe(canvas, { cities = [], onCity } = {}) {
   if (!ctx) return null;
   const still = matchMedia('(prefers-reduced-motion: reduce)');
   let names = [], arcs = [], w = 0, h = 0, R = 0, cx = 0, cy = 0, hits = [];
-  let rot = 119, drag = 0, visible = true, raf = 0, last = 0, t0 = 0, hover = '';
-  const TILT = -18 * D, ct = Math.cos(TILT), st = Math.sin(TILT);
+  let visible = true, raf = 0, last = 0, t0 = 0, hover = '', held = false;
+  const SPIN = 360 / 80;                       // 저절로 도는 빠르기(도/초) — 80초에 한 바퀴
+  const tilt = () => (w < 768 ? -8 : -14);     // 기울기(도) — 지평선 위로 보이는 곳에 중위도 도시가 오게
+  let lon = 119, lat = -8, vLon = 0, vLat = 0, rest = 0;   // 보는 방향 · 남은 힘 · 손을 뗀 뒤 지난 시간(초)
+  const seen = new Map();                      // 도시 이름표의 마지막 자리와 진하기 — 도는 동안 깜빡이지 않게
 
+  let placed = false;
   function setCities(list) {
-    names = [...new Set([HOME, ...list])].filter(n => CITY_POS[n]);
+    const own = list.filter(n => CITY_POS[n]);
+    names = [...new Set([HOME, ...own, ...HUBS, ...Object.keys(CITY_POS).filter(n => !SKIP.has(n))])];
+    const routes = new Set([...own, ...HUBS]);
     const S = _vec(...CITY_POS[HOME]);
-    arcs = names.filter(n => n !== HOME).map(n => {
+    arcs = [...routes].filter(n => n !== HOME).map(n => {
       const E = _vec(...CITY_POS[n]);
       const om = Math.acos(Math.max(-1, Math.min(1, S[0] * E[0] + S[1] * E[1] + S[2] * E[2]))) || 1e-3;
       const steps = Math.max(10, Math.round(om * 46));
@@ -84,13 +104,13 @@ export function initGlobe(canvas, { cities = [], onCity } = {}) {
     // 글자·검색·칩 바로 아래에서 지평선이 시작한다(안전 영역·글자 확대에도 따라간다)
     const copy = canvas.parentElement?.querySelector('.nh-copy')?.getBoundingClientRect();
     const top = copy ? copy.bottom - b.top + (w < 768 ? 26 : 62) : h * .6;
+    if (!placed) { lat = tilt(); placed = true; }
     R = w < 768 ? Math.max(w * .88, 320) : Math.min(w * .5, 720);
     cx = w / 2; cy = top + R;
   }
   function draw(now) {
     if (!w) return;
-    const ang = rot + drag + (still.matches ? 0 : Math.sin((now - t0) / 11000) * 7);
-    const cr = Math.cos(-ang * D), sr = Math.sin(-ang * D);
+    const cr = Math.cos(-lon * D), sr = Math.sin(-lon * D), ct = Math.cos(lat * D), st = Math.sin(lat * D);
     const prj = (v) => {
       const X = v[0] * cr + v[2] * sr, Z = -v[0] * sr + v[2] * cr;
       return [cx + X * R, cy - (v[1] * ct - Z * st) * R, v[1] * st + Z * ct];
@@ -106,17 +126,18 @@ export function initGlobe(canvas, { cities = [], onCity } = {}) {
     ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(170,205,255,.5)'; ctx.stroke();
     // 육지 점
     const s = Math.max(1, R * .0041);
-    for (let band = 0; band < 4; band++) {
+    const bands = [[], [], [], []];
+    for (const v of _landDots()) {
+      const [X, Y, Z] = prj(v);
+      if (Z < .03 || Y > h + 4 || X < -4 || X > w + 4) continue;
+      bands[Z < .25 ? 0 : Z < .5 ? 1 : Z < .75 ? 2 : 3].push(X, Y, s * (.62 + Z * .5));
+    }
+    bands.forEach((a, band) => {
       ctx.fillStyle = `rgba(158,196,255,${[.22, .42, .64, .88][band]})`;
       ctx.beginPath();
-      for (const v of _landDots()) {
-        const [X, Y, Z] = prj(v);
-        if (Z < .03 || Y > h + 4 || X < -4 || X > w + 4 || (Z < .25 ? 0 : Z < .5 ? 1 : Z < .75 ? 2 : 3) !== band) continue;
-        const r = s * (.62 + Z * .5);
-        ctx.moveTo(X + r, Y); ctx.arc(X, Y, r, 0, 7);
-      }
+      for (let i = 0; i < a.length; i += 3) { ctx.moveTo(a[i] + a[i + 2], a[i + 1]); ctx.arc(a[i], a[i + 1], a[i + 2], 0, 7); }
       ctx.fill();
-    }
+    });
     // 항로 — 아이콘의 길처럼 둥근 점
     const run = still.matches ? 0 : (now - t0) / 260;
     arcs.forEach(({ pts }, k) => {
@@ -128,7 +149,7 @@ export function initGlobe(canvas, { cities = [], onCity } = {}) {
         if (!fade) return;
         ctx.globalAlpha = fade;
         const lead = ((i - run - k * 9) % pts.length + pts.length) % pts.length;
-        ctx.fillStyle = lead > pts.length - 5 ? '#FFFFFF' : 'rgba(196,220,255,.55)';
+        ctx.fillStyle = lead > pts.length - 5 ? '#FFFFFF' : 'rgba(196,220,255,.38)';
         ctx.beginPath(); ctx.arc(X, Y, s * (lead > pts.length - 5 ? 1.15 : .72), 0, 7); ctx.fill();
       });
     });
@@ -139,51 +160,99 @@ export function initGlobe(canvas, { cities = [], onCity } = {}) {
     ctx.font = `600 ${fs}px "Pretendard Variable", Pretendard, sans-serif`;
     ctx.textBaseline = 'middle';
     const boxes = [];
-    const marks = names.map(n => { const [x, y, z] = prj(_vec(...CITY_POS[n])); return { n, x, y, z }; }).filter(m => m.z > .12 && m.y < h - 12 && m.x > 20 && m.x < w - 20);
-    marks.forEach(({ n, x: X, y: Y }) => {
+    const marks = names.map(n => { const [x, y, z] = prj(_vec(...CITY_POS[n])); return { n, x, y, z }; }).filter(m => m.z > .12 && m.y < h - 12 && m.x > 8 && m.x < w - 8);
+    const dim = (z) => Math.min(1, (z - .12) / .2);          // 가장자리에서는 서서히 사라진다
+    marks.forEach(({ n, x: X, y: Y, z }) => {
       const on = n === hover;
+      ctx.globalAlpha = dim(z);
       if (n === HOME) {
         ctx.beginPath(); ctx.arc(X, Y, s * 3, 0, 7); ctx.fillStyle = '#06102a'; ctx.fill(); ctx.lineWidth = s * 1.1; ctx.strokeStyle = '#fff'; ctx.stroke();
       } else {
-        ctx.beginPath(); ctx.arc(X, Y, s * (on ? 5.6 : 4.2), 0, 7); ctx.fillStyle = 'rgba(120,170,255,.35)'; ctx.fill();
-        ctx.beginPath(); ctx.arc(X, Y, s * 2.1, 0, 7); ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.beginPath(); ctx.arc(X, Y, s * (on ? 5.2 : 3.4), 0, 7); ctx.fillStyle = 'rgba(120,170,255,.35)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(X, Y, s * 1.7, 0, 7); ctx.fillStyle = '#fff'; ctx.fill();
       }
     });
-    marks.forEach(({ n, x: X, y: Y }) => {
-      const tw = ctx.measureText(n).width;
-      // 이름 자리 — 오른쪽 → 왼쪽 → 아래 → 위 순서로 겹치지 않는 곳. 다른 도시의 점도 가리지 않는다. 자리가 없으면 점만 둔다.
-      const g = s * 4.5 + 4;
-      for (const [lx, ly] of [[X + g, Y], [X - g - tw, Y], [X - tw / 2, Y + fs * 1.25], [X - tw / 2, Y - fs * 1.25], [X + g * .4, Y + fs * 1.15], [X + g * .4, Y - fs * 1.15]]) {
-        const b = [lx - 3, ly - fs * .62, lx + tw + 3, ly + fs * .62];
-        if (b[0] < 6 || b[2] > w - 6 || b[3] > h - 6 || boxes.some(o => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1])) continue;
-        if (marks.some(m => m.n !== n && m.x > b[0] - s * 2 && m.x < b[2] + s * 2 && m.y > b[1] - s * 2 && m.y < b[3] + s * 2)) continue;
-        boxes.push(b);
-        ctx.lineWidth = 3.5; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(12,30,74,.78)'; ctx.strokeText(n, lx, ly + .5);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(n, lx, ly + .5);
-        hits.push({ n, x0: Math.min(b[0], X - 16), y0: Math.min(b[1], Y - 20), x1: Math.max(b[2], X + 16), y1: Math.max(b[3], Y + 20) });
-        break;
+    // 이름표 — 먼저 있던 이름이 자리를 지키고, 새 이름은 빈 곳에만. 나타나고 사라질 때는 서서히
+    const shown = new Set();
+    const order = marks.map((m, k) => ({ m, k: m.n === HOME ? -2 : m.n === hover ? -1 : k - ((seen.get(m.n)?.a || 0) > .4 ? 12 : 0) })).sort((a, b) => a.k - b.k);
+    order.forEach(({ m: { n, x: X, y: Y, z } }) => {
+      const tw = ctx.measureText(n).width, g = s * 3.6 + 4;
+      const st8 = seen.get(n) || { a: 0, p: 0 };
+      const spots = [[X + g, Y], [X - g - tw, Y], [X - tw / 2, Y + fs * 1.2], [X - tw / 2, Y - fs * 1.2]];
+      const pickOrder = [st8.p, 0, 1, 2, 3].filter((v, i, a) => a.indexOf(v) === i);
+      let box = null;
+      for (const p of pickOrder) {
+        const [lx, ly] = spots[p];
+        const b = [lx - 4, ly - fs * .68, lx + tw + 4, ly + fs * .68];
+        if (b[0] < 6 || b[2] > w - 6 || b[3] > h - 6 || b[1] < cy - R - 4 || boxes.some(o => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1])) continue;
+        box = b; st8.p = p; boxes.push(b); break;
       }
-      if (!hits.some(x => x.n === n)) hits.push({ n, x0: X - 14, y0: Y - 14, x1: X + 14, y1: Y + 14 });
+      if (box) shown.add(n);
+      st8.a += ((box ? 1 : 0) - st8.a) * (still.matches ? 1 : box ? .2 : .5);
+      seen.set(n, st8);
+      hits.push(box && st8.a > .4 ? { n, x0: Math.min(box[0], X - 16), y0: Math.min(box[1], Y - 20), x1: Math.max(box[2], X + 16), y1: Math.max(box[3], Y + 20) } : { n, x0: X - 14, y0: Y - 14, x1: X + 14, y1: Y + 14 });
+      const a = st8.a * dim(z);
+      if (a < .04) return;
+      const [lx, ly] = spots[st8.p];
+      ctx.globalAlpha = a;
+      ctx.lineWidth = 3.5; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(12,30,74,.78)'; ctx.strokeText(n, lx, ly + .5);
+      ctx.fillStyle = '#FFFFFF'; ctx.fillText(n, lx, ly + .5);
     });
+    ctx.globalAlpha = 1;
+    for (const [n, v] of seen) if (!shown.has(n) && !marks.some(m => m.n === n)) v.a = 0;
+  }
+  /** 한 장면만큼 돌린다 — 저절로 도는 힘 + 손으로 민 힘, 손을 떼면 기울기를 되찾는다. */
+  function step(dt) {
+    if (held) return;
+    rest += dt;
+    lon += vLon * dt; lat += vLat * dt;
+    const f = Math.exp(-dt * 2.2); vLon *= f; vLat *= f;
+    if (still.matches) return;
+    const wake = Math.min(1, Math.max(0, (rest - .6) / 1.6));      // 손을 뗀 뒤 천천히 다시 돈다
+    if (!hover) lon -= SPIN * dt * wake;         // 지구가 도는 방향(서→동)
+    const back = ((tilt() - lat + 540) % 360 + 360) % 360 - 180;
+    if (rest > 1.6) lat += back * (1 - Math.exp(-dt * .9));
   }
   function loop(now) {
     raf = 0;
     if (!visible || document.hidden) return;
-    if (now - last > 31) { last = now; draw(now); }
-    if (!still.matches) raf = requestAnimationFrame(loop);
+    if (now - last > 31) { step(Math.min(.1, (now - last) / 1000)); last = now; draw(now); }
+    if (!still.matches || held || Math.abs(vLon) + Math.abs(vLat) > .5) raf = requestAnimationFrame(loop);
   }
   const kick = () => { if (!raf) raf = requestAnimationFrame(loop); };
 
   const at = (e) => { const b = canvas.getBoundingClientRect(); const x = e.clientX - b.left, y = e.clientY - b.top; return hits.find(p => x > p.x0 && x < p.x1 && y > p.y0 && y < p.y1)?.n || ''; };
-  let downX = null, base = 0, moved = false;
-  canvas.addEventListener('pointerdown', (e) => { downX = e.clientX; base = drag; moved = false; });
-  canvas.addEventListener('pointermove', (e) => {
-    if (downX != null) { const dx = e.clientX - downX; if (Math.abs(dx) > 5) moved = true; if (moved) { drag = base - dx * 90 / Math.max(320, R); kick(); if (still.matches) draw(performance.now()); } return; }
-    const n = at(e); if (n !== hover) { hover = n; canvas.style.cursor = n ? 'pointer' : 'grab'; if (still.matches) draw(performance.now()); }
+  let from = null, moved = false;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.button) return;
+    from = { x: e.clientX, y: e.clientY, t: e.timeStamp }; moved = false; held = true; vLon = vLat = 0; rest = 0; kick();
   });
-  const up = (e) => { const was = downX != null && !moved; downX = null; if (was && e.type === 'pointerup') { const n = at(e); if (n && onCity) onCity(n); } };
-  canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up); canvas.addEventListener('pointerleave', up);
+  canvas.addEventListener('pointermove', (e) => {
+    if (from) {
+      const dx = e.clientX - from.x, dy = e.clientY - from.y;
+      if (!moved && Math.hypot(dx, dy) < 6) return;
+      if (!moved) { moved = true; hover = ''; canvas.style.cursor = 'grabbing'; try { canvas.setPointerCapture(e.pointerId); } catch (_) {} }
+      const dt = Math.max(.008, (e.timeStamp - from.t) / 1000), k = 57.3 / R, flip = Math.cos(lat * D) < 0 ? -1 : 1;   // 손가락을 따라 지면이 움직인다. 뒤집힌 쪽에서는 좌우가 반대
+      const dl = -dx * k * flip, db = dy * k;
+      lon += dl; lat += db;
+      vLon = vLon * .6 + dl / dt * .4; vLat = vLat * .6 + db / dt * .4;
+      from = { x: e.clientX, y: e.clientY, t: e.timeStamp };
+      if (still.matches) draw(performance.now());
+      return;
+    }
+    const n = e.pointerType === 'touch' ? '' : at(e);
+    if (n !== hover) { hover = n; canvas.style.cursor = n ? 'pointer' : 'grab'; if (still.matches) draw(performance.now()); }
+  });
+  const up = (e) => {
+    if (!from) { if (e.type === 'pointerleave') hover = ''; return; }
+    const tap = !moved, stale = e.timeStamp - from.t > 90;
+    from = null; held = false; rest = 0; canvas.style.cursor = 'grab';
+    if (tap || stale || still.matches) vLon = vLat = 0;
+    vLon = Math.max(-170, Math.min(170, vLon)); vLat = Math.max(-45, Math.min(45, vLat));       // 위아래로는 덜 미끄러진다
+    kick();
+    if (tap && e.type === 'pointerup') { const n = at(e); if (n && onCity) onCity(n); }
+  };
+  canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up); canvas.addEventListener('pointerleave', (e) => { if (!canvas.hasPointerCapture?.(e.pointerId)) up(e); });
 
   t0 = performance.now();
   const ro = new ResizeObserver(() => { size(); draw(performance.now()); kick(); });

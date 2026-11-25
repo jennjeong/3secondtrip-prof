@@ -438,7 +438,7 @@ function _renderWindow(m) {
   box.classList.toggle('is-plain', !plan.length);
 }
 
-/* 첫 화면 지구본 — 코스가 있는 도시로 항로를 잇고, 도시를 누르면 그 도시 검색으로 */
+/* 첫 화면 지구본 — 도시를 누르면 그 도시 검색으로(코스가 없으면 검색 결과에서 여행 만들기로) */
 let _globe = null;
 function _renderGlobe() {
   const cv = document.getElementById('homeGlobe');
@@ -449,7 +449,6 @@ function _renderGlobe() {
   _globe = false;
   import('./redesign-globe.js').then(({ initGlobe }) => {
     _globe = initGlobe(cv, { cities, onCity: (city) => {
-      if (!roadmaps.some(m => m.city === city)) return;
       explore.query = city; explore.concept = 'all'; _goExplore();
     } }) || false;
   }).catch((e) => console.warn('[home] 지구본을 그리지 못했어요', e?.message));
@@ -551,6 +550,17 @@ export function renderExplore() {
   const items = _filterAndSort(roadmaps);
   grid.replaceChildren(...items.map(m => _cardEl(m, { variant: 'glow' })));
   if (empty) empty.hidden = items.length > 0;
+  // 아는 도시인데 코스가 없으면 그 도시로 바로 여행을 만들 수 있게 한다.
+  const make = document.getElementById('exploreMake');
+  if (make) {
+    const q = explore.query.trim();
+    const city = q ? searchCities(q, 3).map(r => r.city || r.c || r).find(c => c?.name === q) : null;
+    make.hidden = !city || items.length > 0;
+    make.textContent = city ? `${city.name} 여행 만들기` : '';
+    make.onclick = city ? () => { document.dispatchEvent(new CustomEvent('redesign:trip-prefill', { detail: { city: city.name } })); navigate('create-trip', { meta: { prefill: true } }); } : null;
+    const msg = empty?.querySelector('.empty-text');
+    if (msg) msg.textContent = city ? `${city.name} 코스는 아직 없어요. 바로 여행을 만들어 보세요.` : '조건에 맞는 여행 코스가 없어요. 다른 도시나 스타일로 찾아보세요.';
+  }
   if (count) {
     const parts = [];
     if (explore.query) parts.push(`‘${explore.query}’`);
