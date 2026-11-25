@@ -4,16 +4,16 @@
   "webDir": "www",
   "ios": {
     "contentInset": "never",
-    "backgroundColor": "#F7F8FA"
+    "backgroundColor": "#020A1E"
   },
   "android": {
-    "backgroundColor": "#F7F8FA"
+    "backgroundColor": "#020A1E"
   },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 3000,
       "launchAutoHide": false,
-      "backgroundColor": "#F7F8FA",
+      "backgroundColor": "#020A1E",
       "showSpinner": false,
       "launchFadeOutDuration": 200
     },

@@ -208,6 +208,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   requestAnimationFrame(() => {
     const sp = document.getElementById('bootSplash');
     if (!sp) return;
+    if (window.__tstBoot) { window.__tstBoot.open(); return; }     // 비행기가 화면을 연다(boot-flight.js)
     sp.classList.add('is-done');
     setTimeout(() => sp.remove(), 250);
   });

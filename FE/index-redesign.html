@@ -85,17 +85,20 @@
 <link rel="stylesheet" href="./css/redesign-app.css">
 <link rel="stylesheet" href="./css/redesign-product.css">
 <style>
-/* 첫 화면: CSS 파일이 오기 전에도 배경을 칠하고, 시작 이미지와 같은 배치의 시작 화면을 보여 준다 */
+/* 첫 화면: CSS 파일이 오기 전에도 배경을 칠한다. 시작 화면은 시작 이미지(design/brand/build_splash.py)와 같은 배치이고,
+   js/boot-flight.js 가 이어받아 비행기가 화면을 여는 애니메이션을 그린다. */
 html, body { background: #05070D; }
 html.theme-dark, html.theme-dark body { background: #111418; }
 @media (prefers-color-scheme: dark) { html.allow-dark, html.allow-dark body { background: #111418; } }
-#bootSplash { position: fixed; inset: 0; z-index: 10000; display: grid; place-content: center; justify-items: center; gap: 16px;
-  background: inherit; font: 700 20px/1.2 -apple-system, "Apple SD Gothic Neo", system-ui, sans-serif; color: #1E222A;
+#bootSplash { position: fixed; inset: 0; z-index: 10000; overflow: hidden; touch-action: none;
+  background: #020A1E radial-gradient(circle 95vh at calc(50% + 24vh) 6vh, #06406F, #04203F 42%, #020A1E);
   transition: opacity .2s ease; animation: bootSplashOut .2s ease 6s forwards; }
-#bootSplash img { width: 96px; height: 96px; }
+@media (min-aspect-ratio: 1/1) { #bootSplash { background: #020A1E radial-gradient(circle 95vh at 92% 6vh, #06406F, #04203F 42%, #020A1E); } }
+#bootSplash img { position: absolute; left: 50%; top: 14.5%; width: min(19.5vh, 50vw); height: auto; transform: translate(-50%, -50%); }
+#bootSplash canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#bootSplash.is-flying { background: none; }
+#bootSplash.is-flying img { visibility: hidden; }
 #bootSplash.is-done { opacity: 0; pointer-events: none; }
-html.theme-dark #bootSplash { color: #EEF2F6; }
-@media (prefers-color-scheme: dark) { html.allow-dark #bootSplash { color: #EEF2F6; } }
 @keyframes bootSplashOut { to { opacity: 0; visibility: hidden; } }   /* 스크립트가 실패해도 6초 뒤 사라짐 */
 </style>
 <script>
@@ -108,7 +111,8 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
 </script>
 </head>
 <body>
-<div id="bootSplash" aria-hidden="true"><img src="/assets/icon-192.png" alt="" width="96" height="96"><span>3초 여행</span></div>
+<div id="bootSplash" aria-hidden="true"><img src="/assets/logo-3secondtrip-white.png" alt="" width="1000" height="123"><canvas></canvas></div>
+<script src="./js/boot-flight.js" async></script>
 
 <div id="app" class="app-shell" data-app="redesign">
 

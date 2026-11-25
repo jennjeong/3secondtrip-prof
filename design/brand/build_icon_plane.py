@@ -5,7 +5,7 @@ python3 design/brand/build_icon_plane.py
      → design/brand/icon-plane-1024.png  (iOS·Android 원본, 투명 없음)
   2) FE/assets: icon-192/512, icon-maskable-512(안전 영역 안으로 축소), apple-touch-icon(180),
      favicon(512), favicon-32, favicon.svg(둥근 모서리 PNG 를 담은 SVG)
-  3) FE/assets/splash/*.png: 예전 아이콘 자리를 찾아 새 아이콘(둥근 모서리)으로 바꿔 끼운다
+  시작 화면 이미지는 build_splash.py 가 만든다.
 """
 import base64
 import io
@@ -70,35 +70,6 @@ def maskable(full: Image.Image, size=512, scale=0.80) -> Image.Image:
     return Image.composite(out.filter(ImageFilter.GaussianBlur(14)), out, band)
 
 
-def replace_in_splash(path: Path, icon: Image.Image):
-    im = Image.open(path).convert('RGB')
-    w, h = im.size
-    bg = im.getpixel((0, 0))
-    px = im.load()
-
-    def differs(x, y):
-        p = px[x, y]
-        return abs(p[0] - bg[0]) + abs(p[1] - bg[1]) + abs(p[2] - bg[2]) > 12
-
-    rows = [y for y in range(h) if any(differs(x, y) for x in range(0, w, 3))]
-    # 첫 번째 연속 구간 = 아이콘(그 아래 떨어져 있는 구간은 글자)
-    top = rows[0]; bot = top
-    for y in rows[1:]:
-        if y - bot > 4:
-            break
-        bot = y
-    cols = [x for x in range(w) if any(differs(x, y) for y in range(top, bot + 1, 2))]
-    left, right = cols[0], cols[-1]
-    side = max(right - left, bot - top) + 1
-    cx, cy = (left + right) / 2, (top + bot) / 2
-    pad = max(4, side // 40)
-    ImageDraw.Draw(im).rectangle((left - pad, top - pad, right + pad, bot + pad), fill=bg)
-    ic = rounded(icon, side)
-    im.paste(ic, (round(cx - side / 2), round(cy - side / 2)), ic)
-    im.save(path, optimize=True)
-    return side
-
-
 def main():
     src = Image.open(BRAND / 'icon-plane-source.png')
     full = full_bleed(src).resize((1024, 1024), Image.LANCZOS)
@@ -118,8 +89,6 @@ def main():
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">'
         f'<image href="data:image/png;base64,{b64}" width="64" height="64"/></svg>\n', encoding='utf-8')
 
-    for p in sorted((ASSETS / 'splash').glob('*.png')):
-        print(p.name, replace_in_splash(p, full))
 
 
 if __name__ == '__main__':
