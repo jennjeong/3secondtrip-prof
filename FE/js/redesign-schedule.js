@@ -72,7 +72,6 @@ export function initSchedule(state) {
   });
 
   $('#btnShare')?.addEventListener('click', _openShareSheet);
-  _bindMoreMenu();
   $('#shareClose')?.addEventListener('click', _closeSheet);
   $('#shareBackdrop')?.addEventListener('click', _closeSheet);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#shareSheet')?.hidden) _closeSheet(); });
@@ -170,7 +169,7 @@ export function renderSchedule() {
   const sub = $('#scheduleSub');
 
   const hasG = !!g;
-  ['#scheduleActions', '#scheduleDayRow', '#scheduleSplit', '#dayChecks', '#saveStatus', '#scheduleToolbar', '#nowNext', '#toolsSection'].forEach(sel => { const n = $(sel); if (n) n.hidden = !hasG; });
+  ['#btnSave', '#scheduleActions', '#scheduleDayRow', '#scheduleSplit', '#dayChecks', '#saveStatus', '#scheduleToolbar', '#nowNext', '#toolsSection'].forEach(sel => { const n = $(sel); if (n) n.hidden = !hasG; });
   if (!g) {
     const panel = $('#budgetPanel'); if (panel) panel.hidden = true;
     const sb = $('#sharedBanner'); if (sb) sb.hidden = true;
@@ -1549,27 +1548,6 @@ function _payload(g) {
   return data;
 }
 
-/** 일정 상단 ‘더보기’ — 다시 만들기처럼 자주 쓰지 않는 행동을 접어 둔다. */
-function _bindMoreMenu() {
-  const btn = $('#btnScheduleMore');
-  const menu = $('#scheduleMoreMenu');
-  if (!btn || !menu) return;
-  const close = (focusBtn) => {
-    if (menu.hidden) return;
-    menu.hidden = true; btn.setAttribute('aria-expanded', 'false');
-    if (focusBtn) btn.focus();
-  };
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const open = menu.hidden;
-    menu.hidden = !open; btn.setAttribute('aria-expanded', String(open));
-    if (open) menu.querySelector('[role=menuitem]')?.focus();
-  });
-  menu.addEventListener('click', () => close(false));
-  document.addEventListener('click', (e) => { if (!e.target.closest?.('.more-wrap')) close(false); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(true); });
-}
-
 /** 장소 하나의 고정·다녀옴·편집 — 평소에는 ‘더보기’ 뒤에, 일정 편집 중에는 바로 보인다. */
 function _toggleCardActions(card, btn) {
   const open = !card.classList.contains('is-actions-open');
@@ -1591,12 +1569,13 @@ function _paintSaveStatus() {
   const onAccount = !!g.savedScheduleId;
   btn?.classList.toggle('is-active', onAccount);
   btn?.setAttribute('aria-pressed', String(onAccount));
-  const lbl = btn?.querySelector('.ab-label'); if (lbl) lbl.textContent = onAccount ? '저장됨' : '저장';
+  const lbl = btn?.querySelector('.ab-label'); if (lbl) lbl.textContent = onAccount ? '계정에 보관됨' : '일정 저장';
+  if (btn) btn.title = onAccount ? '계정에서 빼기' : '저장';
   let text, cls = '';
   if (saveState === 'saving') text = '계정에 보관하는 중…';
   else if (saveState === 'error') { text = '계정에 보관하지 못했어요. 이 기기에는 있어요.'; cls = 'is-error'; }
   else if (onAccount) text = '계정에 보관됨 · 마이 › 계정에 보관한 일정';
-  else text = appState.currentUser ? '이 기기에 있어요 · ‘저장’을 누르면 계정에도 보관' : '이 기기에 있어요 · 내 일정에서 다시 열 수 있어요';
+  else text = appState.currentUser ? '이 기기에 있어요 · 하트를 누르면 계정에도 보관' : '이 기기에 있어요 · 내 일정에서 다시 열 수 있어요';
   box.className = 'save-status ' + cls;
   box.replaceChildren(...[el('span', {}, text),
     saveState === 'error' ? el('button', { type: 'button', class: 'btn-text', onclick: _saveToAccount }, '다시 시도') : null].filter(Boolean));

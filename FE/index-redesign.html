@@ -668,15 +668,10 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
             <h1 class="page-title" id="scheduleTitle">나의 일정</h1>
             <p class="page-sub" id="scheduleSub">아직 만든 일정이 없어요</p>
           </div>
+          <button type="button" class="action-btn save-heart" id="btnSave" aria-pressed="false" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="ab-label sr-only">저장</span></button>
           <div class="schedule-actions" id="scheduleActions" hidden>
-            <button type="button" class="action-btn" id="btnSave" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="ab-label">저장</span></button>
             <button type="button" class="action-btn action-icon" id="btnShare" aria-label="공유" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg><span class="ab-label sr-only">공유</span></button>
-            <div class="more-wrap">
-              <button type="button" class="action-btn action-icon" id="btnScheduleMore" aria-label="더보기" aria-haspopup="menu" aria-expanded="false" aria-controls="scheduleMoreMenu"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg></button>
-              <div class="more-menu" id="scheduleMoreMenu" role="menu" aria-label="일정 더보기" hidden>
-              <button type="button" class="more-item" id="btnRegen" role="menuitem"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg><span class="ab-label">다시 만들기</span></button>
-              </div>
-            </div>
+            <button type="button" class="action-btn action-icon" id="btnRegen" aria-label="일정 다시 만들기" title="다시 만들기"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
           </div>
         </div>
         <p class="save-status" id="saveStatus" role="status" aria-live="polite" hidden></p>
@@ -1174,7 +1169,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
         <div class="night-band night band-form">
         <div class="page-header">
           <h1 class="page-title">계정에 보관한 일정</h1>
-          <p class="page-sub">내 일정에서 ‘저장’을 누르면 여기에 모여요. 이 기기의 일정은 ‘내 일정’에 있어요</p>
+          <p class="page-sub">내 일정에서 하트를 누르면 여기에 모여요. 이 기기의 일정은 ‘내 일정’에 있어요</p>
         </div>
         </div>
 

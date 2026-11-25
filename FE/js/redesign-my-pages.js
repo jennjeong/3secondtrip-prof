@@ -155,7 +155,7 @@ export async function renderMySaved() {
   list.replaceChildren();
   empty.hidden = saved.length > 0;
   if (!saved.length) {
-    empty.querySelector('.empty-text').textContent = '아직 계정에 보관한 일정이 없어요. 내 일정에서 ‘저장’을 누르면 여기에 모여요.';
+    empty.querySelector('.empty-text').textContent = '아직 계정에 보관한 일정이 없어요. 내 일정에서 하트를 누르면 여기에 모여요.';
     const btn = empty.querySelector('.btn'); if (btn) { btn.textContent = '내 일정 보기'; btn.dataset.navTo = 'schedule'; }
   } else {
     list.appendChild(el('p', { class: 'my-sub-h' }, `계정에 보관한 일정 ${saved.length}개 · 최근 수정순`));
