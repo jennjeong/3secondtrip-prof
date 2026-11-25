@@ -13,6 +13,8 @@ import { navigate } from './redesign-navigation.js';
 import { timeZoneFor, utcOffsetMin, utcLabel, nowIn } from './redesign-cities.js';
 import { checkDay, repairTrip, repairDay, recomputeDay, isFlight, josa as _josa, shortName as _short,
   timeToMin as _timeToMin, kmBetween as _kmBetween, travelMinutes as _travelMinutes, airportMinutes } from './redesign-plan-check.js';
+import { localQuery, rankLocal, localMix, langOf, LANG_NAME } from './redesign-local.js';
+import { findCity } from './redesign-cities.js';
 import { costBreakdown as _computeBudgetBreakdown, costUnknown as _costUnknown, costScope, costDuplicates } from './redesign-plan-cost.js';
 import { publicLink, shareLink } from './redesign-native.js';
 import { setPendingIntent, peekPendingIntent, clearPendingIntent } from './redesign-auth.js';
@@ -547,6 +549,7 @@ function _renderTimeline(g) {
           n.category ? el('span', { class: 'schedule-category' }, n.category) : null,
           a.pinned ? el('span', { class: 'pin-badge' }, '고정') : null,
           a.visited ? el('span', { class: 'visited-badge' }, '다녀옴') : null,
+          a.local === 'local' ? el('span', { class: 'local-badge', title: '현지어로 찾은 동네 장소예요. 대표 관광지 목록에 없어요' }, '동네') : a.local === 'famous' ? el('span', { class: 'famous-badge' }, '유명한 곳') : null,
           a.sample ? el('span', { class: 'sample-badge', title: '실제 검색 결과가 없어 넣은 예시 장소예요' }, '예시 장소') : null,
           a.edited ? el('span', { class: 'edited-badge' }, '직접 수정') : null,
           // 카테고리와 비용은 한 줄에
@@ -733,7 +736,8 @@ function _setView(v) {
   if (v === 'map') _emitScheduleChanged();   // 숨어 있던 지도를 다시 그린다
 }
 
-const _SWAP_QUERY = { 식사: '맛집', 카페: '인기 카페', 쇼핑: '쇼핑 명소', 관광: '인기 명소', 액티비티: '인기 체험' };
+const _SWAP_QUERY = { 식사: '맛집', 카페: '인기 카페', 쇼핑: '쇼핑 명소', 관광: '인기 명소', 액티비티: '인기 체험' };       // ‘유명한 곳 위주’ 일정에서만
+const _SWAP_SLOT = { 식사: 'dinner', 카페: 'afternoon', 쇼핑: 'shopping', 관광: 'forenoon', 액티비티: 'activity' };
 
 function _actKey(di, ai) { return `${di}_${ai}`; }
 function _actCost(di, ai, fallback) {
@@ -1027,7 +1031,9 @@ function _renderProviders(g) {
   box.hidden = false;
   const at = (iso) => iso ? new Date(iso).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
   const price = (p) => ({ live: `실시간 요금 · ${at(p.checkedAt)} 조회`, excluded: '예산에서 뺐어요', none: '해당 없음', skipped: `추정 — ${p.reason}` })[p.status] || `추정 — ${p.reason || '실시간 요금을 받지 못했어요.'}`;
-  const places = (p) => p.status === 'live' ? `실제 검색 결과 ${p.real}곳` : p.status === 'partial' ? `실제 ${p.real}곳 · 예시 ${p.sample}곳${p.reason ? ` — ${p.reason}` : ''}` : `모두 예시 장소 — ${p.reason || '검색 결과가 없었어요.'}`;
+  const mix = localMix(g);
+  const how = g.placeMode && g.placeMode !== 'famous' && mix.total ? ` 중 동네 장소 ${mix.local}곳${mix.famous ? `, 유명한 곳 ${mix.famous}곳` : ''} — ${LANG_NAME[g.placeLang || langOf(g.country)]}로 찾고 대표 관광지는 ${g.placeMode === 'mix' ? '하루 한 곳만 넣었어요' : '뺐어요'}. 방문자 국적 자료는 아니에요` : '';
+  const places = (p) => p.status === 'live' ? `실제 검색 결과 ${p.real}곳${how}` : p.status === 'partial' ? `실제 ${p.real}곳 · 예시 ${p.sample}곳${p.reason ? ` — ${p.reason}` : ''}` : `모두 예시 장소 — ${p.reason || '검색 결과가 없었어요.'}`;
   const row = (kind, label, p, text) => !p || p.status === 'none' ? null : el('div', { class: 'pv-row' }, [
     el('span', { class: 'pv-k' }, label),
     el('span', { class: 'pv-v' }, text),
@@ -1155,21 +1161,28 @@ async function _searchPlacesForEdit(q, seq) {
   }
 }
 
+/** 이 여행의 가운데 — 현지어로 찾을 때 다른 도시 결과가 섞이지 않게. */
+function _centerOf(g) {
+  const p = g.days.flatMap(d => d.activities).filter(a => a.category !== '이동' && Number.isFinite(a.latitude) && Number.isFinite(a.longitude));
+  return p.length ? { center_lat: p.reduce((n, a) => n + a.latitude, 0) / p.length, center_lng: p.reduce((n, a) => n + a.longitude, 0) / p.length } : {};
+}
 /** 같은 도시의 같은 종류 장소를 추천한다.  이미 일정에 있는 곳은 뺀다. */
 async function _suggestAlternatives() {
   const g = appState.generated;
   if (!editing || !g) return;
   const current = g.days[editing.di]?.activities[editing.ai];
-  const query = _SWAP_QUERY[current?.category] || '인기 명소';
+  const local = g.placeMode !== 'famous';
+  const query = local ? localQuery(_SWAP_SLOT[current?.category] || 'forenoon', { city: findCity(c => c.name === g.city) || { name: g.city }, country: g.country, styles: g.styles || [], needs: g.needs || [], seed: Math.floor(Math.random() * 2) })
+    : `${g.city} ${_SWAP_QUERY[current?.category] || '인기 명소'}`;
   const used = new Set(g.days.flatMap(d => d.activities.map(a => a.name)));
   const seq = ++_editSearchSeq;
   const sugg = $('#editSuggestions');
   if (sugg) { sugg.hidden = false; sugg.innerHTML = '<div class="ps-loading">추천 장소를 찾는 중…</div>'; }
   try {
-    const res = await api.searchPlaces({ query: `${g.city} ${query}`, language: 'ko', max_results: 12 });
+    const res = await api.searchPlaces({ query, language: 'ko', max_results: 15, ..._centerOf(g) });
     if (seq !== _editSearchSeq) return;
-    _renderEditSuggestions((res?.places || []).filter(p =>
-      Number.isFinite(p.latitude) && Number.isFinite(p.longitude) && !used.has(p.name)));
+    const found = (res?.places || []).filter(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude) && !used.has(p.name));
+    _renderEditSuggestions((local ? rankLocal(found, { food: current?.category === '식사' }) : found).slice(0, 10));
   } catch (err) {
     if (seq !== _editSearchSeq) return;
     console.warn('[edit] alternatives failed:', err?.message);
@@ -1304,6 +1317,8 @@ function _commitEdit() {
     a.memo = memo;
     if (changed) a.edited = true;
     if (picked) {
+      a.local = picked._local?.kind || ''; delete a.sample;
+      a.openingPeriods = picked.opening_periods || null; a.rating = picked.rating ?? null; a.reviews = picked.user_rating_count ?? null;
       a.placeId   = picked.place_id;
       a.latitude  = picked.latitude;
       a.longitude = picked.longitude;

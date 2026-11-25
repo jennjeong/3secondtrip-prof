@@ -18,7 +18,7 @@
 <meta property="og:title" content="3초 여행 · 나만의 여행 일정을 빠르게"/>
 <meta property="og:description" content="도시·날짜·예산만 고르면 실제 장소로 하루하루 일정을 만들어 드려요."/>
 <meta property="og:url" content="https://3secondtrip-prof.vercel.app/"/>
-<meta property="og:image" content="https://3secondtrip-prof.vercel.app/assets/og-image.png"/>
+<meta property="og:image" content="https://3secondtrip-prof.vercel.app/assets/og-image.png?v=globe1"/>
 <meta property="og:image:width" content="1200"/>
 <meta property="og:image:height" content="630"/>
 <meta name="twitter:card" content="summary_large_image"/>
@@ -214,7 +214,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
       <div class="page-scroll">
         <div class="page-header">
           <h1 class="page-title">여행 코스 탐색</h1>
-          <p class="page-sub">도시·여행 스타일로 코스를 찾아보세요</p>
+          <p class="page-sub">뻔한 관광지 대신 동네 사람들이 다니는 코스를 찾아보세요</p>
         </div>
 
         <div class="search-card" role="search">
@@ -396,6 +396,13 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <div class="concept-grid" id="conceptGrid" role="group" aria-labelledby="conceptH"></div>
           <p class="form-error" id="conceptError" role="alert" hidden></p>
           <p class="pref-hint" id="prefHint" hidden>취향 분석 결과로 미리 골라 뒀어요 · 바꿔도 돼요</p>
+          <h4 class="step-subh" id="placeModeH">어떤 곳 위주로 갈까요?</h4>
+          <div class="choice-grid choice-grid--3 seg-3" id="placeMode" role="group" aria-labelledby="placeModeH" aria-describedby="placeModeHint">
+            <button type="button" class="choice-card is-active" data-place-mode="local" aria-pressed="true"><span class="ch-label">동네 위주</span></button>
+            <button type="button" class="choice-card" data-place-mode="mix" aria-pressed="false"><span class="ch-label">반반</span></button>
+            <button type="button" class="choice-card" data-place-mode="famous" aria-pressed="false"><span class="ch-label">유명한 곳 위주</span></button>
+          </div>
+          <p class="form-hint" id="placeModeHint" aria-live="polite"></p>
           <h4 class="step-subh" id="styleH">세부 스타일 <span class="form-label-meta">선택 · 여러 개 가능</span></h4>
           <div class="check-list" id="styleChips" role="group" aria-labelledby="styleH"></div>
           <form class="check-add" id="styleAdd" novalidate>

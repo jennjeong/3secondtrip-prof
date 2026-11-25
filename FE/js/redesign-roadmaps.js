@@ -48,14 +48,14 @@ function _attachLandmarkImage(el, city, gradient) {
 
 // 서버가 깨어나는 동안이나 연결 실패 시 보여줄 기본 목록.
 export const POPULAR_ROADMAPS = [
-  { id: 'tokyo-3d',   city: '도쿄',     country: '일본',     title: '도쿄 3일 감성 로드맵',   concept: '균형',     days: 3, likes: 1240, gradient: 'var(--g-tokyo)',   tagline: '시부야부터 아사쿠사까지' },
-  { id: 'paris-4d',   city: '파리',     country: '프랑스',   title: '파리 첫 여행 로드맵',     concept: '프리미엄', days: 4, likes:  980, gradient: 'var(--g-paris)',   tagline: '에펠탑·루브르·몽마르트' },
-  { id: 'jeju-3d',    city: '제주',     country: '대한민국', title: '제주 힐링 드라이브',     concept: '힐링',     days: 3, likes:  870, gradient: 'var(--g-jeju)',    tagline: '바람·바다·돌담길' },
-  { id: 'osaka-3d',   city: '오사카',   country: '일본',     title: '오사카 먹부림 3일',      concept: '가성비',   days: 3, likes:  760, gradient: 'var(--g-osaka)',   tagline: '도톤보리·신세카이·우메다' },
-  { id: 'bangkok-4d', city: '방콕',     country: '태국',     title: '방콕 야경 & 카페',       concept: '액티비티', days: 4, likes:  690, gradient: 'var(--g-bangkok)', tagline: '카오산·짜오프라야' },
-  { id: 'seoul-2d',   city: '서울',     country: '대한민국', title: '서울 핫플 2일',          concept: '효율',     days: 2, likes:  640, gradient: 'var(--g-seoul)',   tagline: '성수·한남·홍대' },
-  { id: 'newyork-5d', city: '뉴욕',     country: '미국',     title: '뉴욕 5일 시그니처',      concept: '프리미엄', days: 5, likes:  590, gradient: 'var(--g-newyork)', tagline: '브로드웨이·MoMA·하이라인' },
-  { id: 'sydney-4d',  city: '시드니',   country: '호주',     title: '시드니 자연 탐험',       concept: '액티비티', days: 4, likes:  530, gradient: 'var(--g-sydney)',  tagline: '오페라하우스·본다이' },
+  { id: 'tokyo-3d',   city: '도쿄',     country: '일본',     title: '도쿄 동네 산책 3일',   concept: '균형',     days: 3, likes: 1240, gradient: 'var(--g-tokyo)',   tagline: '야나카·기치조지·시모키타자와' },
+  { id: 'paris-4d',   city: '파리',     country: '프랑스',   title: '파리 동네 시장과 골목 4일',     concept: '프리미엄', days: 4, likes:  980, gradient: 'var(--g-paris)',   tagline: '생마르탱 운하·벨빌·뷔트오카유' },
+  { id: 'jeju-3d',    city: '제주',     country: '대한민국', title: '제주 마을길과 오름 3일',     concept: '힐링',     days: 3, likes:  870, gradient: 'var(--g-jeju)',    tagline: '하가리·송당리·종달리' },
+  { id: 'osaka-3d',   city: '오사카',   country: '일본',     title: '오사카 동네 먹부림 3일',      concept: '가성비',   days: 3, likes:  760, gradient: 'var(--g-osaka)',   tagline: '덴진바시스지·나카자키초·가라호리' },
+  { id: 'bangkok-4d', city: '방콕',     country: '태국',     title: '방콕 동네 시장과 골목 4일',       concept: '액티비티', days: 4, likes:  690, gradient: 'var(--g-bangkok)', tagline: '아리·왕랑·프라카농' },
+  { id: 'seoul-2d',   city: '서울',     country: '대한민국', title: '서울 동네 골목 2일',          concept: '효율',     days: 2, likes:  640, gradient: 'var(--g-seoul)',   tagline: '망원·연희·성북·후암' },
+  { id: 'newyork-5d', city: '뉴욕',     country: '미국',     title: '뉴욕 동네 5일',      concept: '프리미엄', days: 5, likes:  590, gradient: 'var(--g-newyork)', tagline: '그린포인트·잭슨하이츠·아서 애비뉴' },
+  { id: 'sydney-4d',  city: '시드니',   country: '호주',     title: '시드니 동네와 해변 4일',       concept: '액티비티', days: 4, likes:  530, gradient: 'var(--g-sydney)',  tagline: '뉴타운·매릭빌·클로벨리' },
 ];
 
 let appState = null;
@@ -244,7 +244,7 @@ function _fromApi(r) {
     id: String(r.id),
     city: r.city,
     country: r.country || '',
-    title: r.title,
+    title: (isSample && sample?.title) || r.title,        // 작성자 없는 예시는 화면의 코스 내용과 같은 제목으로
     concept: r.concept || '균형',
     days: r.days || 1,
     likes: r.likes || 0,

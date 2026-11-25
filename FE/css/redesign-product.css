@@ -1548,4 +1548,11 @@ html, body, .app-shell { background: var(--n-bg) !important; }
 @media (prefers-reduced-motion: reduce) { #schedulePage .band-trip #btnSave.save-heart svg { transition: none !important; } }
 @media (max-width: 1023px) { #schedulePage .band-trip .schedule-head .page-title.is-long { font-size: 25px !important; line-height: 34px !important; padding-top: 4px !important; } }
 @media (max-width: 360px) { #schedulePage .band-trip .schedule-head .page-title.is-long { font-size: 21px !important; line-height: 29px !important; } }
+
+/* 어떤 곳 위주로 — 세 조각 */
+#createTripPage .choice-grid--3.seg-3 { grid-template-columns: 1fr .8fr 1.35fr !important; }
+.local-badge, .famous-badge { display: inline-flex !important; align-items: center !important; padding: 0 7px !important; border-radius: 999px !important; font-size: 12px !important; line-height: 20px !important; font-weight: 600 !important; white-space: nowrap !important; background: color-mix(in srgb, #1F9D6B 13%, transparent) !important; color: #12734C !important; }
+.famous-badge { background: var(--p-tint) !important; color: var(--p-ink2) !important; font-weight: 500 !important; }
+@media (prefers-color-scheme: dark) { :root.allow-dark .local-badge { color: #7FE0B4 !important; } }
+:root.theme-dark .local-badge { color: #7FE0B4 !important; }
 }

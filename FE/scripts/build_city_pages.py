@@ -19,14 +19,14 @@ FE = Path(__file__).resolve().parent.parent
 
 # BE/app/db/seed.py 의 예시 코스와 같은 목록 (slug, 도시, 나라, 일수, 제목, 여행 스타일)
 COURSES = [
-    ("tokyo", "도쿄", "일본", 3, "도쿄 3일 감성 로드맵", "균형"),
-    ("paris", "파리", "프랑스", 4, "파리 첫 여행 로드맵", "프리미엄"),
-    ("jeju", "제주", "대한민국", 3, "제주 힐링 드라이브", "힐링"),
-    ("osaka", "오사카", "일본", 3, "오사카 먹부림 3일", "가성비"),
-    ("bangkok", "방콕", "태국", 4, "방콕 야경 & 카페", "액티비티"),
-    ("seoul", "서울", "대한민국", 2, "서울 핫플 2일", "효율"),
-    ("newyork", "뉴욕", "미국", 5, "뉴욕 5일 시그니처", "프리미엄"),
-    ("sydney", "시드니", "호주", 4, "시드니 자연 탐험", "액티비티"),
+    ("tokyo", "도쿄", "일본", 3, "도쿄 동네 산책 3일", "균형"),
+    ("paris", "파리", "프랑스", 4, "파리 동네 시장과 골목 4일", "프리미엄"),
+    ("jeju", "제주", "대한민국", 3, "제주 마을길과 오름 3일", "힐링"),
+    ("osaka", "오사카", "일본", 3, "오사카 동네 먹부림 3일", "가성비"),
+    ("bangkok", "방콕", "태국", 4, "방콕 동네 시장과 골목 4일", "액티비티"),
+    ("seoul", "서울", "대한민국", 2, "서울 동네 골목 2일", "효율"),
+    ("newyork", "뉴욕", "미국", 5, "뉴욕 동네 5일", "프리미엄"),
+    ("sydney", "시드니", "호주", 4, "시드니 동네와 해변 4일", "액티비티"),
 ]
 
 NODE_READ = r"""
@@ -49,7 +49,7 @@ PAGE = """<!DOCTYPE html>
 <meta property="og:title" content="{title} · {nights} 여행 코스"/>
 <meta property="og:description" content="{desc}"/>
 <meta property="og:url" content="{url}"/>
-<meta property="og:image" content="{site}/assets/og-image.png"/>
+<meta property="og:image" content="{site}/assets/og-image.png?v=globe1"/>
 <meta property="og:image:width" content="1200"/>
 <meta property="og:image:height" content="630"/>
 <meta name="twitter:card" content="summary_large_image"/>

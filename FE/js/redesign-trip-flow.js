@@ -10,6 +10,7 @@ import { el, $, $$, setActiveByData, setMultiActive, diffDays, showToast, format
 import { CITIES, listCountries, citiesIn, searchCities, findCity, timeZoneFor, utcOffsetMin } from './redesign-cities.js';
 import { openCalendar } from './redesign-calendar.js';
 import { api, trackEvent } from './redesign-api-adapter.js';
+import { PLACE_MODES, modeOf, langOf, LANG_NAME, localQuery, rankLocal, localScore, famousIndex, shownCategory } from './redesign-local.js';
 import { mustPlaceholder } from './redesign-landmarks.js';
 import { checkTrip, repairTrip, timeToMin, minToTime, travelMinutes, dwellMinutes, landingMinutes, beforeFlight } from './redesign-plan-check.js';
 import { COMPONENTS, costBreakdown, costScope, scopeText, projectCost, compareCost, diffReasons } from './redesign-plan-cost.js';
@@ -24,7 +25,13 @@ const CONCEPTS = [
   { key: '액티비티', emoji: '⚡', desc: '액티브·경험 중심' },
 ];
 
-const STYLES = ['맛집 중심','쇼핑 중심','자연 중심','사진 명소','로컬 감성','유명 관광지','여유로운 일정','빽빽한 일정'];
+const STYLES = ['맛집 중심','쇼핑 중심','자연 중심','사진 명소','여유로운 일정','빽빽한 일정'];
+// 예전에 고르던 스타일 — 지금은 ‘어떤 곳 위주로’(placeMode)로 바뀌었다.
+const OLD_STYLES = { '로컬 감성': 'local', '유명 관광지': 'famous' };
+function _modernStyles(t) {
+  (t.styles || []).forEach(x => { if (OLD_STYLES[x] && !t.placeMode) t.placeMode = OLD_STYLES[x]; });
+  t.styles = (t.styles || []).filter(x => !OLD_STYLES[x]);
+}
 const STYLE_CONFLICT = { '여유로운 일정': '빽빽한 일정', '빽빽한 일정': '여유로운 일정' };
 
 const QUICK_DEST = [
@@ -201,7 +208,18 @@ function _initQuickDates() {
     }
   });
 }
+/** 어떤 곳 위주로 — 동네 위주 · 반반 · 유명한 곳 위주 */
+function _syncPlaceMode() {
+  const m = modeOf(appState?.trip);
+  $$('#placeMode [data-place-mode]').forEach(b => { const on = b.dataset.placeMode === m; b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on)); });
+  const h = $('#placeModeHint'); if (h) h.textContent = PLACE_MODES.find(x => x[0] === m)?.[2] || '';
+}
 function _initNeeds() {
+  $('#placeMode')?.addEventListener('click', (e) => {
+    const b = e.target.closest?.('[data-place-mode]');
+    if (!b) return;
+    appState.trip.placeMode = b.dataset.placeMode; _syncPlaceMode(); _saveDraft();
+  });
   ['#needsMove', '#needsDiet'].forEach(sel => $(sel)?.addEventListener('click', (e) => {
     const b = e.target.closest?.('[data-need]');
     if (!b) return;
@@ -1142,6 +1160,7 @@ function _refreshSummary() {
   // 고른 것만 — 비어 있는 항목은 줄을 만들지 않는다
   const flight = [f.route && f.route !== 'any' ? routeLbl : '', f.classType && f.classType !== 'any' ? clsLbl : '', (f.airlines || []).join(', ')].filter(Boolean).join(', ');
   const rows = [
+    ['장소', (PLACE_MODES.find(x => x[0] === modeOf(t)) || [])[1]],
     ['여행 스타일', [t.concept, ...(t.styles || [])].filter(Boolean).join(', ')],
     ['함께', t.companion ? _companionLabel(t.companion) : ''],
     ['예산', Number(t.budget) > 0 ? `${t.budget}만원` : ''],
@@ -1263,7 +1282,8 @@ function _applyPreferences(t) {
   if (p.pace === '느긋하게') styles.add('여유로운 일정');
   if (p.pace === '빡빡하게') styles.add('빽빽한 일정');
   if (p.food === '로컬 맛집' || p.food === '유명 맛집') styles.add('맛집 중심');
-  const act = { '자연': '자연 중심', '쇼핑': '쇼핑 중심', '사진': '사진 명소', '문화': '유명 관광지' }[p.activity];
+  const act = { '자연': '자연 중심', '쇼핑': '쇼핑 중심', '사진': '사진 명소' }[p.activity];
+  t.placeMode = p.food === '유명 맛집' || p.activity === '문화' ? 'mix' : 'local';
   if (act) styles.add(act);
   t._prefApplied = !!(concept || styles.size);
   if (concept) t.concept = concept;
@@ -1286,6 +1306,7 @@ function _resetTripState() {
   t.concept = '';
   t.styles = [];
   t.mustVisit = '';
+  t.placeMode = 'local';
   t.mustResolved = {};
   t.needs = [];
   t.budget = 0;
@@ -1335,6 +1356,7 @@ function _resetTripState() {
 }
 
 function _applyState() {
+  _modernStyles(appState.trip); _syncPlaceMode();
   const ph = $('#prefHint'); if (ph) ph.hidden = !appState.trip?._prefApplied;
   const t = appState.trip;
   // 출발·도착 — 확정된 도시(공항 포함)를 되살리고, 검색 중이던 글자는 글자대로 둔다.
@@ -2235,7 +2257,7 @@ function _queryFor(slot, t, level) {
   const diet = !food ? '' : needs.includes('veg') ? '채식' : needs.includes('halal') ? '할랄' : needs.includes('gluten') ? '글루텐 프리' : '';
   const access = needs.includes('stepFree') && !food ? '휠체어 접근 가능' : '';
   // 직접 입력한 세부 스타일·조건(기타) — 검색어가 길어지지 않게 하나씩 돌려 쓴다.
-  const extras = [...(t.styles || []).filter(s => !STYLES.includes(s)), ...(food ? [] : needs.filter(n => n.startsWith('custom:')).map(n => n.slice(7)))];
+  const extras = [...(t.styles || []).filter(s => !STYLES.includes(s) && !OLD_STYLES[s]), ...(food ? [] : needs.filter(n => n.startsWith('custom:')).map(n => n.slice(7)))];
   const dietCustom = food ? (needs.find(n => n.startsWith('diet:')) || '').slice(5) : '';   // 식사 조건은 식당 검색에만
   const extra = extras.length ? extras[Math.floor(Math.random() * extras.length)] : '';
   return [t.cityName, diet, dietCustom, access, extra, conceptHint, budgetHint, base].filter(Boolean).join(' ').trim();
@@ -2249,11 +2271,12 @@ function _pickUnused(candidates, usedIds, isoDate, hhmm, prev) {
   const pool = fresh.length ? fresh : candidates;
   if (!isoDate) return pool[0] || null;
   const stepFree = (appState?.trip?.needs || []).includes('stepFree');
-  const rank = (c) => ({ open: 0, unknown: 1, closedNow: 2, closedDay: 3 })[openState(c.opening_periods, isoDate, hhmm)] * 3
+  const rank = (c, i) => ({ open: 0, unknown: 1, closedNow: 2, closedDay: 3 })[openState(c.opening_periods, isoDate, hhmm)] * 4
     + (stepFree ? (c.step_free === true ? 0 : c.step_free === false ? 2 : 1) : 0)
-    // 앞 장소에서 45분 안에 닿지 않는 곳은 뒤로(한참 멀면 더 뒤로)
-    + (prev ? (travelMinutes(prev, c) > 90 ? 8 : travelMinutes(prev, c) > 45 ? 4 : 0) : 0);
-  return [...pool].sort((a, b) => rank(a) - rank(b))[0] || null;
+    // 앞 장소에서 멀수록 뒤로 — 한 동네를 이어서 다니게
+    + (prev && isoDate ? Math.min(8, Math.max(0, travelMinutes(prev, c) - 12) / 11) : 0)
+    - (c._local ? Math.max(-6, Math.min(4, c._local.score)) : 0) + i * .06;
+  return pool.map((c, i) => ({ c, r: rank(c, i) })).sort((a, b) => a.r - b.r)[0]?.c || null;
 }
 
 /** Map Korean country name → 2-letter region code for Places API regional bias. */
@@ -2304,7 +2327,7 @@ function _syncTripFromGenerated(g, t = appState.trip) {
     cityName: g.city, city: c?.key || '', country: g.country || c?.country || '', cityTier: c?.tier, cityFlag: c?.flag,
     originName: g.originName || '', origin: o?.key || '', originCountry: o?.country,
     startDate: first, endDate: last, days: g.days.length,
-    concept: g.concept || t.concept, styles: Array.isArray(g.styles) ? [...g.styles] : (t.styles || []),
+    placeMode: g.placeMode || t.placeMode || 'local', concept: g.concept || t.concept, styles: Array.isArray(g.styles) ? [...g.styles] : (t.styles || []),
     companion: g.companion || t.companion || 'couple',
     budget: Math.round((g.budget || 0) / 10000) || t.budget,
     currency: g.currency || t.currency || 'KRW',
@@ -2688,33 +2711,55 @@ async function _generateScheduleInner(t, btn, startedAt) {
 
   // ── STEP B — One Places call per slot, biased to city centre. ──
   const slotCache = new Map();
-  async function searchForSlot(slot) {
-    if (slotCache.has(slot)) return slotCache.get(slot);
-    const q = _queryFor(slot, t, level);
+  const mode = modeOf(t);
+  const lang = langOf(t.country);
+  const seed = Math.floor(Math.random() * 2);
+  const cityInfo = findCity(x => x.key === t.city) || { name: t.cityName, aliases: [] };
+  const freeText = [...(t.styles || []).filter(x => !STYLES.includes(x) && !OLD_STYLES[x]), ...(t.needs || []).filter(n => n.startsWith('custom:')).map(n => n.slice(7))];
+  const dietText = (t.needs || []).find(n => n.startsWith('diet:'))?.slice(5) || '';
+  async function search(q) {
+    const res = await _withTimeout(_sp({
+      query: q, language_code: 'ko', language: 'ko', region: _guessRegion(t.country), max_results: 20,
+      center_lat: cityCenter?.lat, center_lng: cityCenter?.lng,
+    }), 12000, '장소 검색');
+    let places = (res?.places || []).filter(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude));
+    // 도시 중심에서 60km 넘게 떨어진 곳(다른 지역 결과)은 뺀다.
+    if (cityCenter) { const near = places.filter(p => _kmFromCentre(p) <= 60); if (near.length) places = near; }
+    return places;
+  }
+  // 대표 관광지 목록 — 동네 위주·반반에서 뺄 곳을 안다. 반반에서는 하루 한 곳의 후보로도 쓴다.
+  let famous = null, famousPlaces = [];
+  if (mode !== 'famous') {
+    try { famousPlaces = await search(`${t.cityName} 대표 관광지 명소`); famous = famousIndex(famousPlaces); }
+    catch (e) { console.warn('[trip-flow] 대표 관광지 목록을 받지 못했어요:', e?.message); }
+  }
+  /** 자리(slot)의 후보. round 는 여러 날 여행에서 후보를 새로 받을 때 커진다. */
+  async function searchForSlot(slot, round = 0) {
+    const key = `${slot}#${round}`;
+    if (slotCache.has(key)) return slotCache.get(key);
+    const cat = CATEGORY_BY_SLOT[slot];
+    const food = cat === '식사' || cat === '카페';
+    // 직접 적은 조건(기타)이 있으면 그 말 그대로 한국어로 찾고, 없으면 현지어로 동네 장소를 찾는다.
+    const own = food ? dietText : freeText.length ? freeText[round % freeText.length] : '';
+    const q = mode === 'famous' ? _queryFor(slot, t, level)
+      : own ? `${t.cityName} ${own} ${food ? '현지인 식당' : '동네'}`
+      : localQuery(slot, { city: cityInfo, country: t.country, styles: t.styles, needs: t.needs, round, seed, kids: (t.children || 0) > 0 });
     try {
-      const res = await _withTimeout(_sp({
-        query: q,
-        language_code: 'ko', language: 'ko',
-        region: _guessRegion(t.country),
-        max_results: 15,
-        center_lat: cityCenter?.lat,
-        center_lng: cityCenter?.lng,
-      }), 12000, '장소 검색');
-      let places = (res?.places || []).filter(p =>
-        Number.isFinite(p.latitude) && Number.isFinite(p.longitude)
-      );
-      // Drop anything > 60 km from the city centre — Places sometimes
-      // returns a "Tokyo Restaurant" that's actually in Osaka or worse.
-      if (cityCenter) {
-        const near = places.filter(p => _kmFromCentre(p) <= 60);
-        if (near.length > 0) places = near;
+      let places = await search(q);
+      if (mode !== 'famous') {
+        places = rankLocal(places, { famous, food, level });
+        if (places.length < 3 && lang !== 'ko' && !own) {      // 현지어 결과가 모자라면 한국어로 한 번 더
+          const more = await search(`${t.cityName} 현지인 ${food ? '식당' : '동네 산책'}`);
+          const has = new Set(places.map(p => p.place_id));
+          places = rankLocal([...places, ...more.filter(p => !has.has(p.place_id))], { famous, food, level });
+        }
       }
-      slotCache.set(slot, places);
+      slotCache.set(key, places);
       return places;
     } catch (e) {
       console.warn('[trip-flow] places search failed for', slot, q, e?.message);
       if (!searchForSlot._failed) { searchForSlot._failed = true; trackEvent('api_fail_places'); }   // 생성 1회에 한 번만
-      slotCache.set(slot, []);
+      slotCache.set(key, []);
       return [];
     }
   }
@@ -2964,13 +3009,18 @@ async function _generateScheduleInner(t, btn, startedAt) {
     // ── 장소 ──
     for (const [time, slot, stayMin] of slots) {
       const si = slotTimes.findIndex(x => x[1] === slot);
-      const candidates = await searchForSlot(slot);
+      const round = Math.floor(i / 4);                 // 나흘마다 후보를 새로 받는다
+      let candidates = await searchForSlot(slot, round);
+      if (candidates.length && candidates.every(c => usedIds.has(c.place_id))) candidates = await searchForSlot(slot, round + 1);
+      // 반반 — 하루 첫 관광 자리 하나만 유명한 곳으로
+      const famousTurn = mode === 'mix' && CATEGORY_BY_SLOT[slot] === '관광' && !activities.some(a => a.local === 'famous') && famousPlaces.some(c => !usedIds.has(c.place_id));
+      if (famousTurn) candidates = famousPlaces;
       const prevAct = activities[activities.length - 1];
       let pick = _pickUnused(candidates, usedIds, _isoLocal(d), time, prevAct);
       // 문을 닫았거나 이미 다른 날에 쓴 곳뿐이면 같은 종류의 다른 후보(이미 찾아 둔 것)에서 다시 고른다.
       const shut = (c) => ['closedDay', 'closedNow'].includes(openState(c?.opening_periods, _isoLocal(d), time));
       if (!pick || shut(pick) || usedIds.has(pick.place_id)) {
-        const alt = [...slotCache.entries()].filter(([k]) => CATEGORY_BY_SLOT[k] === CATEGORY_BY_SLOT[slot] && k !== slot).flatMap(([, v]) => v)
+        const alt = [...slotCache.entries()].filter(([k]) => CATEGORY_BY_SLOT[k.split('#')[0]] === CATEGORY_BY_SLOT[slot] && k.split('#')[0] !== slot).flatMap(([, v]) => v)
           .filter(c => !usedIds.has(c.place_id) && !shut(c));
         pick = _pickUnused(alt, usedIds, _isoLocal(d), time, prevAct) || (pick && !usedIds.has(pick.place_id) ? pick : null);
       }
@@ -2982,7 +3032,8 @@ async function _generateScheduleInner(t, btn, startedAt) {
         activities.push({
           time,
           name: pick.name,
-          category: cat,
+          category: shownCategory(pick, cat),
+          ...(shownCategory(pick, cat) !== cat ? { costCategory: cat } : {}),
           cost: _costFor(cat, level, t.concept) * people,
           stayMin,
           placeId: pick.place_id,
@@ -2992,6 +3043,8 @@ async function _generateScheduleInner(t, btn, startedAt) {
           googleMapsQuery: pick.name,
           openingPeriods: pick.opening_periods || null,
           stepFree: pick.step_free ?? null,
+          local: mode === 'famous' ? '' : famousTurn ? 'famous' : (pick._local || localScore(pick, { famous, food: cat === '식사', level })).kind,
+          rating: pick.rating ?? null, reviews: pick.user_rating_count ?? null,
         });
       } else {
         _fallbackSlots++;
@@ -3122,6 +3175,8 @@ async function _generateScheduleInner(t, btn, startedAt) {
     createdAt: new Date().toISOString(),
     companion: t.companion,
     styles: [...t.styles],
+    placeMode: mode,
+    placeLang: mode === 'famous' ? 'ko' : lang,
     needs: [...(t.needs || [])],
     flight: t.flight ? { ...t.flight, airlines: [...(t.flight.airlines || [])] } : null,
     hotelPref: t.hotelP ? {
@@ -3180,17 +3235,16 @@ function _verifyPlan(g) {
 
 /** Legacy mock — used only when Places API is unavailable. */
 const _LEGACY_MOCK = {
-  morning:   [{n:'호텔 조식', c:'식사'},{n:'근처 카페 산책', c:'카페'},{n:'전망대 일출', c:'관광'},{n:'전통 시장 구경', c:'쇼핑'}],
-  forenoon:  [{n:'주요 박물관', c:'관광'},{n:'랜드마크 투어', c:'관광'},{n:'동네 골목 산책', c:'관광'},{n:'베이커리 브런치', c:'식사'}],
-  lunch:     [{n:'현지 인기 맛집', c:'식사'},{n:'미슐랭 추천', c:'식사'},{n:'가성비 식당', c:'식사'},{n:'채식 식당', c:'식사'}],
-  afternoon: [{n:'쇼핑 거리', c:'쇼핑'},{n:'미술관 관람', c:'관광'},{n:'카페 휴식', c:'카페'},{n:'테마파크', c:'액티비티'}],
-  evening:   [{n:'야경 명소', c:'관광'},{n:'강변 산책', c:'관광'},{n:'재즈바', c:'액티비티'},{n:'야시장', c:'쇼핑'}],
-  dinner:    [{n:'시그니처 다이닝', c:'식사'},{n:'현지 BBQ', c:'식사'},{n:'분위기 좋은 비스트로', c:'식사'},{n:'야경 레스토랑', c:'식사'}],
-  // New concept-specific slot types
-  activity:  [{n:'액티비티 체험', c:'액티비티'},{n:'테마파크', c:'액티비티'},{n:'관광 투어', c:'액티비티'}],
-  spa:       [{n:'스파 휴식', c:'액티비티'},{n:'온천', c:'액티비티'},{n:'마사지', c:'액티비티'}],
-  shopping:  [{n:'백화점', c:'쇼핑'},{n:'편집숍 거리', c:'쇼핑'}],
-  premium:   [{n:'미슐랭 다이닝', c:'식사'},{n:'파인 다이닝', c:'식사'}],
+  morning:   [{n:'동네 빵집', c:'식사'},{n:'동네 카페 아침', c:'카페'},{n:'아침 시장', c:'쇼핑'},{n:'공원 산책', c:'관광'}],
+  forenoon:  [{n:'동네 시장', c:'관광'},{n:'골목 산책', c:'관광'},{n:'동네 공원', c:'관광'},{n:'동네 작은 미술관', c:'관광'}],
+  lunch:     [{n:'동네 식당', c:'식사'},{n:'오래된 식당', c:'식사'},{n:'시장 안 식당', c:'식사'},{n:'채식 식당', c:'식사'}],
+  afternoon: [{n:'동네 서점', c:'쇼핑'},{n:'소품 가게 골목', c:'쇼핑'},{n:'동네 카페', c:'카페'},{n:'공방 체험', c:'액티비티'}],
+  evening:   [{n:'강변 산책로', c:'관광'},{n:'동네 노을 언덕', c:'관광'},{n:'작은 공연장', c:'액티비티'},{n:'동네 야시장', c:'쇼핑'}],
+  dinner:    [{n:'동네 저녁 식당', c:'식사'},{n:'선술집', c:'식사'},{n:'가족이 하는 식당', c:'식사'},{n:'동네 노포', c:'식사'}],
+  activity:  [{n:'공방 체험', c:'액티비티'},{n:'동네 자전거길', c:'액티비티'},{n:'생활체육', c:'액티비티'}],
+  spa:       [{n:'동네 목욕탕', c:'액티비티'},{n:'온천', c:'액티비티'},{n:'마사지', c:'액티비티'}],
+  shopping:  [{n:'재래시장', c:'쇼핑'},{n:'구제 가게 골목', c:'쇼핑'}],
+  premium:   [{n:'단골 많은 식당', c:'식사'},{n:'조용한 저녁 식당', c:'식사'}],
 };
 function _legacyMock(slot, dayIdx, slotIdx) {
   const arr = _LEGACY_MOCK[slot] || _LEGACY_MOCK.lunch;
