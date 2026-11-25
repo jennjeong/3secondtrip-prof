@@ -10,7 +10,7 @@ import { el, $, $$, setActiveByData, setMultiActive, diffDays, showToast, format
 import { createSearchIndex, prepareQuery, matchKey, prepare, normalize, sameText, RANK } from './redesign-search.js';
 import { CITIES, listCountries, citiesIn, searchCities, findCity, timeZoneFor, utcOffsetMin } from './redesign-cities.js';
 import { openCalendar } from './redesign-calendar.js';
-import { api, trackEvent } from './redesign-api-adapter.js';
+import { api, trackEvent, ensureAwake } from './redesign-api-adapter.js';
 import { PLACE_MODES, modeOf, langOf, LANG_NAME, localQuery, rankLocal, localScore, famousIndex, shownCategory } from './redesign-local.js';
 import { mustPlaceholder } from './redesign-landmarks.js';
 import { checkTrip, repairTrip, timeToMin, minToTime, travelMinutes, dwellMinutes, landingMinutes, beforeFlight, STATION_MIN, josa } from './redesign-plan-check.js';
@@ -2518,6 +2518,11 @@ function _genProgress(stepIdx, detail) {
   const sub = ov.querySelector('#glSub');
   if (sub) sub.textContent = `${_genSteps()[stepIdx] || ''}${detail ? ` · ${detail}` : ''}`;
 }
+/** 단계는 그대로 두고 아래 한 줄만 바꾼다. */
+function _genNote(text) {
+  const sub = document.querySelector('#genLoadingOverlay #glSub');
+  if (sub) sub.textContent = text;
+}
 function _showGenFailure(message) {
   const ov = document.getElementById('genLoadingOverlay');
   if (!ov) return;
@@ -2641,6 +2646,7 @@ export async function retryProvider(kind) {
   const bp = g.budgetPlan || {};
   if (rideOf(g) === 'air') t._air = true;            // 항공으로 만든 일정은 항공 요금을 다시 조회한다
   const plan = { includeFlight: bp.includeFlight !== false, includeHotel: bp.includeHotel !== false, hotelType: bp.hotelType, people: g.people || 1, nights: bp.nights || g.days.length - 1 };
+  await ensureAwake();      // 결과 화면을 오래 열어 둔 뒤에는 서버가 잠들어 있을 수 있다
   const features = await api.features({ fresh: true });
   g.sources = { ...(g.sources || {}) };
   if (kind === 'flight') {
@@ -2671,6 +2677,8 @@ export async function retryProvider(kind) {
   return { ok: true, state: r.state };
 }
 
+// 서버에 끝내 연결하지 못했을 때 — 실패할 요청을 보내지 않고 예시 장소·추정 요금으로 만든다.
+const NO_SERVER = { liveFlights: false, liveHotels: false, ai: false, places: false, unknown: true };
 let _generating = false;
 
 async function _generateSchedule() {
@@ -2711,7 +2719,10 @@ async function _generateSchedule() {
 }
 
 async function _generateScheduleInner(t, btn, startedAt) {
-  const features = await api.features();
+  // 잠든 서버는 깨는 데 30~60초 걸린다. 깨기 전에 부르면 제한 시간(장소 12초)이 먼저 지나 예시 장소로 채워지므로, 깬 것을 확인하고 시작한다.
+  const awake = await ensureAwake({ onWait: () => _genNote('서버를 깨우는 중 · 보통 30초쯤 걸려요') });
+  const features = awake ? await api.features() : NO_SERVER;
+  _genProgress(0, '');
   // 장소 검색이 서버에 연결돼 있지 않으면 호출하지 않고 바로 예시 장소를 쓴다(실패할 요청을 반복하지 않음).
   const placesOn = features.places !== false;
   // 두 번 연달아 실패(시간 초과·서버 오류)하면 이번 생성에서는 더 부르지 않는다 — 한 칸씩 기다리며 몇 분씩 걸리지 않게.
@@ -3209,8 +3220,8 @@ async function _generateScheduleInner(t, btn, startedAt) {
     flight: _liveF.state, hotel: _liveH.state,
     places: _prov('Google 장소', !placesOn ? 'off' : !placeStat.calls ? 'off' : placeStat.fails && !placeStat.ok ? 'failed' : placeStat.fails || _fallbackSlots ? 'partial' : 'live', {
       calls: placeStat.calls, fails: placeStat.fails, ms: placeStat.ms, real: _realSlots, sample: _fallbackSlots,
-      code: !placesOn ? 'unconfigured' : placeStat.last?.code || '', reason: !placesOn ? _PROVIDER_TEXT.unconfigured[0] : placeStat.last?.text || '',
-      retryable: !!placeStat.last?.retryable,
+      code: !awake ? 'network' : !placesOn ? 'unconfigured' : placeStat.last?.code || '', reason: !awake ? _PROVIDER_TEXT.network[0] : !placesOn ? _PROVIDER_TEXT.unconfigured[0] : placeStat.last?.text || '',
+      retryable: !awake || !!placeStat.last?.retryable,
     }),
   };
   const budgetPlan = {

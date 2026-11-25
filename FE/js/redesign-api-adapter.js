@@ -9,6 +9,8 @@
  * with the same surface area so the redesign can run standalone.
  */
 
+import { createWaker } from './redesign-wake.js';
+
 const API_BASE_URL = (() => {
   // Priority order:
   //  1) window.__API_BASE_URL (set by a <script> in index-redesign.html for prod)
@@ -88,11 +90,30 @@ function _showWakeFailed() {
 }
 const _sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-/** 앱을 열자마자 조용히 서버를 깨운다(안내는 띄우지 않음). */
+const _alive = (res, body) => res.ok || !!(body && typeof body === 'object' && 'detail' in body);   // 우리 서버가 직접 답했는지(앞단의 오류 화면이 아닌지)
+const _waker = createWaker({
+  online: () => typeof navigator === 'undefined' || navigator.onLine !== false,
+  ping: async (signal) => {
+    const early = typeof window !== 'undefined' ? window.__wake : null;      // 첫 HTML 에서 보낸 요청이 있으면 이어 쓴다
+    if (early) { window.__wake = null; 
+      const stop = new Promise(r => signal.addEventListener('abort', () => r(null), { once: true }));
+      if ((await Promise.race([early, stop]))?.ok) return true;
+      if (signal.aborted) return false;
+    }
+    const res = await fetch(API_BASE_URL + '/health', { cache: 'no-store', signal });
+    let body = null;
+    try { body = await res.json(); } catch (_) {}
+    return _alive(res, body);
+  },
+});
+/** 앱을 열자마자 조용히 서버를 깨우고, 화면에 떠 있는 동안 잠들지 않게 한다(안내는 띄우지 않음). */
 export function wakeServer() {
   if (!API_BASE_URL) return;
-  fetch(API_BASE_URL + '/health', { cache: 'no-store' }).catch(() => {});
+  _waker.wake();
+  _waker.watch(document);
 }
+/** 서버가 깨어 있는 것을 확인한다 — 제한 시간이 있는 요청을 보내기 전에 부른다. 끝내 응답이 없으면 false. */
+export const ensureAwake = (opts) => _waker.ensure(opts);
 
 /* ============ Request wrapper ============ */
 async function _once(url, opts, headers) {
@@ -107,6 +128,7 @@ async function _once(url, opts, headers) {
   }
   let data = null;
   try { data = await res.json(); } catch (_) {}
+  if (url.startsWith(API_BASE_URL) && _alive(res, data)) _waker.touch();
   if (!res.ok) {
     // 외부 제공처 오류는 detail 이 { code, message, retryable } 로 온다.
     const d = data && data.detail;

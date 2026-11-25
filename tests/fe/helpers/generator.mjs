@@ -28,6 +28,7 @@ const HUB = { 강릉역: [37.7645, 128.8995], 부산역: [35.1152, 129.0415], �
 let n = 0;
 define('fetch', async (url, opt = {}) => {
   const ok = (body, status = 200) => ({ ok: status < 400, status, headers: { get: () => 'application/json' }, json: async () => body, text: async () => JSON.stringify(body) });
+  if (String(url).endsWith('/health')) return ok({ ok: true });
   if (String(url).endsWith('/api/features')) return ok({ live_flights: true, live_hotels: false, ai_summary: false, places: true });
   if (String(url).endsWith('/api/places/search')) {
     const p = JSON.parse(opt.body); queries.push(p.query);

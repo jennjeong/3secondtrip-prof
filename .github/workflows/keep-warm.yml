@@ -1,0 +1,26 @@
+# 한국 시간 08:00~01:00 에 서버(Render 무료)를 주기적으로 불러 잠들지 않게 한다.
+#  - 15분 동안 요청이 없으면 잠든다. GitHub 예약 실행은 늦어지거나 빠질 수 있어 7분 간격으로 둔다(가끔 잠들 수는 있음).
+#  - 하루 17시간 × 31일 = 527시간. 무료 한도(작업 공간당 월 750시간, 다른 무료 서비스와 합산)를 남겨 둔다.
+#  - 저장소에 60일 동안 활동이 없으면 GitHub 이 예약 실행을 끈다(Actions 탭에서 다시 켠다).
+name: Keep backend warm
+
+on:
+  schedule:
+    - cron: "4,11,18,25,32,39,46,53 0-15,23 * * *"   # UTC 23시~15시 = 한국 08시~익일 00시대
+  workflow_dispatch:
+
+concurrency:
+  group: keep-backend-warm
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping /health
+        run: |
+          curl -sS -o /dev/null -m 100 --retry 1 --retry-delay 5 \
+            -w "HTTP %{http_code} · %{time_total}s\n" https://threesecondtrip-prof.onrender.com/health

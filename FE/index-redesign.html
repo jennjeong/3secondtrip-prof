@@ -54,6 +54,19 @@
 <!-- 글꼴은 첫 화면을 막지 않게 불러온다(그동안 시스템 글꼴) -->
 <link rel="preload" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" onload="this.onload=null;this.rel='stylesheet'" />
 <noscript><link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" /></noscript>
+<!-- 서버 주소 — 로컬 개발은 비워 두면 localhost:8000 을 쓴다. 배포 사이트는 아래 Render 서버. -->
+<script>
+  // 앱(iOS·Android)은 localhost 처럼 보이는 주소에서 열리므로 항상 운영 서버를 쓴다.
+  window.__API_BASE_URL = (!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
+      && /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
+    ? "" : "https://threesecondtrip-prof.onrender.com";
+  // 제휴사 파트너 ID. 값을 넣으면 숙소 링크가 해당 제휴 링크로 바뀐다.
+  window.__AFFILIATE = { bookingAid: "" };
+  // 잠든 서버를 화면보다 먼저 깨운다(모듈을 다 받을 때까지 기다리지 않음). 결과는 redesign-api-adapter.js 가 이어 쓴다.
+  if (window.__API_BASE_URL && window.fetch && navigator.onLine !== false) {
+    window.__wake = fetch(window.__API_BASE_URL + '/health', { cache: 'no-store' }).catch(function () { return null; });
+  }
+</script>
 <link rel="modulepreload" href="./js/redesign-main.js">
 <link rel="modulepreload" href="./js/redesign-api-adapter.js">
 <link rel="modulepreload" href="./js/redesign-app-shell.js">
@@ -75,6 +88,7 @@
 <link rel="modulepreload" href="./js/redesign-survey.js">
 <link rel="modulepreload" href="./js/redesign-trip-flow.js">
 <link rel="modulepreload" href="./js/redesign-ui.js">
+<link rel="modulepreload" href="./js/redesign-wake.js">
 <link rel="stylesheet" href="./css/redesign-reset.css">
 <link rel="stylesheet" href="./css/redesign-layout.css">
 <link rel="stylesheet" href="./css/redesign-components.css">
@@ -1591,17 +1605,6 @@ html.theme-dark, html.theme-dark body { background: #111418; }
 
 </div>
 
-  <!-- Backend URL configuration — empty for local dev (auto-detects localhost:8000).
-       배포 사이트는 아래 Render 서버 주소를 쓴다.
-  -->
-  <script>
-    // 앱(iOS·Android)은 localhost 처럼 보이는 주소에서 열리므로 항상 운영 서버를 쓴다.
-    window.__API_BASE_URL = (!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
-        && /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
-      ? "" : "https://threesecondtrip-prof.onrender.com";
-    // 제휴사 파트너 ID. 값을 넣으면 숙소 링크가 해당 제휴 링크로 바뀐다.
-    window.__AFFILIATE = { bookingAid: "" };
-  </script>
 <!-- Scripts: ES modules -->
 <script type="module" src="./js/redesign-main.js"></script>
 </body>
