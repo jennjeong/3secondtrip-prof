@@ -9,6 +9,7 @@ import { navigate, getCurrent } from './redesign-navigation.js';
 import { el, $, $$, setActiveByData, showToast } from './redesign-ui.js';
 import { API_URL, api } from './redesign-api-adapter.js';
 import { searchCities } from './redesign-cities.js';
+import { prepare, prepareQuery, matchKey, sameText } from './redesign-search.js';
 import { sampleCourseFor } from './redesign-course-samples.js';
 import { publicLink, publicPath, shareLink } from './redesign-native.js';
 
@@ -309,15 +310,21 @@ export async function loadRoadmaps() {
 }
 
 /* ============ 검색·정렬 ============ */
-const _norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, '');
-
-function _matches(r, q) {
-  const n = _norm(q);
-  if (!n) return true;
-  if ([r.city, r.country, r.title, r.tagline, r.concept].some(v => _norm(v).includes(n))) return true;
-  // 영문·현지어 도시 이름(Tokyo, 東京 …)도 같은 도시로 찾는다.
-  const cities = searchCities(q, 20);
-  return cities.some(c => c.name === r.city);
+// 코스마다 비교 키는 한 번만 만든다.
+const _keyCache = new WeakMap();
+function _keysOf(r) {
+  const texts = [r.city, r.country, r.title, r.tagline, r.concept].filter(Boolean);
+  const id = texts.join('\n');                // 제목을 고친 코스는 다시 만든다
+  let k = _keyCache.get(r);
+  if (k?.id !== id) { k = { id, keys: texts.map(prepare) }; _keyCache.set(r, k); }
+  return k.keys;
+}
+/** 검색어에 맞는 코스인지 보는 함수 — 영문·현지어 도시 이름(Tokyo, 東京 …)과 조합 중인 한글(도ㅋ)도 같은 도시로 찾는다. */
+function _matcher(query) {
+  const q = prepareQuery(query);
+  if (q.empty) return () => true;
+  const cities = new Set(searchCities(query, 20).map(c => c.name));
+  return (r) => cities.has(r.city) || _keysOf(r).some(k => matchKey(k, q) > 0);
 }
 
 function _byPopular(a, b) {
@@ -326,8 +333,8 @@ function _byPopular(a, b) {
 }
 
 function _filterAndSort(list) {
-  let arr = list.filter(r =>
-    (explore.concept === 'all' || r.concept === explore.concept) && _matches(r, explore.query));
+  const hit = _matcher(explore.query);
+  let arr = list.filter(r => (explore.concept === 'all' || r.concept === explore.concept) && hit(r));
   if (explore.sort === 'recent') {
     arr.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '') || _byPopular(a, b));
   } else arr.sort(_byPopular);
@@ -554,7 +561,7 @@ export function renderExplore() {
   const make = document.getElementById('exploreMake');
   if (make) {
     const q = explore.query.trim();
-    const city = q ? searchCities(q, 3).map(r => r.city || r.c || r).find(c => c?.name === q) : null;
+    const city = q ? searchCities(q, 3).find(c => [c.name, ...(c.aliases || [])].some(n => sameText(n, q))) : null;
     make.hidden = !city || items.length > 0;
     make.textContent = city ? `${city.name} 여행 만들기` : '';
     make.onclick = city ? () => { document.dispatchEvent(new CustomEvent('redesign:trip-prefill', { detail: { city: city.name } })); navigate('create-trip', { meta: { prefill: true } }); } : null;

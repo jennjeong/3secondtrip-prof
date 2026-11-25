@@ -2,6 +2,8 @@
  * Minimal pure-data module. Each entry: { key, name (한글), country, region, flag, tier, aliases }
  * tier ∈ {'high','mid','low'} — used for budget smart-suggestion.
  */
+import { createSearchIndex, prepareQuery, RANK } from './redesign-search.js';
+
 export const CITIES = [
   // 한국
   {key:'seoul',     name:'서울',     country:'대한민국', region:'아시아',   flag:'🇰🇷', tier:'mid', aliases:['Seoul']},
@@ -613,24 +615,47 @@ const COUNTRY_EN = {
 const KANA = { tokyo: 'とうきょう', osaka: 'おおさか', kyoto: 'きょうと', fukuoka: 'ふくおか', sapporo: 'さっぽろ',
   okinawa: 'おきなわ', nagoya: 'なごや', yokohama: 'よこはま', kobe: 'こうべ', nara: 'なら', hiroshima: 'ひろしま' };
 
-/** 도시 검색 — 한글·영문·현지어 별칭·가나, 나라 이름(한글·영문)까지.  같으면 100, 앞이 같으면 60, 들어 있으면 30.
- *  나라 이름으로만 맞은 도시는 점수를 낮춰 도시 이름이 맞은 결과가 먼저 오게 한다. */
-export function searchCities(query, limit = 8) {
-  const q = (query || '').trim().toLowerCase();
-  if (!q) return [];
-  const matches = [];
-  for (const c of CITIES) {
-    const names = [c.name, ...(c.aliases || []), KANA[c.key]].filter(Boolean).map(s => s.toLowerCase());
-    const countries = [c.country, ...(COUNTRY_EN[c.country] || [])].map(s => s.toLowerCase());
-    let score = 0;
-    if (names.some(h => h === q)) score = 100;
-    else if (names.some(h => h.startsWith(q))) score = 60;
-    else if (names.some(h => h.includes(q))) score = 30;
-    else if (countries.some(h => h === q || (q.length >= 2 && h.startsWith(q)))) score = 20;
-    if (score) matches.push({ c, score, byCountry: score === 20 });
+// 그 나라에서 쓰는 이름(행정 이름·다른 글자) — 번역이 아니라 현지 표기라 원문 그대로 찾는다.
+const NATIVE = {
+  tokyo: ['東京都'], osaka: ['大阪市', '大阪府'], kyoto: ['京都市', '京都府'], fukuoka: ['福岡市'], sapporo: ['札幌市', '北海道'], nagoya: ['名古屋市'], yokohama: ['横浜市'], okinawa: ['沖縄県', '那覇'], hiroshima: ['広島市'],
+  nara: ['奈良市'], kobe: ['神戸市'], kanazawa: ['金沢市'], sendai: ['仙台市'], hakodate: ['函館市'], beijing: ['北京市'], shanghai: ['上海市'], chengdu: ['成都市'], hongkong: ['香港特别行政区'], taipei: ['臺北市', '台北', '台北市'],
+  kaohsiung: ['高雄市'], macau: ['澳門', '澳门'], hangzhou: ['杭州市'], guangzhou: ['广州市'], shenzhen: ['深圳市'], suzhou: ['苏州市'], xian: ['西安市'], chongqing: ['重庆市'], tianjin: ['天津市'], wuhan: ['武汉市'], qingdao: ['青岛市'], nanjing: ['南京市'], xiamen: ['厦门市'],
+  bangkok: ['กรุงเทพ', 'กรุงเทพมหานคร'], phuket: ['ภูเก็ต'], chiangmai: ['เชียงใหม่'], pattaya: ['พัทยา'], krabi: ['กระบี่'], ayutthaya: ['อยุธยา'],
+  danang: ['Đà Nẵng'], hochiminh: ['Hồ Chí Minh', 'Sài Gòn'], nhatrang: ['Nha Trang'], hoian: ['Hội An'], phuquoc: ['Phú Quốc'], dalat: ['Đà Lạt'], hue: ['Huế'],
+  siemreap: ['សៀមរាប'], phnompenh: ['ភ្នំពេញ'], vientiane: ['ວຽງຈັນ'], yangon: ['ရန်ကုန်'],
+  delhi: ['दिल्ली', 'नई दिल्ली'], mumbai: ['मुंबई'], jaipur: ['जयपुर'], agra: ['आगरा'], varanasi: ['वाराणसी'], kolkata: ['কলকাতা'], chennai: ['சென்னை'], kathmandu: ['काठमाडौं'],
+  dubai: ['دبي'], abudhabi: ['أبوظبي', 'أبو ظبي'], doha: ['الدوحة'], cairo: ['القاهرة'], marrakech: ['مراكش'], casablanca: ['الدار البيضاء'], fez: ['فاس'], amman: ['عمّان', 'عمان'], petra: ['البتراء'], beirut: ['بيروت'], riyadh: ['الرياض'], jeddah: ['جدة'], muscat: ['مسقط'], kuwaitcity: ['مدينة الكويت'], manama: ['المنامة'], tunis: ['تونس'], tehran: ['تهران'], isfahan: ['اصفهان'], shiraz: ['شیراز'],
+  telaviv: ['תל אביב'], jerusalem: ['ירושלים', 'القدس'], istanbul: ['İstanbul'], athens: ['Αθήνα'], santorini: ['Σαντορίνη'], thessaloniki: ['Θεσσαλονίκη'], mykonos: ['Μύκονος'],
+  moscow: ['Москва'], stpetersburg: ['Санкт-Петербург'], kyiv: ['Київ'], minsk: ['Мінск', 'Минск'], sofia: ['София'], belgrade: ['Београд'], almaty: ['Алматы'], astana: ['Астана'], ulaanbaatar: ['Улаанбаатар'], tbilisi: ['თბილისი'], yerevan: ['Երևան'],
+  vienna: ['Wien'], prague: ['Praha'], warsaw: ['Warszawa'], lisbon: ['Lisboa'], rome: ['Roma'], milan: ['Milano'], venice: ['Venezia'], florence: ['Firenze'], naples: ['Napoli'], copenhagen: ['København'], brussels: ['Bruxelles', 'Brussel'], bucharest: ['București'], krakow: ['Kraków'], gothenburg: ['Göteborg'], geneva: ['Genève'], zurich: ['Zürich'], munich: ['München'], cologne: ['Köln'], seville: ['Sevilla'],
+  seoul: ['서울특별시', 'ソウル', '首尔'], busan: ['부산광역시'], incheon: ['인천광역시'], daegu: ['대구광역시'], daejeon: ['대전광역시'], gwangju: ['광주광역시'], ulsan: ['울산광역시'], jeju: ['제주도', '제주특별자치도'],
+};
+
+// 검색 색인은 처음 찾을 때 한 번만 만든다(도시 508곳 — 이름·별칭·현지 표기의 정규화 값).
+let _cityIndex = null, _countryIndex = null;
+function _indexes() {
+  if (!_cityIndex) {
+    _cityIndex = createSearchIndex(CITIES, { textsOf: c => [c.name, ...(c.aliases || []), KANA[c.key], ...(NATIVE[c.key] || [])] });
+    _countryIndex = createSearchIndex(CITIES, { textsOf: c => [c.country, ...(COUNTRY_EN[c.country] || [])] });
   }
-  matches.sort((a, b) => b.score - a.score);
-  return matches.slice(0, limit).map(m => m.c);
+  return { city: _cityIndex, country: _countryIndex };
+}
+
+/** 도시 검색 — 이름·영문·현지 표기를 완전 일치 → 접두사 → 단어 접두사 → 한글 조합·초성 → 부분 문자열 순으로.
+ *  나라 이름(한글·영문)으로만 맞은 도시는 그 뒤에 둔다. */
+export function searchCities(query, limit = 8) {
+  const ix = _indexes();
+  const out = ix.city.search(query, { limit }).map(r => r.item);
+  if (out.length >= limit) return out;
+  const q = prepareQuery(query);
+  const seen = new Set(out);
+  // 나라 이름은 두 글자부터(한 글자는 완전히 같을 때만)
+  for (const { item, rank } of ix.country.search(query, { limit: CITIES.length, maxRank: RANK.HANGUL })) {
+    if (out.length >= limit) break;
+    if (seen.has(item) || (rank >= 2 && q.compact.length < 2)) continue;
+    seen.add(item); out.push(item);
+  }
+  return out;
 }
 
 /* ============ 현지 시간대 ============

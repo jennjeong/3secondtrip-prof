@@ -7,6 +7,7 @@
 
 import { navigate } from './redesign-navigation.js';
 import { el, $, $$, setActiveByData, setMultiActive, diffDays, showToast, formatCurrency, escapeHtml } from './redesign-ui.js';
+import { createSearchIndex, prepareQuery, matchKey, prepare, normalize, sameText, RANK } from './redesign-search.js';
 import { CITIES, listCountries, citiesIn, searchCities, findCity, timeZoneFor, utcOffsetMin } from './redesign-cities.js';
 import { openCalendar } from './redesign-calendar.js';
 import { api, trackEvent } from './redesign-api-adapter.js';
@@ -405,26 +406,35 @@ function _airportIndex() {
   });
   return (_airportIdx = idx);
 }
+let _airportSearch = null;
+const _airportSearchIndex = () => (_airportSearch ||= createSearchIndex(_airportIndex(), { textsOf: a => [a.ko, a.ko && `${a.ko} 공항`, _AIRPORT_EN[a.iata]] }));
 
 /** 검색 결과 [{ c, airport? }] — 공항 코드나 공항 이름이 맞으면 그 공항을 먼저 보여 준다. */
 function _searchPlaces(query, kind) {
   const q = (query || '').trim();
   if (!q) return kind === 'origin' ? CITIES.filter(c => c.country === '대한민국').slice(0, 6).map(c => ({ c })) : [];
-  const lower = q.toLowerCase();
-  const compact = q.replace(/\s/g, '');
+  const key = prepareQuery(q);
   const out = [];
   const seen = new Set();
-  _airportIndex().forEach(a => {
+  const toRow = (a) => {
     const c = findCity(x => x.key === a.key);
-    if (!c || seen.has(a.iata)) return;
-    const byCode = a.iata.toLowerCase() === lower;
-    const en = _AIRPORT_EN[a.iata];
-    const byName = compact.length >= 2 && ((a.ko && (a.ko.startsWith(compact) || `${a.ko}공항`.startsWith(compact)))
-      || (en && lower.length >= 3 && en.startsWith(lower)));
-    if (byCode || byName) { seen.add(a.iata); out.push({ c, airport: { iata: a.iata, ko: a.ko || c.name } }); }
-  });
-  searchCities(q, 8).forEach(c => out.push({ c }));
-  return out.slice(0, 8);
+    if (!c || seen.has(a.iata)) return null;
+    seen.add(a.iata);
+    return { c, airport: { iata: a.iata, ko: a.ko || c.name } };
+  };
+  _airportIndex().forEach(a => { if (a.iata.toLowerCase() === key.base) out.push(toRow(a)); });
+  // 공항 이름은 두 글자(라틴 글자는 세 글자)부터 — 이름 앞부분과 한글 조합 상태까지만, 가운데 글자로는 찾지 않는다.
+  const later = [];
+  if (key.compact.length >= (/^[a-z]/.test(key.compact) ? 3 : 2)) {
+    _airportSearchIndex().search(q, { limit: 8, maxRank: RANK.HANGUL }).forEach(r => {
+      // 영문 이름의 일부만 맞은 공항(new → New Chitose)은 이름이 그렇게 시작하는 도시(New York) 다음에
+      (/^[a-z]/i.test(r.text) && r.rank >= RANK.PREFIX ? later : out).push(toRow(r.item));
+    });
+  }
+  const cities = searchCities(q, 8);
+  const lead = later.length ? cities.filter(c => [c.name, ...(c.aliases || [])].some(n => { const r = matchKey(prepare(n), key); return r > 0 && r < RANK.WORD; })).slice(0, 4) : [];
+  out.push(...lead.map(c => ({ c })), ...later, ...cities.filter(c => !lead.includes(c)).map(c => ({ c })));
+  return out.filter(Boolean).slice(0, 8);
 }
 
 function _openList(kind) {
@@ -532,6 +542,7 @@ function _bindPlaceSearch(kind) {
     if (input.value || kind === 'origin') _renderPlaceList(kind, input.value);
   });
   input.addEventListener('keydown', (e) => {
+    if (e.isComposing || e.keyCode === 229) return;       // 입력기로 글자를 짜는 중의 Enter·방향키는 입력기 것이다
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       if (sugg.hidden) _renderPlaceList(kind, input.value);
@@ -599,10 +610,10 @@ function _unconfirm(kind, typed) {
 /** 입력한 이름이 도시 하나와 정확히 같으면 목록을 고르지 않아도 확정한다. */
 function _autoConfirm(kind) {
   if (_isConfirmed(kind)) return;
-  const q = ($(_FIELDS[kind].input)?.value || '').trim().toLowerCase();
+  const q = ($(_FIELDS[kind].input)?.value || '').trim();
   if (!q) return;
   const exact = _searchPlaces(q, kind).filter(r => !r.airport &&
-    [r.c.name, ...(r.c.aliases || [])].some(nm => nm.toLowerCase() === q));
+    [r.c.name, ...(r.c.aliases || [])].some(nm => sameText(nm, q)));
   if (exact.length === 1) (kind === 'origin' ? _applyOrigin(exact[0].c) : _applyCity(exact[0].c));
 }
 
@@ -842,12 +853,12 @@ function _refreshAirlineMeta() {
 }
 /** 이름·'저가'·'대형'으로 항공사 칩을 거른다. 고른 항공사는 항상 보인다. */
 function _filterAirlines(q) {
-  const query = String(q || '').trim().toLowerCase();
+  const query = normalize(q);
+  const key = prepareQuery(q);
   const typeWord = /저가|lcc/.test(query) ? 'lcc' : (/대형|fsc/.test(query) ? 'fsc' : null);
   let matches = 0;
   $$('#airlineChips [data-airline]').forEach(b => {
-    const hay = `${b.textContent} ${b.dataset.airline}`.toLowerCase();
-    const hit = !query || hay.includes(query) || (typeWord && b.dataset.airlineType === typeWord);
+    const hit = !query || matchKey(prepare(b.textContent), key) > 0 || matchKey(prepare(b.dataset.airline), key) > 0 || (typeWord && b.dataset.airlineType === typeWord);
     if (hit) matches++;
     b.hidden = !(hit || b.classList.contains('is-active'));
   });
