@@ -169,7 +169,7 @@ export function renderSchedule() {
   const sub = $('#scheduleSub');
 
   const hasG = !!g;
-  ['#btnSave', '#scheduleActions', '#scheduleDayRow', '#scheduleSplit', '#dayChecks', '#saveStatus', '#scheduleToolbar', '#nowNext', '#toolsSection'].forEach(sel => { const n = $(sel); if (n) n.hidden = !hasG; });
+  ['#scheduleActions', '#scheduleDayRow', '#scheduleSplit', '#dayChecks', '#saveStatus', '#scheduleToolbar', '#nowNext', '#toolsSection'].forEach(sel => { const n = $(sel); if (n) n.hidden = !hasG; });
   if (!g) {
     const panel = $('#budgetPanel'); if (panel) panel.hidden = true;
     const sb = $('#sharedBanner'); if (sb) sb.hidden = true;
@@ -197,6 +197,7 @@ export function renderSchedule() {
 
   const nDays = g.days.length;
   if (title) title.textContent = g.title || `${g.originName ? g.originName + ' → ' : ''}${g.city} 여행`;
+  title?.classList.toggle('is-long', title.textContent.length > 12);      // 긴 이름은 조금 작게
   if (sub) sub.textContent = [
     nDays <= 1 ? '당일치기' : `${nDays - 1}박 ${nDays}일`,
     g.people ? `${g.people}명` : _companion(g.companion),
