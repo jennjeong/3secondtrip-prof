@@ -1,0 +1,381 @@
+{
+ "origin": "seoul",
+ "originName": "서울",
+ "departureCity": "서울",
+ "city": "도쿄",
+ "country": "일본",
+ "concept": "균형",
+ "budget": 200000,
+ "currency": "KRW",
+ "fx": null,
+ "timeZone": "Asia/Tokyo",
+ "people": 1,
+ "startDate": "2026-12-08",
+ "endDate": "2026-12-10",
+ "days": [
+  {
+   "date": "2026-12-08",
+   "activities": [
+    {
+     "time": "10:30",
+     "name": "도쿄 국제공항 (도착)",
+     "category": "이동",
+     "cost": 215500,
+     "placeId": "airport-도쿄",
+     "address": "예시 항공편 · 대한항공 · 출발 08:05 → 도착 10:30 (예상, 각 현지 시각) · 2시간 25분",
+     "googleMapsQuery": "도쿄 국제공항",
+     "flightMeta": {
+      "roundTripKRW": 430900,
+      "oneWayKRW": 215500,
+      "airline": "대한항공",
+      "flightCode": "",
+      "route": "any",
+      "startDate": "2026-12-08",
+      "source": "estimate"
+     }
+    },
+    {
+     "time": "11:30",
+     "name": "도쿄 시내 호텔 (체크인·짐 맡기기)",
+     "category": "숙박",
+     "cost": 0,
+     "excludedFromBudget": false,
+     "placeId": "hotel-도쿄",
+     "address": "",
+     "googleMapsQuery": "도쿄 시내 호텔"
+    },
+    {
+     "time": "13:00",
+     "name": "가성비 식당 · 도쿄",
+     "category": "식사",
+     "cost": 15000,
+     "placeId": "도쿄-0-2",
+     "sample": true,
+     "googleMapsQuery": "가성비 식당 도쿄"
+    },
+    {
+     "time": "15:30",
+     "name": "테마파크 · 도쿄",
+     "category": "액티비티",
+     "cost": 18000,
+     "placeId": "도쿄-0-3",
+     "sample": true,
+     "googleMapsQuery": "테마파크 도쿄"
+    },
+    {
+     "time": "19:00",
+     "name": "야경 명소 · 도쿄",
+     "category": "관광",
+     "cost": 10800,
+     "placeId": "도쿄-0-4",
+     "sample": true,
+     "googleMapsQuery": "야경 명소 도쿄"
+    },
+    {
+     "time": "20:30",
+     "name": "현지 BBQ · 도쿄",
+     "category": "식사",
+     "cost": 15000,
+     "placeId": "도쿄-0-5",
+     "sample": true,
+     "googleMapsQuery": "현지 BBQ 도쿄"
+    },
+    {
+     "time": "22:00",
+     "name": "도쿄 시내 호텔 (복귀 (1박))",
+     "category": "숙박",
+     "cost": 45000,
+     "excludedFromBudget": false,
+     "placeId": "hotel-도쿄",
+     "address": "",
+     "googleMapsQuery": "도쿄 시내 호텔"
+    }
+   ],
+   "localTransport": 15000
+  },
+  {
+   "date": "2026-12-09",
+   "activities": [
+    {
+     "time": "08:30",
+     "name": "도쿄 시내 호텔 (출발)",
+     "category": "숙박",
+     "cost": 0,
+     "excludedFromBudget": false,
+     "placeId": "hotel-도쿄",
+     "address": "",
+     "googleMapsQuery": "도쿄 시내 호텔"
+    },
+    {
+     "time": "09:00",
+     "name": "전통 시장 구경 · 도쿄",
+     "category": "쇼핑",
+     "cost": 15000,
+     "placeId": "도쿄-1-0",
+     "sample": true,
+     "googleMapsQuery": "전통 시장 구경 도쿄"
+    },
+    {
+     "time": "11:00",
+     "name": "주요 박물관 · 도쿄",
+     "category": "관광",
+     "cost": 10800,
+     "placeId": "도쿄-1-1",
+     "sample": true,
+     "googleMapsQuery": "주요 박물관 도쿄"
+    },
+    {
+     "time": "13:00",
+     "name": "미슐랭 추천 · 도쿄",
+     "category": "식사",
+     "cost": 15000,
+     "placeId": "도쿄-1-2",
+     "sample": true,
+     "googleMapsQuery": "미슐랭 추천 도쿄"
+    },
+    {
+     "time": "15:30",
+     "name": "카페 휴식 · 도쿄",
+     "category": "카페",
+     "cost": 18000,
+     "placeId": "도쿄-1-3",
+     "sample": true,
+     "googleMapsQuery": "카페 휴식 도쿄"
+    },
+    {
+     "time": "19:00",
+     "name": "야시장 · 도쿄",
+     "category": "쇼핑",
+     "cost": 10800,
+     "placeId": "도쿄-1-4",
+     "sample": true,
+     "googleMapsQuery": "야시장 도쿄"
+    },
+    {
+     "time": "20:30",
+     "name": "시그니처 다이닝 · 도쿄",
+     "category": "식사",
+     "cost": 15000,
+     "placeId": "도쿄-1-5",
+     "sample": true,
+     "googleMapsQuery": "시그니처 다이닝 도쿄"
+    },
+    {
+     "time": "22:00",
+     "name": "도쿄 시내 호텔 (복귀 (1박))",
+     "category": "숙박",
+     "cost": 45000,
+     "excludedFromBudget": false,
+     "placeId": "hotel-도쿄",
+     "address": "",
+     "googleMapsQuery": "도쿄 시내 호텔"
+    }
+   ],
+   "localTransport": 15000
+  },
+  {
+   "date": "2026-12-10",
+   "activities": [
+    {
+     "time": "08:30",
+     "name": "도쿄 시내 호텔 (출발)",
+     "category": "숙박",
+     "cost": 0,
+     "excludedFromBudget": false,
+     "placeId": "hotel-도쿄",
+     "address": "",
+     "googleMapsQuery": "도쿄 시내 호텔"
+    },
+    {
+     "time": "09:00",
+     "name": "전망대 일출 · 도쿄",
+     "category": "관광",
+     "cost": 15000,
+     "placeId": "도쿄-2-0",
+     "sample": true,
+     "googleMapsQuery": "전망대 일출 도쿄"
+    },
+    {
+     "time": "11:00",
+     "name": "베이커리 브런치 · 도쿄",
+     "category": "식사",
+     "cost": 10800,
+     "placeId": "도쿄-2-1",
+     "sample": true,
+     "googleMapsQuery": "베이커리 브런치 도쿄"
+    },
+    {
+     "time": "13:00",
+     "name": "현지 인기 맛집 · 도쿄",
+     "category": "식사",
+     "cost": 15000,
+     "placeId": "도쿄-2-2",
+     "sample": true,
+     "googleMapsQuery": "현지 인기 맛집 도쿄"
+    },
+    {
+     "time": "15:30",
+     "name": "미술관 관람 · 도쿄",
+     "category": "관광",
+     "cost": 18000,
+     "placeId": "도쿄-2-3",
+     "sample": true,
+     "googleMapsQuery": "미술관 관람 도쿄"
+    },
+    {
+     "time": "19:00",
+     "name": "재즈바 · 도쿄",
+     "category": "액티비티",
+     "cost": 10800,
+     "placeId": "도쿄-2-4",
+     "sample": true,
+     "googleMapsQuery": "재즈바 도쿄"
+    },
+    {
+     "time": "20:30",
+     "name": "야경 레스토랑 · 도쿄",
+     "category": "식사",
+     "cost": 15000,
+     "placeId": "도쿄-2-5",
+     "sample": true,
+     "googleMapsQuery": "야경 레스토랑 도쿄"
+    },
+    {
+     "time": "21:30",
+     "name": "도쿄 시내 호텔 (체크아웃)",
+     "category": "숙박",
+     "cost": 0,
+     "excludedFromBudget": false,
+     "placeId": "hotel-도쿄",
+     "address": "",
+     "googleMapsQuery": "도쿄 시내 호텔"
+    },
+    {
+     "time": "23:30",
+     "name": "도쿄 국제공항 (출발)",
+     "category": "이동",
+     "cost": 215400,
+     "placeId": "airport-도쿄",
+     "address": "예시 항공편 · 대한항공 · 출발 23:30 → 도착 01:55 (다음 날) (예상, 각 현지 시각) · 2시간 25분",
+     "googleMapsQuery": "도쿄 국제공항",
+     "flightMeta": {
+      "roundTripKRW": 430900,
+      "oneWayKRW": 215500,
+      "airline": "대한항공",
+      "flightCode": "",
+      "route": "any",
+      "startDate": "2026-12-08",
+      "source": "estimate"
+     }
+    }
+   ],
+   "localTransport": 15000
+  }
+ ],
+ "createdAt": "2026-11-25T05:15:36.762Z",
+ "companion": "solo",
+ "styles": [],
+ "needs": [],
+ "flight": {
+  "route": "any",
+  "classType": "any",
+  "airlines": []
+ },
+ "hotelPref": {
+  "types": [],
+  "locations": [],
+  "amenities": []
+ },
+ "hotelPriceSource": "estimate",
+ "flightPriceSource": "estimate",
+ "flightLiveFailed": false,
+ "hotelLiveFailed": false,
+ "sources": {
+  "flight": "estimate",
+  "hotel": "estimate",
+  "flightCheckedAt": null,
+  "hotelCheckedAt": null,
+  "placesReal": 0,
+  "placesSample": 16,
+  "liveConfigured": {
+   "flights": false,
+   "hotels": false,
+   "ai": false
+  }
+ },
+ "budgetPlan": {
+  "budget": 200000,
+  "estimate": 819700,
+  "fits": false,
+  "hotelType": "hostel",
+  "hotelLabel": "호스텔·게스트하우스",
+  "level": "낮음",
+  "levelLabel": "아껴 쓰는",
+  "people": 1,
+  "rooms": 1,
+  "nights": 2,
+  "includeFlight": true,
+  "includeHotel": true,
+  "localTrip": false,
+  "alternatives": [
+   {
+    "key": "noFlight",
+    "label": "항공권 빼고 보기",
+    "detail": "항공권을 이미 샀거나 따로 예약할 때",
+    "total": 388800,
+    "fits": false,
+    "apply": {
+     "includeFlight": false
+    }
+   },
+   {
+    "key": "noHotel",
+    "label": "숙소 빼고 보기",
+    "detail": "지인 집처럼 숙소가 따로 있을 때",
+    "total": 729700,
+    "fits": false,
+    "apply": {
+     "includeHotel": false
+    }
+   },
+   {
+    "key": "shorter",
+    "label": "1박 2일로 줄이기",
+    "detail": "돌아오는 날을 하루 앞당겨요",
+    "total": 675100,
+    "fits": false,
+    "apply": {
+     "days": 2
+    }
+   },
+   {
+    "key": "nearby",
+    "label": "오사카(으)로 바꾸기",
+    "detail": "일본 안에서 물가가 더 낮은 도시",
+    "total": 641300,
+    "fits": false,
+    "apply": {
+     "city": {
+      "key": "osaka",
+      "name": "오사카",
+      "tier": "mid",
+      "country": "일본",
+      "flag": "🇯🇵"
+     }
+    }
+   },
+   {
+    "key": "raise",
+    "label": "예산을 82만원으로 올리기",
+    "detail": "지금 조건 그대로 진행해요",
+    "total": 819700,
+    "fits": true,
+    "apply": {
+     "budget": 82
+    }
+   }
+  ]
+ },
+ "generationMs": 10,
+ "version": 2
+}

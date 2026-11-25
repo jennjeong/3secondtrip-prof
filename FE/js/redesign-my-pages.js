@@ -50,7 +50,7 @@ async function _paintMyHome() {
     : '아직 없어요';
   const saved = $('#mySavedMeta');
   if (!saved) return;
-  if (!appState?.currentUser) { saved.textContent = appState?.authOffline ? '연결 확인 중' : '로그인 필요'; return; }
+  if (!appState?.currentUser) { saved.textContent = appState?.authOffline ? '연결 확인 중' : '로그인하면 보여요'; return; }
   const seq = ++_countSeq;
   try {
     const rows = await api.listSchedules();
@@ -123,14 +123,14 @@ export async function renderMySaved() {
   list.replaceChildren(); if (extra) extra.replaceChildren();
   const here = appState?.generated;
   const deviceCard = here && _days(here).length ? el('div', { class: 'device-trip' }, [
-    el('p', { class: 'my-sub-h' }, '이 기기에 있는 일정'),
-    _card({ title: here.title || `${here.city} ${_days(here).length}일`, data: here, meta: here.savedScheduleId ? '계정에도 저장됨' : '이 기기에만 저장됨' },
+    el('p', { class: 'my-sub-h' }, '이 기기의 일정'),
+    _card({ title: here.title || `${here.city} ${_days(here).length}일`, data: here, meta: here.savedScheduleId ? '계정에도 보관됨' : '이 기기에만 있음' },
       () => navigate('schedule'), []),
   ]) : null;
 
   if (!appState?.currentUser) {
     empty.hidden = false;
-    empty.querySelector('.empty-text').textContent = '계정에 저장한 일정을 보려면 로그인해 주세요. 이 기기에서 만든 일정은 로그인 없이도 남아 있어요.';
+    empty.querySelector('.empty-text').textContent = '계정에 보관한 일정은 로그인하면 보여요. 이 기기의 일정은 로그인 없이도 위에서 열 수 있어요.';
     const btn = empty.querySelector('.btn'); if (btn) { btn.textContent = '로그인'; btn.dataset.navTo = 'auth'; }
     if (deviceCard) list.appendChild(deviceCard);
     return;
@@ -141,7 +141,7 @@ export async function renderMySaved() {
     rows = await api.listSchedules();
   } catch (e) {
     list.replaceChildren(el('div', { class: 'empty-state' }, [
-      el('p', { class: 'empty-text' }, '저장한 일정을 불러오지 못했어요.'),
+      el('p', { class: 'empty-text' }, '계정에 보관한 일정을 불러오지 못했어요. 이 기기의 일정은 그대로 열 수 있어요.'),
       el('button', { type: 'button', class: 'btn btn-soft', onclick: renderMySaved }, '다시 시도'),
     ]));
     return;
@@ -155,10 +155,10 @@ export async function renderMySaved() {
   list.replaceChildren();
   empty.hidden = saved.length > 0;
   if (!saved.length) {
-    empty.querySelector('.empty-text').textContent = '아직 계정에 저장한 일정이 없어요. 일정 화면에서 ‘저장’을 누르면 여기에 모여요.';
+    empty.querySelector('.empty-text').textContent = '아직 계정에 보관한 일정이 없어요. 내 일정에서 ‘저장’을 누르면 여기에 모여요.';
     const btn = empty.querySelector('.btn'); if (btn) { btn.textContent = '내 일정 보기'; btn.dataset.navTo = 'schedule'; }
   } else {
-    list.appendChild(el('p', { class: 'my-sub-h' }, `계정에 저장한 일정 ${saved.length}개 · 최근 수정순`));
+    list.appendChild(el('p', { class: 'my-sub-h' }, `계정에 보관한 일정 ${saved.length}개 · 최근 수정순`));
     saved.forEach(s => list.appendChild(_savedCard(s)));
   }
   if (!extra) return;

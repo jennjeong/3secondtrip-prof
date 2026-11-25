@@ -1281,4 +1281,107 @@ html, body, .app-shell { background: var(--n-bg) !important; }
 .rv-stars [role="img"] { color: #FFE135 !important; -webkit-text-stroke: .7px #D9AE00 !important; font-size: 16px !important; letter-spacing: 1px !important; }
 #reviewPreviewSection .rv-stars, #reviewPreviewSection .rv-stars [role="img"] { color: #FFE94A !important; -webkit-text-stroke: 0 !important; }
 #reviewPreviewSection .rv-stars .rv-sample { color: var(--n-ink2) !important; }
+
+/* ===== 15. 실행 가능한 일정 · 날짜 구분 · 비용 범위 ===== */
+/* 홈 제목 — 줄바꿈 대신 두 덩어리 사이에 빈칸을 둔다(복사·화면 낭독에서 붙지 않게) */
+#homePage .nh-title span { display: inline-block !important; white-space: normal !important; background: inherit !important; -webkit-background-clip: text !important; background-clip: text !important; }
+
+/* 상단 압축 — 제목 / 부제 + 버튼 한 줄 */
+@media (max-width: 1023px) {
+  #schedulePage .band-trip .schedule-head { display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; align-items: center !important; column-gap: 12px !important; row-gap: 0 !important; }
+  #schedulePage .band-trip .schedule-head > div:first-child { display: contents !important; }
+  #schedulePage .band-trip .schedule-head .page-title { grid-column: 1 / -1 !important; }
+  #schedulePage .band-trip .schedule-head .page-sub { grid-column: 1 !important; margin: 0 !important; }
+  #schedulePage .band-trip .schedule-actions { grid-column: 2 !important; margin: 0 !important; gap: 6px !important; }
+  #schedulePage .band-trip #btnSave { flex: none !important; width: auto !important; padding: 0 16px !important; }
+  #schedulePage .band-trip .save-status { margin: 2px 0 0 !important; }
+}
+#schedulePage .now-next { margin: 12px 0 0 !important; padding: 8px 0 6px !important; }
+#schedulePage .now-next .nn-head { display: flex !important; align-items: baseline !important; justify-content: space-between !important; gap: 12px !important; min-height: 28px !important; font-size: 14px !important; line-height: 24px !important; }
+#schedulePage .now-next .nn-head strong { font-size: 14px !important; font-weight: 700 !important; }
+#schedulePage .now-next .nn-clock { font-size: 14px !important; font-variant-numeric: tabular-nums !important; color: var(--p-ink2) !important; }
+#schedulePage .now-next .nn-row { padding: 2px 0 !important; grid-template-columns: 36px minmax(0, 1fr) !important; }
+#schedulePage .now-next .nn-meta { margin-left: auto !important; text-align: right !important; font-variant-numeric: tabular-nums !important; }
+#schedulePage .now-next .nn-view { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; min-height: 44px !important; margin: 4px 0 -6px !important; border-top: 1px solid rgba(255, 255, 255, .14) !important; font-size: 14px !important; font-weight: 600 !important; color: #FFE08A !important; }
+#schedulePage .now-next .nn-view .nn-go { margin: 0 !important; min-height: 44px !important; padding: 0 !important; color: #BFD6FF !important; font-size: 14px !important; }
+
+#schedulePage .band-trip .budget-panel { margin-top: 12px !important; padding: 10px 16px 6px !important; }
+#schedulePage .band-trip .budget-panel:not(.is-over) { padding-bottom: 10px !important; }
+#schedulePage .money-rows--panel .money-row { display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; align-items: baseline !important; column-gap: 12px !important; padding: 0 !important; }
+#schedulePage .money-rows--panel .money-row dt { line-height: 26px !important; }
+#schedulePage .money-rows--panel .money-row dt .money-note { margin: 0 0 0 6px !important; }
+#schedulePage .money-rows--panel .money-row dd { line-height: 26px !important; text-align: right !important; font-variant-numeric: tabular-nums !important; }
+#schedulePage .band-trip .money-row--over, #schedulePage .band-trip .money-row--under { min-height: 32px !important; align-items: baseline !important; }
+#schedulePage .band-trip .money-row--over dd, #schedulePage .band-trip .money-row--under dd { font-size: 20px !important; line-height: 32px !important; }
+#schedulePage .alt-summary { margin-top: 4px !important; }
+#schedulePage .alt-summary-text { display: flex !important; flex-wrap: wrap !important; align-items: baseline !important; }
+#schedulePage .alt-summary-k { display: inline !important; margin-right: 6px !important; font-size: 13px !important; font-weight: 500 !important; color: #9CC0FF !important; }
+#schedulePage .alt-summary-t { flex: 1 0 100% !important; line-height: 18px !important; }
+@media (max-width: 360px) { #schedulePage .money-rows--panel .money-row dt .money-note { display: block !important; margin: 0 !important; line-height: 17px !important; } }
+@media (min-width: 768px) { #schedulePage .money-rows--panel .money-row { display: block !important; } #schedulePage .money-rows--panel .money-row dd { text-align: left !important; } }
+
+/* 날짜 — 오늘은 점으로, 고른 날은 채움으로 */
+#schedulePage .day-chip { min-height: 52px !important; }
+#schedulePage .day-chip.is-today .day-chip-label { font-weight: 600 !important; color: var(--p-link) !important; }
+#schedulePage .day-chip.is-today.is-active .day-chip-label { color: inherit !important; opacity: 1 !important; }
+#schedulePage .day-sub { margin-top: 6px !important; }
+
+/* 점검 목록 */
+#schedulePage .dc-jump { min-height: 44px !important; text-align: left !important; overflow-wrap: anywhere !important; }
+#schedulePage .dc-notes { list-style: none !important; margin: 8px 0 0 !important; padding: 0 !important; font-size: 13px !important; line-height: 19px !important; color: var(--p-ink2) !important; }
+#schedulePage .dc-notes li + li { margin-top: 4px !important; }
+
+/* 예산 대안 · 시간 맞추기 창 */
+.alt-item { border-bottom: 1px solid var(--p-line) !important; }
+.alt-item .alt-opt { width: 100% !important; border-bottom: 0 !important; text-align: left !important; }
+.alt-cmp { margin: -2px 0 14px 34px !important; padding: 12px 14px !important; background: var(--p-tint) !important; border-radius: 14px !important; }
+.alt-cmp-rows { margin: 0 !important; }
+.alt-cmp-row { display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; column-gap: 12px !important; align-items: baseline !important; padding: 3px 0 !important; font-size: 14px !important; line-height: 21px !important; }
+.alt-cmp-row dt { color: var(--p-ink2) !important; font-weight: 400 !important; }
+.alt-cmp-row dd { margin: 0 !important; text-align: right !important; font-variant-numeric: tabular-nums !important; color: var(--p-ink) !important; }
+.alt-cmp-row dd s { color: var(--p-ink2) !important; }
+.alt-cmp-row dd b { font-weight: 700 !important; }
+.alt-cmp-row dd small { font-size: 13px !important; color: var(--p-ink2) !important; }
+.alt-cmp-row.is-total { margin-top: 4px !important; padding-top: 7px !important; border-top: 1px solid var(--p-line) !important; }
+.alt-cmp-row.is-total dt { color: var(--p-ink) !important; font-weight: 600 !important; }
+.alt-cmp-note { margin: 8px 0 0 !important; font-size: 13px !important; line-height: 19px !important; color: var(--p-ink2) !important; }
+.alt-result { padding: 4px 0 0 !important; }
+.alt-result .alt-cmp-row { padding: 6px 0 !important; font-size: 15px !important; }
+.plan-sheet .sheet-foot .btn + .btn { margin-top: 8px !important; }
+.plan-sheet .sheet-total span { overflow-wrap: anywhere !important; }
+.rp-day { margin: 16px 0 0 !important; }
+.rp-day-h { margin: 0 0 4px !important; font-size: 15px !important; line-height: 22px !important; font-weight: 700 !important; }
+.rp-list { list-style: none !important; margin: 0 !important; padding: 0 !important; border-top: 1px solid var(--p-line) !important; }
+.rp-item { display: grid !important; grid-template-columns: 116px minmax(0, 1fr) !important; column-gap: 12px !important; padding: 10px 0 !important; border-bottom: 1px solid var(--p-line) !important; font-size: 15px !important; line-height: 22px !important; }
+.rp-when { font-variant-numeric: tabular-nums !important; font-weight: 600 !important; }
+.rp-when s { color: var(--p-ink2) !important; font-weight: 400 !important; }
+.rp-name { overflow-wrap: anywhere !important; word-break: keep-all !important; }
+.rp-why, .rp-edit { grid-column: 2 !important; font-size: 13px !important; line-height: 19px !important; color: var(--p-ink2) !important; }
+.rp-edit { justify-self: start !important; min-height: 44px !important; padding: 0 !important; color: var(--p-link) !important; }
+.rp-all { min-height: 44px !important; padding: 0 !important; margin-top: 8px !important; }
+
+/* 조회 상태 */
+#toolSheet .provider-rows { margin: 8px 0 12px !important; }
+.pv-row { display: grid !important; grid-template-columns: 44px minmax(0, 1fr) auto !important; column-gap: 8px !important; align-items: center !important; min-height: 44px !important; border-bottom: 1px solid var(--p-line) !important; font-size: 14px !important; line-height: 20px !important; }
+.pv-k { font-weight: 600 !important; }
+.pv-v { color: var(--p-ink2) !important; overflow-wrap: anywhere !important; }
+.pv-retry { min-height: 44px !important; padding: 0 !important; white-space: nowrap !important; }
+#schedulePage .dc-list { gap: 0 !important; }
+#schedulePage .dc-list li { display: grid !important; grid-template-columns: 20px minmax(0, 1fr) !important; align-items: baseline !important; padding: 0 !important; }
+#schedulePage .dc-list li::before { position: static !important; left: auto !important; }
+#schedulePage .dc-list li > :is(.dc-drop) { grid-column: 2 !important; justify-self: start !important; }
+#schedulePage .dc-jump { padding: 10px 0 !important; min-height: 44px !important; line-height: 22px !important; font-size: 14px !important; }
+#schedulePage .band-trip :is(#btnSave, .action-icon) { min-height: 44px !important; height: 44px !important; }
+#schedulePage .band-trip .action-icon { flex-basis: 44px !important; width: 44px !important; }
+.timeline .sc-more { right: -4px !important; overflow: visible !important; }
+.plan-sheet .sheet-foot { display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 8px !important; }
+.plan-sheet .sheet-foot .btn, .plan-sheet .sheet-foot .btn + .btn { margin: 0 !important; flex: none !important; width: 100% !important; }
+.timeline .sc-more .dots { width: 21px !important; }
+
+#homePage .nh-title { max-width: 9.5em !important; margin-left: auto !important; margin-right: auto !important; }
+#schedulePage .now-next .nn-body { display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; column-gap: 12px !important; align-items: baseline !important; }
+#schedulePage .alt-summary-text { flex: 1 1 130px !important; }
+.alt-cmp-row { grid-template-columns: auto minmax(0, 1fr) !important; }
+.alt-cmp-row dt { white-space: nowrap !important; }
+.alt-cmp-row dd :is(b, s) { white-space: nowrap !important; }
 }

@@ -12,6 +12,7 @@ from app.schemas.place_schema import (
     TripPlaceCreate, TripPlaceUpdate, TripPlacePublic,
 )
 from app.services.google_maps_service import search_places
+from app.services.provider_errors import Timer
 
 router = APIRouter(prefix="/api", tags=["maps"])
 
@@ -19,6 +20,7 @@ router = APIRouter(prefix="/api", tags=["maps"])
 # ── Places API proxy ─────────────────────────────────────────────
 @router.post("/places/search", response_model=PlaceSearchResponse)
 async def places_search(payload: PlaceSearchRequest):
+    timer = Timer()
     items = await search_places(
         query=payload.query,
         language=payload.language,
@@ -27,7 +29,7 @@ async def places_search(payload: PlaceSearchRequest):
         center_lat=payload.center_lat,
         center_lng=payload.center_lng,
     )
-    return PlaceSearchResponse(places=[PlaceResult(**i) for i in items])
+    return PlaceSearchResponse(places=[PlaceResult(**i) for i in items], meta=timer.meta("google_places", len(items)))
 
 
 # ── TripPlace CRUD ───────────────────────────────────────────────

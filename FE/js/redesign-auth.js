@@ -239,7 +239,7 @@ function _paintNotice(extra) {
   const intent = peekPendingIntent();
   const parts = [];
   if (extra) parts.push(extra);
-  if (intent?.action === 'save-trip') parts.push('로그인하면 만들던 일정을 바로 계정에 저장해요.');
+  if (intent?.action === 'save-trip') parts.push('로그인하면 만들던 일정을 바로 계정에 보관해요.');
   box.textContent = parts.join(' ');
   box.hidden = parts.length === 0;
   box.classList.toggle('is-error', !!extra);

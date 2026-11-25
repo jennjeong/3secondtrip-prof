@@ -108,8 +108,12 @@ async function _once(url, opts, headers) {
   let data = null;
   try { data = await res.json(); } catch (_) {}
   if (!res.ok) {
-    const msg = (data && (data.detail || data.message || data.error)) || `HTTP ${res.status}`;
+    // 외부 제공처 오류는 detail 이 { code, message, retryable } 로 온다.
+    const d = data && data.detail;
+    const info = d && typeof d === 'object' && !Array.isArray(d) && d.code ? d : null;
+    const msg = (info ? info.message : (data && (data.detail || data.message || data.error))) || `HTTP ${res.status}`;
     const err = new Error(msg);
+    if (info) { err.code = info.code; err.retryable = !!info.retryable; err.provider = info.provider || ''; }
     err.status = res.status;
     err.body = data;
     // 우리 서버가 직접 답한 오류(JSON detail 있음, 예: '설정되지 않음' 503)인지,
@@ -305,11 +309,11 @@ export const api = {
   openaiChat: (prompt) => apiRequest('/openai/chat', { method: 'POST', body: JSON.stringify({ prompt }) }),
   // 서버에 연결된 외부 기능(실시간 항공·숙소 요금, AI 요약). 결과는 한 번만 받아 둔다.
   // 예전 서버처럼 이 주소가 없으면 모두 켜진 것으로 보고, 실패하면 각 호출의 대체 처리가 맡는다.
-  features: () => (_featuresPromise ||= apiRequest('/api/features', { quiet: true })
+  features: ({ fresh = false } = {}) => { if (fresh) _featuresPromise = null; return (_featuresPromise ||= apiRequest('/api/features', { quiet: true })
     .then(f => ({ liveFlights: !!f.live_flights, liveHotels: !!f.live_hotels, ai: !!f.ai_summary, places: f.places !== false,
                   passwordReset: !!f.password_reset, oauth: f.oauth || null, checkedAt: new Date().toISOString() }))
     // 서버 상태를 알 수 없으면 외부 기능은 꺼진 것으로 본다(실패할 호출을 미리 하지 않고 추정치를 쓴다).
-    .catch(() => ({ liveFlights: false, liveHotels: false, ai: false, places: true, passwordReset: false, oauth: null, checkedAt: null, unknown: true }))),
+    .catch(() => { _featuresPromise = null; return { liveFlights: false, liveHotels: false, ai: false, places: true, passwordReset: false, oauth: null, checkedAt: null, unknown: true }; })); },
   // 로그인한 상태에서 비밀번호 변경(다른 기기는 로그아웃) · 모든 기기에서 로그아웃
   changePassword: (current_password, new_password) => apiRequest('/users/me/password', { method: 'POST', body: JSON.stringify({ current_password, new_password }) }),
   logoutAll: () => apiRequest('/users/me/logout-all', { method: 'POST' }),

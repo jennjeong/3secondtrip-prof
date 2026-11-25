@@ -30,6 +30,7 @@ class PlaceResult(BaseModel):
 
 class PlaceSearchResponse(BaseModel):
     places: list[PlaceResult]
+    meta: dict | None = None      # provider · status · latency_ms · checked_at
 
 
 # ── TripPlace CRUD ────────────────────────────────────────────────

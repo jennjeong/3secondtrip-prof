@@ -11,11 +11,12 @@ import logging
 import statistics
 
 import httpx
-from fastapi import HTTPException, status
 
 from app.core.config import settings
+from app.services.provider_errors import Timer, from_httpx, from_status, provider_error
 
 logger = logging.getLogger("serpapi")
+PROVIDER = "google_hotels"
 
 SERPAPI_ENDPOINT = "https://serpapi.com/search.json"
 
@@ -26,10 +27,7 @@ _TIMEOUT = httpx.Timeout(25.0, connect=8.0)
 def _require_key() -> str:
     key = settings.serpapi_api_key
     if not key:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="SERPAPI_API_KEY is not configured on the server.",
-        )
+        raise provider_error(PROVIDER, "unconfigured")
     return key
 
 
@@ -68,12 +66,13 @@ async def search_hotels(*, query: str, check_in_date: str, check_out_date: str,
     if hotel_class:
         params["hotel_class"] = hotel_class
 
+    timer = Timer()
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             r = await client.get(SERPAPI_ENDPOINT, params=params)
     except httpx.HTTPError as e:
-        logger.exception("SerpApi network error")
-        raise HTTPException(status_code=502, detail="SerpApi network error") from e
+        logger.warning("SerpApi network error: %s", type(e).__name__)
+        raise from_httpx(PROVIDER, e) from e
 
     if r.status_code >= 400:
         # Surface SerpApi's message without leaking the key.
@@ -83,15 +82,13 @@ async def search_hotels(*, query: str, check_in_date: str, check_out_date: str,
         except Exception:
             msg = r.text[:200] or "SerpApi error"
         logger.warning("SerpApi %s: %s", r.status_code, msg)
-        if r.status_code in (400, 401, 403, 429):
-            raise HTTPException(status_code=r.status_code, detail=str(msg))
-        raise HTTPException(status_code=502, detail=str(msg))
+        raise from_status(PROVIDER, r.status_code)
 
     data = r.json()
     # SerpApi returns HTTP 200 with an "error" string for no-results / bad params.
     if data.get("error"):
         logger.warning("SerpApi logical error: %s", data.get("error"))
-        raise HTTPException(status_code=404, detail=str(data.get("error")))
+        raise provider_error(PROVIDER, "no_result")
 
     out: list[dict] = []
     for p in (data.get("properties") or []):
@@ -124,4 +121,5 @@ async def search_hotels(*, query: str, check_in_date: str, check_out_date: str,
         "count": len(out),
         "lowest_price_per_night": (min(prices) if prices else None),
         "median_price_per_night": (int(round(statistics.median(prices))) if prices else None),
+        "meta": timer.meta(PROVIDER, len(out)),
     }

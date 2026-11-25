@@ -18,7 +18,7 @@ const PAGE_TITLES = {
   blog: '블로그 쓰기',
   feedback: '의견 보내기',
   survey: '취향 분석',
-  'my-saved': '저장한 일정',
+  'my-saved': '계정에 보관한 일정',
   'my-roadmaps': '내가 공개한 코스',
   'my-reviews': '내 후기',
   'my-blogs': '내 블로그',

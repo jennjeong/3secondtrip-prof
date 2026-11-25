@@ -11,8 +11,10 @@ import httpx
 from fastapi import HTTPException, status
 
 from app.core.config import settings
+from app.services.provider_errors import from_httpx, from_status, provider_error
 
 logger = logging.getLogger("google_maps")
+PLACES = "google_places"
 
 ROUTES_ENDPOINT = "https://routes.googleapis.com/directions/v2:computeRoutes"
 PLACES_TEXT_ENDPOINT = "https://places.googleapis.com/v1/places:searchText"
@@ -114,6 +116,8 @@ async def search_places(*, query: str, language: Optional[str] = "ko",
 
     Returns list of: { place_id, name, address, latitude, longitude, rating?, user_rating_count?, types[] }
     """
+    if not settings.google_maps_server_key:
+        raise provider_error(PLACES, "unconfigured")
     key = _require_key()
     payload = {
         "textQuery": query.strip(),
@@ -139,8 +143,8 @@ async def search_places(*, query: str, language: Optional[str] = "ko",
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             r = await client.post(PLACES_TEXT_ENDPOINT, json=payload, headers=headers)
     except httpx.HTTPError as e:
-        logger.exception("Places API network error")
-        raise HTTPException(status_code=502, detail="Places API network error") from e
+        logger.warning("Places API network error: %s", type(e).__name__)
+        raise from_httpx(PLACES, e) from e
 
     if r.status_code >= 400:
         try:
@@ -149,9 +153,7 @@ async def search_places(*, query: str, language: Optional[str] = "ko",
         except Exception:
             msg = r.text[:200] or "Places API error"
         logger.warning("Places API %s: %s", r.status_code, msg)
-        if r.status_code in (400, 403, 404, 429):
-            raise HTTPException(status_code=r.status_code, detail=msg)
-        raise HTTPException(status_code=502, detail=msg)
+        raise from_status(PLACES, r.status_code)
 
     out: list[dict] = []
     for p in (r.json().get("places") or []):

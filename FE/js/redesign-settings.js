@@ -67,7 +67,7 @@ function _resetItems() {
   const g = appState?.generated;
   const items = [];
   items.push(g
-    ? `지금 보고 있는 일정${g.city ? ` (${g.city})` : ''}${g.savedScheduleId ? ' — 계정에도 저장돼 있어요' : ' — 계정에 저장하지 않아 복구할 수 없어요'}`
+    ? `지금 보고 있는 일정${g.city ? ` (${g.city})` : ''}${g.savedScheduleId ? ' — 계정에도 보관돼 있어요' : ' — 계정에 보관하지 않아 복구할 수 없어요'}`
     : '이 기기에 저장된 일정 (지금은 없음)');
   if (_has('tst_app_state_v1')) items.push('작성 중인 새 여행 초안 · 지출 기록 · 예약 후보');
   if (_has('tst_blog_draft_v1')) items.push('블로그 초안');
@@ -89,7 +89,7 @@ function _openReset() {
   items.forEach(t => list.appendChild(el('li', {}, t)));
   const warn = $('#resetWarn');
   warn.hidden = !risky;
-  warn.textContent = risky ? '계정에 저장하지 않은 일정이 있어요. 남기려면 먼저 로그인해서 저장해 주세요.' : '';
+  warn.textContent = risky ? '계정에 보관하지 않은 일정이 있어요. 남기려면 먼저 로그인해서 보관해 주세요.' : '';
   panel.hidden = false;
   $('#settingReset')?.setAttribute('aria-expanded', 'true');
   panel.scrollIntoView({ block: 'nearest' });
