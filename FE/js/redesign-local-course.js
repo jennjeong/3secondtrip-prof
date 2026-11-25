@@ -159,7 +159,10 @@ function _stopRow(s, di, si) {
   const where = `${di + 1}일차 ${si + 1}번째`;
   const set = (key) => (e) => { s[key] = e.target.value; _clear(`day${di}`); _saveDraft(); };
   return el('li', { class: 'lc-stop' }, [
-    el('input', { class: 'form-input lc-time', type: 'time', value: s.time, 'aria-label': `${where} 시각(선택)`, oninput: set('time') }),
+    // iOS 는 빈 시각 칸에 아무것도 보여 주지 않아 ‘시각’을 겹쳐 보여 준다
+    el('span', { class: 'lc-time-wrap' + (s.time ? '' : ' is-empty') }, [
+      el('input', { class: 'form-input lc-time', type: 'time', value: s.time, 'aria-label': `${where} 시각(선택)`, oninput: (e) => { set('time')(e); e.target.parentNode.classList.toggle('is-empty', !e.target.value); } }),
+    ]),
     el('input', { class: 'form-input lc-name', type: 'text', value: s.name, maxLength: 60, placeholder: '장소 이름', 'aria-label': `${where} 장소 이름`, oninput: set('name') }),
     el('select', { class: 'form-input lc-cat', 'aria-label': `${where} 종류`, onchange: set('cat') }, CATS.map(v => el('option', { value: v, selected: v === s.cat }, v))),
     el('input', { class: 'form-input lc-tip', type: 'text', value: s.tip, maxLength: 120, placeholder: '나만 아는 팁(선택)', 'aria-label': `${where} 팁(선택)`, oninput: set('tip') }),

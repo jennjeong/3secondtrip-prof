@@ -1608,6 +1608,9 @@ dialog.ask[open] { animation: askIn .16s ease-out !important; }
 .lc-stop { display: grid !important; grid-template-columns: 112px minmax(0, 1fr) 44px !important; gap: 8px !important; padding: 0 0 18px !important; }
 .lc-stop .form-input { width: 100% !important; min-width: 0 !important; }
 .lc-stop .lc-time { padding-left: 12px !important; padding-right: 6px !important; }
+.lc-time-wrap { position: relative !important; display: block !important; min-width: 0 !important; }
+.lc-time-wrap.is-empty:not(:focus-within)::before { content: '시각' !important; position: absolute !important; left: 13px !important; top: 0 !important; height: 100% !important; display: flex !important; align-items: center !important; font-size: 15px !important; color: var(--p-ink2) !important; pointer-events: none !important; }
+.lc-time-wrap.is-empty:not(:focus-within) .lc-time { color: transparent !important; }
 .lc-stop .lc-cat { grid-column: 1 !important; padding-left: 12px !important; }
 .lc-stop .lc-name { grid-column: 2 !important; grid-row: 1 !important; }
 .lc-stop .lc-tip { grid-column: 2 / -1 !important; }
