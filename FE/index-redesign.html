@@ -495,7 +495,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
             <summary class="form-section-title">세부 조건 <span class="form-label-meta" id="budgetMoreMeta">선택 · 포함 항목·통화·항공·숙소</span></summary>
           <fieldset class="budget-includes">
             <legend class="form-label">예산에 포함할 항목</legend>
-            <label class="check-row"><input type="checkbox" id="includeFlight" checked/> <span>항공권 <small id="includeFlightNote">왕복</small></span></label>
+            <label class="check-row"><input type="checkbox" id="includeFlight" checked/> <span><span id="includeFlightName">항공권</span> <small id="includeFlightNote">왕복</small></span></label>
             <label class="check-row"><input type="checkbox" id="includeHotel" checked/> <span>숙소 <small id="includeHotelNote"></small></span></label>
             <p class="form-hint">식비·입장료·쇼핑·현지 교통은 항상 포함해요.</p>
           </fieldset>
@@ -512,7 +512,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           </div>
 
           <!-- ───── 항공 옵션 ───── -->
-          <details class="form-section form-details">
+          <details class="form-section form-details" id="flightOptions">
             <summary class="form-section-title">항공편 <span class="form-label-meta" id="flightMoreMeta"></span></summary>
 
             <label class="form-label">노선 종류</label>
@@ -763,7 +763,7 @@ html.theme-dark #bootSplash { color: #EEF2F6; }
           <h2 class="section-title" id="toolsH">여행 도구</h2>
           <div class="setting-list tool-menu">
             <div class="booking-cta" id="bookingCta" hidden>
-              <button type="button" class="setting-row" id="openBookingBtn"><span class="sr-label">예약 후보</span><span class="setting-meta">항공, 숙소, 맛집</span><span class="setting-arrow" aria-hidden="true">›</span></button>
+              <button type="button" class="setting-row" id="openBookingBtn"><span class="sr-label">예약 후보</span><span class="setting-meta" id="bookingMeta">항공, 숙소, 맛집</span><span class="setting-arrow" aria-hidden="true">›</span></button>
             </div>
             <div id="toolMenuRows"></div>
           </div>

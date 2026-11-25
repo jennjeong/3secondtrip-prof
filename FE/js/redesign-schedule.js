@@ -12,7 +12,8 @@
 import { navigate } from './redesign-navigation.js';
 import { timeZoneFor, utcOffsetMin, utcLabel, nowIn } from './redesign-cities.js';
 import { checkDay, repairTrip, repairDay, recomputeDay, isFlight, josa as _josa, shortName as _short,
-  timeToMin as _timeToMin, kmBetween as _kmBetween, travelMinutes as _travelMinutes, airportMinutes } from './redesign-plan-check.js';
+  timeToMin as _timeToMin, kmBetween as _kmBetween, travelMinutes as _travelMinutes, airportMinutes, beforeFlightText } from './redesign-plan-check.js';
+import { RIDE, rideMode, rideOf } from './redesign-ground.js';
 import { localQuery, rankLocal, localMix, langOf, LANG_NAME } from './redesign-local.js';
 import { findCity } from './redesign-cities.js';
 import { costBreakdown as _computeBudgetBreakdown, costUnknown as _costUnknown, costScope, costDuplicates } from './redesign-plan-cost.js';
@@ -506,7 +507,7 @@ function _renderTimeline(g) {
     let costTag = '';
     const c = _actCost(activeDay, ai, n.cost);
     if (a.excludedFromBudget && n.category === '숙박') costText = '숙소비는 예산에서 뺐어요';
-    else if (a.flightMeta?.source === 'excluded') costText = '항공권은 예산에서 뺐어요';
+    else if (a.flightMeta?.source === 'excluded') costText = `${_josa(RIDE[rideMode(a)].ticket, '은', '는')} 예산에서 뺐어요`;
     else if (n.category === '숙박') {
       if (hotelNightly > 0) {
         const rooms = g.budgetPlan?.rooms || 1;
@@ -599,7 +600,9 @@ function _renderTimeline(g) {
     const next = day.activities[ai + 1];
     if (next) {
       let moveText;
-      if (isFlight(a) || isFlight(next)) moveText = isFlight(next) ? `공항으로 이동 약 ${airportMinutes(a, next)}분 · 출발 2시간 전 도착` : `입국·수하물 뒤 시내로 약 ${airportMinutes(a, next)}분`;
+      const hub = isFlight(next) ? next : isFlight(a) ? a : null;
+      if (hub && rideMode(hub) !== 'air') moveText = hub === next ? `${RIDE[rideMode(hub)].hub === '역' ? '역으로' : '터미널로'} 이동 약 ${airportMinutes(a, next)}분 · 출발 ${beforeFlightText(g)} 전 도착` : `${RIDE[rideMode(hub)].hub}에서 시내로 약 ${airportMinutes(a, next)}분`;
+      else if (isFlight(a) || isFlight(next)) moveText = isFlight(next) ? `공항으로 이동 약 ${airportMinutes(a, next)}분 · 출발 2시간 전 도착` : `입국·수하물 뒤 시내로 약 ${airportMinutes(a, next)}분`;
       else {
         const km = _kmBetween(a, next);
         const min = _travelMinutes(a, next);
@@ -795,8 +798,8 @@ function _scopeNote(g, scope) {
   const word = { live: '실시간', estimate: '추정' };
   const kinds = ['flight', 'hotel'].filter(k => word[st[k]]);
   const kind = !kinds.length ? '추정' : kinds.every(k => st[k] === 'live') ? '실시간 요금' : kinds.every(k => st[k] === 'estimate') ? '추정'
-    : `항공 ${word[st.flight] || '별도'}·숙소 ${word[st.hotel] || '별도'}`;
-  const inc = kinds.map(k => ({ flight: '항공', hotel: '숙소' })[k]);
+    : `${RIDE[scope.ride].label} ${word[st.flight] || '별도'}·숙소 ${word[st.hotel] || '별도'}`;
+  const inc = kinds.map(k => ({ flight: RIDE[scope.ride].label, hotel: '숙소' })[k]);
   return [kind, scope.text || (inc.length ? `${inc.join('·')} 포함` : '현지 지출만')].join(' · ');
 }
 
@@ -834,7 +837,7 @@ function _renderBudgetPanel(g) {
   // 대체 처리 안내 — 실시간 조회가 안 된 값, 예시 장소, 환율 기준
   const notes = [];
   const src = g.sources || { flight: g.flightPriceSource, hotel: g.hotelPriceSource };
-  const est = [src.flight === 'estimate' && '항공', src.hotel === 'estimate' && '숙소'].filter(Boolean);
+  const est = [src.flight === 'estimate' && RIDE[scope.ride].label, src.hotel === 'estimate' && '숙소'].filter(Boolean);
   if (est.length && !g.providers) {
     const why = src.liveConfigured && !src.liveConfigured.flights ? '실시간 요금 조회가 연결되지 않아' : '실시간 요금을 받지 못해';
     notes.push(`${est.join('·')} 비용은 추정치예요. ${why} 도시 물가와 시기로 계산했어요.`);
@@ -905,7 +908,7 @@ function _openAltSheet(list, g, planCount, preferred) {
   /** 항공 · 숙소 · 현지(식비·입장·쇼핑·교통)로 묶은 전후 비교 */
   const compare = (a) => {
     const local = (x) => ['food', 'entry', 'shopping', 'transport'].reduce((n, k) => n + (x[k] || 0), 0);
-    const rows = [['flight', '항공', a.before.flight, a.after.flight], ['hotel', '숙소', a.before.hotel, a.after.hotel], ['local', '식사·활동·교통', local(a.before), local(a.after)]]
+    const rows = [['flight', a.rideLabel || RIDE[rideOf(g)].label, a.before.flight, a.after.flight], ['hotel', '숙소', a.before.hotel, a.after.hotel], ['local', '식사·활동·교통', local(a.before), local(a.after)]]
       .filter(r => r[2] || r[3]);
     const cell = (k, v) => (a.excluded.includes(k) ? '따로 계산' : m(v));
     const keep = (k) => a.before[k] === a.after[k];
@@ -974,7 +977,7 @@ function _openAltSheet(list, g, planCount, preferred) {
       el('dl', { class: 'alt-cmp-rows alt-result' }, [
         r.predicted ? el('div', { class: 'alt-cmp-row' }, [el('dt', {}, '적용 전 예상'), el('dd', {}, mm(r.predicted.total))]) : null,
         el('div', { class: 'alt-cmp-row is-total' }, [el('dt', {}, '적용 뒤 총액'), el('dd', {}, el('b', {}, mm(r.total)))]),
-        el('div', { class: 'alt-cmp-row' }, [el('dt', {}, '범위'), el('dd', {}, r.scope.text || '항공·숙소 포함')]),
+        el('div', { class: 'alt-cmp-row' }, [el('dt', {}, '범위'), el('dd', {}, r.scope.text || `${RIDE[r.scope.ride].label}·숙소 포함`)]),
         el('div', { class: 'alt-cmp-row' }, [el('dt', {}, over > 0 ? '예산 초과' : '남는 금액'), el('dd', {}, mm(Math.abs(over)))]),
       ].filter(Boolean)),
       r.predicted ? el('p', { class: 'alt-cmp-note' }, r.same ? '적용 전 예상과 같은 금액이에요.' : `예상보다 ${mm(Math.abs(r.diff))} ${r.diff > 0 ? '많아요' : '적어요'}.`) : null,
@@ -1040,7 +1043,7 @@ function _renderProviders(g) {
     p.retryable && !g.sharedView ? el('button', { type: 'button', class: 'btn-text pv-retry', onclick: (e) => _retryProvider(kind, e.currentTarget) }, kind === 'places' ? '다시 만들기' : '다시 조회') : null,
   ].filter(Boolean));
   box.replaceChildren(...[
-    row('flight', '항공', pv.flight, pv.flight && price(pv.flight)),
+    row('flight', RIDE[rideOf(g)].label, pv.flight, pv.flight && price(pv.flight)),
     row('hotel', '숙소', pv.hotel, pv.hotel && price(pv.hotel)),
     row('places', '장소', pv.places, pv.places && places(pv.places)),
   ].filter(Boolean));
@@ -1061,8 +1064,9 @@ function _renderCostSummary(g) {
   if (!rows) return;
   const list = [];
   const scope = costScope(g, bd);
-  if (scope.excluded.includes('flight')) list.push(_row('항공', '따로 계산', { note: '합계에서 뺌' }));
-  if (bd.flight) list.push(_row('항공', _money(bd.flight, g), { note: `왕복${g.people ? ` ${g.people}명` : ''} · ${scope.status.flight === 'live' ? '실시간' : '추정'}` }));
+  if (scope.excluded.includes('flight')) list.push(_row(RIDE[scope.ride].label, '따로 계산', { note: '합계에서 뺌' }));
+  const bm = $('#bookingMeta'); if (bm) bm.textContent = `${RIDE[scope.ride].label}, 숙소, 맛집`;
+  if (bd.flight) list.push(_row(RIDE[scope.ride].label, _money(bd.flight, g), { note: `왕복${g.people ? ` ${g.people}명` : ''} · ${scope.status.flight === 'live' ? '실시간' : '추정'}` }));
   if (scope.excluded.includes('hotel')) list.push(_row('숙소', '따로 계산', { note: '합계에서 뺌' }));
   const rooms = g.budgetPlan?.rooms || 1;
   if (bd.hotel) list.push(_row('숙소', _money(bd.hotel, g), {

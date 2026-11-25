@@ -12,7 +12,8 @@ import { openCalendar } from './redesign-calendar.js';
 import { api, trackEvent } from './redesign-api-adapter.js';
 import { PLACE_MODES, modeOf, langOf, LANG_NAME, localQuery, rankLocal, localScore, famousIndex, shownCategory } from './redesign-local.js';
 import { mustPlaceholder } from './redesign-landmarks.js';
-import { checkTrip, repairTrip, timeToMin, minToTime, travelMinutes, dwellMinutes, landingMinutes, beforeFlight } from './redesign-plan-check.js';
+import { checkTrip, repairTrip, timeToMin, minToTime, travelMinutes, dwellMinutes, landingMinutes, beforeFlight, STATION_MIN, josa } from './redesign-plan-check.js';
+import { groundRoute, RIDE, rideOf } from './redesign-ground.js';
 import { COMPONENTS, costBreakdown, costScope, scopeText, projectCost, compareCost, diffReasons } from './redesign-plan-cost.js';
 import { openState } from './redesign-hours.js';
 
@@ -663,7 +664,9 @@ function _updateSelectedHint(c, airport, from) {
   if (!c) { _setFieldMsg('dest', '', ''); return; }
   const t = appState.trip;
   const where = `${c.flag} ${airport ? `${airport.ko} 공항(${airport.iata}) · ` : ''}${c.name}, ${c.country}`;
-  const local = t.origin && t.origin === c.key ? ' — 출발 도시와 같아서 항공 없이 현지 여행으로 계산해요.' : '';
+  const r = _groundOf(t);
+  const local = t.origin && t.origin === c.key ? ' — 출발 도시와 같아서 항공 없이 현지 여행으로 계산해요.'
+    : r ? ` — ${r.label} 약 ${_hm(r.minutes)} (${r.from} → ${r.to})` : '';
   _setFieldMsg('dest', `✓ ${from === 'quick' ? '도착 도시를 바꿨어요: ' : ''}${where}${local}`, 'ok');
 }
 
@@ -934,15 +937,17 @@ function _refreshBudget() {
     const route = `${t.originName || '출발지 미선택'} → ${t.cityName || '도착지 미선택'}`;
     sumEl.innerHTML = `<strong>${escapeHtml(route)}</strong><span>${escapeHtml(_durationLabel(days))} · ${people}명</span>`;
   }
+  _syncRideTexts();
+  const ground = _groundOf(t);
   const fn = $('#includeFlightNote');
-  if (fn) fn.textContent = _isLocalTrip(t) ? '같은 도시 여행이라 필요 없어요' : `왕복 · ${people}명`;
+  if (fn) fn.textContent = _isLocalTrip(t) ? '같은 도시 여행이라 필요 없어요' : `${ground ? `${ground.label} ` : ''}왕복 · ${people}명`;
   const hn = $('#includeHotelNote');
   if (hn) hn.textContent = days > 1 ? `${days - 1}박 · 객실 ${_roomCount(t)}개` : '당일치기라 필요 없어요';
 
   const rows = $('#budgetSuggestRows');
   if (rows) {
     const items = [
-      ['항공', plan.flight, `왕복 ${people}명`], ['숙소', plan.hotel, `${plan.nights}박 · ${plan.rooms}실`], ['식비', plan.food],
+      [RIDE[plan.ride].label, plan.flight, `왕복 ${people}명`], ['숙소', plan.hotel, `${plan.nights}박 · ${plan.rooms}실`], ['식비', plan.food],
       ['쇼핑', plan.shopping], ['입장·체험', plan.entry], ['현지 교통', plan.transport],
     ].filter(x => x[1] > 0);
     const total = $('#budgetSuggestTotal');
@@ -1080,10 +1085,11 @@ function _refreshMoreMeta() {
   const fn = (f.airlines?.length || 0) + (f.route && f.route !== 'any' ? 1 : 0) + (f.classType && f.classType !== 'any' ? 1 : 0);
   const fm = $('#flightMoreMeta'); if (fm) fm.textContent = fn ? `${fn}개 선택` : '선택 안 함';
   const parts = [];
-  if (t.includeFlight === false) parts.push('항공권 제외');
+  const ground = _groundOf(t);
+  if (t.includeFlight === false) parts.push(`${RIDE[ground?.mode || 'air'].ticket} 제외`);
   if (t.includeHotel === false) parts.push('숙소 제외');
   if (t.currency && t.currency !== 'KRW') parts.push(`${t.currency}로 표시`);
-  if (fn) parts.push(`항공 ${fn}개`);
+  if (fn && !ground) parts.push(`항공 ${fn}개`);
   if (hn) parts.push(`숙소 ${hn}개`);
   const bm = $('#budgetMoreMeta'); if (bm) bm.textContent = parts.length ? parts.join(' · ') : '선택 · 바꾸지 않아도 돼요';
   const sn = (t.styles || []).length;
@@ -1159,12 +1165,13 @@ function _refreshSummary() {
   const amens = (h.amenities || []).map(x => hotelAmenLbl[x] || x).join(', ');
   // 고른 것만 — 비어 있는 항목은 줄을 만들지 않는다
   const flight = [f.route && f.route !== 'any' ? routeLbl : '', f.classType && f.classType !== 'any' ? clsLbl : '', (f.airlines || []).join(', ')].filter(Boolean).join(', ');
+  const ground = _groundOf(t);
   const rows = [
     ['장소', (PLACE_MODES.find(x => x[0] === modeOf(t)) || [])[1]],
     ['여행 스타일', [t.concept, ...(t.styles || [])].filter(Boolean).join(', ')],
     ['함께', t.companion ? _companionLabel(t.companion) : ''],
     ['예산', Number(t.budget) > 0 ? `${t.budget}만원` : ''],
-    ['항공', flight],
+    ground ? ['오가는 길', `${ground.label} · ${ground.from} → ${ground.to} 약 ${_hm(ground.minutes)}`] : ['항공', flight],
     ['숙소', [types, locs, amens].filter(Boolean).join(', ')],
   ].filter(([, v]) => v && v !== '-');
   s.hidden = !rows.length;
@@ -1562,7 +1569,7 @@ function _syncPeopleRow() {
   const s = document.getElementById('peopleSummary');
   if (s) {
     s.textContent = `총 ${total}명${t.children ? ` (성인 ${t.adults} · 아동 ${t.children})` : ''} · 객실 ${t.rooms}개. `
-      + '항공·식비·입장료는 인원수로, 숙소는 객실 수로 계산해요.'
+      + `${RIDE[_groundOf(t)?.mode || 'air'].label}·식비·입장료는 인원수로, 숙소는 객실 수로 계산해요.`
       + (t.children ? ' 아동 요금은 성인과 같게 어림해요.' : '');
   }
 }
@@ -1641,7 +1648,29 @@ const _CITY_AIRPORTS = {
   newyork:  [['JFK', '존 F. 케네디'], ['EWR', '뉴어크'], ['LGA', '라과디아']],
 };
 
+/** 기차·버스로 가는 구간(같은 나라 안에서 육로가 자연스러운 도시 쌍). 항공으로 갈 여행이면 null.
+ *  공항을 직접 고른 여행은 두 도시 모두 공항이 있을 때만 비행기로 간다. */
+function _groundOf(t) {
+  if (!t || t._air) return null;
+  if ((t.departureAirport || t.arrivalAirport) && (t.departureAirport || _CITY_IATA[t.origin]) && (t.arrivalAirport || _CITY_IATA[t.city])) return null;
+  return groundRoute(t);
+}
+const _hm = (min) => [Math.floor(min / 60) ? `${Math.floor(min / 60)}시간` : '', min % 60 ? `${min % 60}분` : ''].filter(Boolean).join(' ');
+
+/** 오가는 교통이 기차·버스면 예산 단계의 항공 글과 항공편 선택을 그에 맞춘다. */
+function _syncRideTexts() {
+  const r = _groundOf(appState.trip);
+  const W = RIDE[r?.mode || 'air'];
+  const name = $('#includeFlightName'); if (name) name.textContent = W.ticket;
+  const opt = $('#flightOptions'); if (opt) opt.hidden = !!r;
+  const desc = { '낮음': `${r ? W.label : '저가 항공'}·2성급·간단한 식사`, '보통': `${r ? W.label : '일반 항공'}·3성급·현지 평균`, '높음': `${r ? W.label : '대형 항공사'}·4성급·좋은 식당` };
+  $$('[data-budget-level] .bm-desc').forEach(x => { const v = desc[x.closest('[data-budget-level]').dataset.budgetLevel]; if (v) x.textContent = v; });
+}
+
+/** 왕복 교통비(전체 인원) — 기차·버스는 편도 운임 × 2 × 인원, 아니면 항공 추정. */
 function _calcFlightPrice(t) {
+  const ground = _groundOf(t);
+  if (ground) return ground.fare * 2 * _peopleCount(t);
   const f = t.flight || {};
   // 비행 시간 — 데이터 없으면 도시 등급에서 추정
   let durationMin = _CITY_FLIGHT_DURATION_MIN[t.cityName];
@@ -1794,6 +1823,12 @@ function _flightOffset(t) {
  *  가는 편: 여행 첫날 출발지 08:00 이후에 떠난다(전날 밤 출발 금지). 자정을 넘겨 도착하면 arrDay = 1.
  *  오는 편: 19:30 출발, 그날 안에 돌아올 수 있으면 더 이른 시각. */
 function _plannedFlights(t) {
+  const ground = _groundOf(t);
+  if (ground) {      // 기차·버스 — 아침에 나서고, 밤 10시 반까지 돌아온다
+    const dur = ground.minutes;
+    const arr = Math.max(timeToMin(FIRST_DAY_ARRIVAL), 8 * 60 + dur);
+    return { dur, off: 0, arrDay: 0, arr, back: Math.min(19 * 60 + 30, Math.floor((22 * 60 + 30 - dur) / 30) * 30), live: false, ground, ride: ground.mode };
+  }
   const dur = _flightMinutes(t), off = _flightOffset(t);
   const arrAbs = Math.max(timeToMin(FIRST_DAY_ARRIVAL), 8 * 60 + dur + off);
   let back = 19 * 60 + 30;
@@ -1803,13 +1838,14 @@ function _plannedFlights(t) {
 /** 하루에 들어갈 자리 [시각, 종류, 머무는 시간] — 예산 추정과 일정 생성이 같이 쓴다. */
 function _daySlots(t, di, totalDays, fl, localTrip) {
   const base = _slotTimesFor(t);
-  const g = { country: t.country, originCountry: t.originCountry };
+  const g = { country: t.country, originCountry: t.originCountry, ride: fl.ride };
+  const access = fl.ride ? STATION_MIN : 45;       // 공항·역 ↔ 시내
   let from = 0, until = 24 * 60;
   if (!localTrip) {
     const arrivalDay = totalDays > 1 ? fl.arrDay : 0;
     if (di < arrivalDay) return [];
-    if (di === arrivalDay) from = fl.arr + landingMinutes(g) + 45 + (totalDays > 1 ? 35 : 0);      // 입국 + 공항→시내 + 짐 맡기기
-    if (di === totalDays - 1) until = fl.back - beforeFlight(g) - 45 - (totalDays > 1 ? 35 : 0);   // 짐 찾기 + 시내→공항 + 탑승 전
+    if (di === arrivalDay) from = fl.arr + landingMinutes(g) + access + (totalDays > 1 ? 35 : 0);      // 입국 + 공항→시내 + 짐 맡기기
+    if (di === totalDays - 1) until = fl.back - beforeFlight(g) - access - (totalDays > 1 ? 35 : 0);   // 짐 찾기 + 시내→공항 + 탑승 전
   }
   const kept = [];
   base.forEach(([time, slot], i) => {
@@ -1836,6 +1872,11 @@ function _flightLine(t, isArrival, fl) {
   const day = (m) => m < 0 ? -1 : Math.floor(m / 1440);
   const note = (m) => m < 0 ? ' (전날)' : m >= 1440 ? ' (다음 날)' : '';
   const route = f.route === 'transit' ? '경유' : f.route === 'direct' ? '직항' : '';
+  if (fl.ground) {
+    const r = fl.ground, [from, to] = isArrival ? [r.from, r.to] : [r.to, r.from];
+    return { airline: r.label, depTime: fmt(dep), arrTime: fmt(arr), depDayOffset: day(dep), arrDayOffset: day(arr),
+      head: [RIDE[r.mode].sample, r.label], tail: [`${from} 출발 ${fmt(dep)} → ${to} 도착 ${fmt(arr)} (예상)`, _hm(fl.dur)] };
+  }
   const live = isArrival && fl.live;
   return {
     airline, depTime: fmt(dep), arrTime: fmt(arr), depDayOffset: day(dep), arrDayOffset: day(arr),
@@ -2000,6 +2041,7 @@ function _hotelNightFor(t, typeKey) {
 
 /** 한 조합의 예상 비용. 항목 이름은 결과 화면의 비용 행과 같다. */
 function _estimatePlan(t, opts = {}) {
+  if (opts.air) t = { ...t, _air: true };          // 예전에 항공으로 만든 일정 — 항공 기준으로 비교한다
   const days = Math.max(1, opts.days ?? (t.days || 1));
   const people = _peopleCount(t);
   const rooms = _roomCount(t);
@@ -2026,7 +2068,7 @@ function _estimatePlan(t, opts = {}) {
   return {
     hotelType: opts.hotelType ?? null, level, days, people, rooms, nights,
     includeFlight, includeHotel, flight, perRoomNight, hotel,
-    food, entry, shopping, transport, local, total: flight + hotel + local,
+    food, entry, shopping, transport, local, total: flight + hotel + local, ride: fl.ride || 'air',
   };
 }
 
@@ -2059,7 +2101,9 @@ function _cheaperNearby(t) {
   const rank = { high: 3, mid: 2, low: 1 };
   const mine = rank[t.cityTier] || 2;
   const pool = CITIES.filter(c => c.country === t.country && c.key !== t.city && (rank[c.tier] || 2) < mine);
-  return pool.find(c => _CITY_FLIGHT_DURATION_MIN[c.name]) || pool[0] || null;
+  // 기차·버스 여행이면 그대로 기차·버스로 갈 수 있는 도시를 먼저 본다(부산 대신 비행기로 가는 제주를 권하지 않게).
+  const byLand = _groundOf(t) ? pool.find(c => c.key !== t.origin && groundRoute({ origin: t.origin, city: c.key })) : null;
+  return byLand || pool.find(c => _CITY_FLIGHT_DURATION_MIN[c.name]) || pool[0] || null;
 }
 
 /* ============ 예산 대안 (결과 화면) ============
@@ -2088,45 +2132,53 @@ export function budgetAlternativesFor(g, actualTotal) {
   if (!t.cityName) return [];
   const scope = costScope(g, actual);
   const bp = g.budgetPlan || {};
-  const base = { hotelType: bp.hotelType || null, level: bp.level || '보통',
+  if ('departureAirport' in g) { t.departureAirport = g.departureAirport; t.arrivalAirport = g.arrivalAirport; }
+  const ride = rideOf(g);
+  const wasAir = ride === 'air' && !!_groundOf(t);  // 예전에 항공으로 만든 육로 구간 — 다시 만들면 기차·버스가 된다
+  const base = { air: ride === 'air', hotelType: bp.hotelType || null, level: bp.level || '보통',
     includeFlight: !['excluded', 'none'].includes(scope.status.flight), includeHotel: !['excluded', 'none'].includes(scope.status.hotel) };
   const baseEst = _estimatePlan(t, base);
   const days = baseEst.days;
   const live = { flight: scope.status.flight === 'live', hotel: scope.status.hotel === 'live' };
   const usable = (k) => k === 'shorter' ? days > 1
-    : k === 'lcc' ? !live.flight && t.flight?.classType !== 'lcc' && actual.flight > 0      // 실시간 요금은 이미 가장 싼 편이라 LCC 추정으로 바꾸지 않는다
+    : k === 'lcc' ? ride === 'air' && !live.flight && t.flight?.classType !== 'lcc' && actual.flight > 0      // 실시간 요금은 이미 가장 싼 편이라 LCC 추정으로 바꾸지 않는다
     : k === 'hostel' ? actual.hotel > 0 && base.hotelType !== 'hostel' && !(t.hotelP?.types || []).includes('hostel')
     : k === 'save' ? base.level !== '낮음'
     : k === 'noFlight' ? actual.flight > 0
     : k === 'noHotel' ? actual.hotel > 0 : false;
   const stepOpts = (k) => k === 'shorter' ? { days: days - 1 } : _ALT_STEPS[k].opts;
   const stepApply = (k) => k === 'shorter' ? { days: days - 1 } : _ALT_STEPS[k].apply;
-  const stepLabel = (k) => k === 'shorter' ? `${_durationLabel(days - 1)}로 줄이기` : _ALT_STEPS[k].label;
-  const stepShort = (k) => k === 'shorter' ? _durationLabel(days - 1) : _ALT_STEPS[k].short;
+  const stepLabel = (k) => k === 'shorter' ? `${_durationLabel(days - 1)}로 줄이기` : k === 'noFlight' ? `${josa(RIDE[ride].ticket, '은', '는')} 따로 계산` : _ALT_STEPS[k].label;
+  const stepShort = (k) => k === 'shorter' ? _durationLabel(days - 1) : k === 'noFlight' ? `${RIDE[ride].fee} 별도` : _ALT_STEPS[k].short;
   const optsOf = (ks) => Object.assign({ ...base }, ...ks.map(stepOpts));
-  const project = (ks, tt = t) => projectCost(actual, baseEst, _estimatePlan(tt, optsOf(ks)), { rebuilt: tt !== t || !ks.every(k => _IN_PLACE.has(k)) });
-  const mk = (key, label, detail, after, apply, ks, summary) => {
+  const rebuilds = (ks, tt) => tt !== t || !ks.every(k => _IN_PLACE.has(k));
+  const estimate = (ks, tt = t) => _estimatePlan(tt, { ...optsOf(ks), ...(rebuilds(ks, tt) ? { air: false } : {}) });   // 다시 만드는 대안은 새 기준(육로면 기차·버스)
+  const project = (ks, tt = t) => projectCost(actual, baseEst, estimate(ks, tt), { rebuilt: rebuilds(ks, tt) });
+  const mk = (key, label, detail, after, apply, ks, summary, tt = t) => {
+    const to = estimate(ks.filter(k => _ALT_STEPS[k]), tt).ride;
+    const turns = to !== ride;                      // 다시 만들면 이동 수단이 바뀌는 대안
     const excluded = ['flight', 'hotel'].filter(k => scope.excluded.includes(k) || (k === 'flight' ? ks.includes('noFlight') : ks.includes('noHotel')));
     const o = optsOf(ks.filter(k => _ALT_STEPS[k]));
     return {
-      key, label, detail, changes: ks, changeLabels: ks.filter(k => _ALT_STEPS[k]).map(stepLabel).concat(key === 'nearby' ? [label] : []),
+      key, label, detail: turns ? `${detail} · 오가는 길은 ${RIDE[to].label} 기준으로 바뀌어요` : detail, ride: to,
+      rideLabel: turns ? `${RIDE[ride].label} → ${RIDE[to].label}` : RIDE[to].label, changes: ks, changeLabels: ks.filter(k => _ALT_STEPS[k]).map(stepLabel).concat(key === 'nearby' ? [label] : []),
       summary: summary || ks.filter(k => k !== 'noFlight' && k !== 'noHotel').map(stepShort).filter(Boolean).join(' · '),
-      before: actual, after, compare: compareCost(actual, after),
-      included: COMPONENTS.map(([k]) => k).filter(k => after[k] > 0), excluded, scope: scopeText(excluded, actual.unknown),
+      before: actual, after, compare: compareCost(actual, after, to),
+      included: COMPONENTS.map(([k]) => k).filter(k => after[k] > 0), excluded, scope: scopeText(excluded, actual.unknown, to),
       total: after.total, saving: Math.max(0, total - after.total), over: Math.max(0, after.total - budget), fits: after.total <= budget,
       apply, lock: { hotelType: o.hotelType, level: o.level }, inPlace: ks.length > 0 && ks.every(k => _IN_PLACE.has(k)),
     };
   };
   const keys = ['lcc', 'save', 'hostel', 'shorter', 'noFlight', 'noHotel'].filter(usable);
-  const singles = keys.map(k => mk(k, stepLabel(k), _ALT_STEPS[k].detail, project([k]), stepApply(k), [k]));
+  const singles = keys.map(k => mk(k, stepLabel(k), k === 'noFlight' && ride !== 'air' ? '이미 샀거나 따로 예매할 때' : _ALT_STEPS[k].detail, project([k]), stepApply(k), [k]));
   const near = _cheaperNearby(t);
   if (near) {
     const tt = { ...t, city: near.key, cityName: near.name, cityTier: near.tier, country: near.country, arrivalAirport: '' };
     singles.push(mk('nearby', `${josaRo(near.name)} 바꾸기`, `${near.country} 안에서 물가가 더 낮은 도시`, project([], tt),
-      { city: { key: near.key, name: near.name, tier: near.tier, country: near.country, flag: near.flag } }, ['nearby'], `${near.name} 여행`));
+      { city: { key: near.key, name: near.name, tier: near.tier, country: near.country, flag: near.flag } }, ['nearby'], `${near.name} 여행`, tt));
   }
   // 예산 안에 드는 조합 — 항공·숙소를 빼지 않는 조합이 먼저, 그다음 바뀌는 조건이 적은 것.
-  const order = ['lcc', 'save', 'hostel', 'shorter', 'noHotel', 'noFlight'].filter(k => keys.includes(k));
+  const order = ['lcc', 'save', 'hostel', 'shorter', 'noHotel', 'noFlight'].filter(k => keys.includes(k) && !(k === 'lcc' && wasAir));
   const cost = (ks) => ks.length * 10 + ks.filter(k => k === 'noFlight' || k === 'noHotel').length * 100;
   const subsets = [];
   for (let mask = 1; mask < (1 << order.length); mask++) {
@@ -2229,7 +2281,7 @@ export async function applyBudgetAlternative(alt) {
   const g = appState.generated;
   const after = costBreakdown(g);
   return { ok: true, predicted, actual: after, total: after.total, budget: Number(g.budget) || 0, scope: costScope(g, after),
-    ...(predicted ? diffReasons(predicted, after, { flightLive: g.flightPriceSource === 'serpapi', hotelLive: g.hotelPriceSource === 'serpapi' }) : { diff: 0, same: true, reasons: [] }),
+    ...(predicted ? diffReasons(predicted, after, { ride: rideOf(g), flightLive: g.flightPriceSource === 'serpapi', hotelLive: g.hotelPriceSource === 'serpapi' }) : { diff: 0, same: true, reasons: [] }),
     undo: () => { const now = appState.generated; restore(); return now; } };
 }
 
@@ -2326,6 +2378,7 @@ function _syncTripFromGenerated(g, t = appState.trip) {
   Object.assign(t, {
     cityName: g.city, city: c?.key || '', country: g.country || c?.country || '', cityTier: c?.tier, cityFlag: c?.flag,
     originName: g.originName || '', origin: o?.key || '', originCountry: o?.country,
+    departureAirport: g.departureAirport || '', arrivalAirport: g.arrivalAirport || '',
     startDate: first, endDate: last, days: g.days.length,
     placeMode: g.placeMode || t.placeMode || 'local', concept: g.concept || t.concept, styles: Array.isArray(g.styles) ? [...g.styles] : (t.styles || []),
     companion: g.companion || t.companion || 'couple',
@@ -2379,7 +2432,7 @@ function _mergePinned(generated, pins) {
 }
 
 /* ============ 생성 진행 화면 ============ */
-const GEN_STEPS = ['도시 위치 찾기', '항공권 확인', '숙소 확인', '날짜별 장소 고르기', '예산 맞추기'];
+const _genSteps = () => ['도시 위치 찾기', `${RIDE[_groundOf(appState?.trip)?.mode || 'air'].ticket} 확인`, '숙소 확인', '날짜별 장소 고르기', '예산 맞추기'];
 /* 앱 아이콘의 경로(배경 없이): 빈 원에서 비행기가 떠나고, 지나간 자리에 점이 하나씩 떨어져 남는다.
  * 점 크기는 앱 아이콘처럼 작고 큰 점이 섞이고, 경로 위 간격을 두어 서로 겹치지 않는다.
  * 3.2초 한 바퀴 — 날아가기(0~70%) → 완성된 모습 잠시(70~90%) → 사라졌다 다시. 일정이 다 만들어질 때까지 반복. */
@@ -2428,7 +2481,7 @@ function _showGenLoading(msg) {
     ov = el('div', { id: 'genLoadingOverlay', role: 'dialog', ariaModal: 'true', ariaLabelledby: 'glMsg' }, [
       el('svg', {}),
       el('div', { class: 'gl-msg', id: 'glMsg' }, '일정을 만드는 중…'),
-      el('ol', { class: 'gl-steps', id: 'glSteps' }, GEN_STEPS.map((s, i) => el('li', { dataset: { i: String(i) } }, s))),
+      el('ol', { class: 'gl-steps', id: 'glSteps' }, _genSteps().map((s, i) => el('li', { dataset: { i: String(i) } }, s))),
       el('p', { class: 'gl-sub', id: 'glSub', ariaLive: 'polite' }, ''),
       el('div', { class: 'gl-actions', id: 'glActions' }),
     ]);
@@ -2452,7 +2505,7 @@ function _genProgress(stepIdx, detail) {
     if (i === stepIdx) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
   });
   const sub = ov.querySelector('#glSub');
-  if (sub) sub.textContent = `${GEN_STEPS[stepIdx] || ''}${detail ? ` · ${detail}` : ''}`;
+  if (sub) sub.textContent = `${_genSteps()[stepIdx] || ''}${detail ? ` · ${detail}` : ''}`;
 }
 function _showGenFailure(message) {
   const ov = document.getElementById('genLoadingOverlay');
@@ -2506,6 +2559,8 @@ const _prov = (name, status, extra = {}) => ({ name, status, retryable: false, r
 async function _liveFlight(t, plan, features) {
   const name = 'Google 항공 (SerpApi)';
   if (!plan.includeFlight) return { state: _prov(name, 'excluded') };
+  const ground = _groundOf(t);
+  if (ground) return { state: _prov('기차·버스 운임 어림', 'skipped', { reason: `${RIDE[ground.mode].label} 요금은 구간 운임으로 어림했어요. 배차와 요금은 예매할 때 확인해 주세요.` }) };
   if (!features.liveFlights) return { state: _prov(name, 'off', { code: features.unknown ? 'network' : 'unconfigured', reason: features.unknown ? _PROVIDER_TEXT.network[0] : _PROVIDER_TEXT.unconfigured[0], retryable: !!features.unknown }) };
   const depIata = t.departureAirport || _CITY_IATA[t.origin];   // 사용자가 고른 출발 공항 우선
   const arrIata = t.arrivalAirport || _CITY_IATA[t.city];
@@ -2573,6 +2628,7 @@ export async function retryProvider(kind) {
   const t = JSON.parse(JSON.stringify(appState.trip || {}));
   _syncTripFromGenerated(g, t);
   const bp = g.budgetPlan || {};
+  if (rideOf(g) === 'air') t._air = true;            // 항공으로 만든 일정은 항공 요금을 다시 조회한다
   const plan = { includeFlight: bp.includeFlight !== false, includeHotel: bp.includeHotel !== false, hotelType: bp.hotelType, people: g.people || 1, nights: bp.nights || g.days.length - 1 };
   const features = await api.features({ fresh: true });
   g.sources = { ...(g.sources || {}) };
@@ -2778,16 +2834,20 @@ async function _generateScheduleInner(t, btn, startedAt) {
   let hotelPlace = null;
   const localTrip = _isLocalTrip(t);
   _genProgress(1, plan.includeFlight ? '' : (localTrip ? '같은 도시 여행이라 건너뛰어요' : '예산에서 제외했어요'));
+  const ground = localTrip ? null : _groundOf(t);
+  const hubQuery = !ground ? `${t.cityName} 국제공항` : ground.to.includes(t.cityName) ? ground.to : `${t.cityName} ${ground.to}`;
   if (!localTrip) try {
     const ar = await _withTimeout(_sp({
-      query: `${t.cityName} 국제공항`,
+      query: hubQuery,
       language_code: 'ko', language: 'ko',
       region: _guessRegion(t.country),
       max_results: 3,
       center_lat: cityCenter?.lat,
       center_lng: cityCenter?.lng,
-    }), 12000, '공항 검색');
-    airportPlace = (ar?.places || []).find(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude)) || null;
+    }), 12000, '공항·역 검색');
+    const hubs = (ar?.places || []).filter(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude) && (!ground || _kmFromCentre(p) <= 60));
+    const flat = (x) => String(x || '').replace(/\s+/g, '');
+    airportPlace = (ground && hubs.find(p => flat(p.name).includes(flat(ground.to)))) || hubs[0] || null;
   } catch (e) {
     console.warn('[trip-flow] airport resolve failed:', e?.message);
   }
@@ -2858,7 +2918,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
     console.warn('[trip-flow] hotel resolve failed:', e?.message);
   }
 
-  const airportName = airportPlace?.name || `${t.cityName} 국제공항`;
+  const airportName = ground ? ground.to : airportPlace?.name || `${t.cityName} 국제공항`;
   let hotelName     = hotelPlace?.name   || `${t.cityName} 시내 호텔`;
   // Cost: 1박 단위로 분배 — 첫날 체크인 + 중간일 복귀에 각 1박씩 적용
   const nights = plan.nights;
@@ -2908,7 +2968,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
     ? Math.round(_flightPerPax * _pax * (t.companion === 'group' ? 0.95 : 1) / 100) * 100
     : _calcFlightPrice(t);
   const flightHalfKRW  = Math.round(flightTotalKRW / 2 / 100) * 100;
-  console.log('[trip-flow] 항공권(' + _flightSource + ') — 총 ' + flightTotalKRW.toLocaleString('ko-KR') + '원 (편도 ' + flightHalfKRW.toLocaleString('ko-KR') + '원)');
+  console.log('[trip-flow] 왕복 교통(' + (ground?.label || '항공') + ' ' + _flightSource + ') — 총 ' + flightTotalKRW.toLocaleString('ko-KR') + '원 (편도 ' + flightHalfKRW.toLocaleString('ko-KR') + '원)');
 
   function _airportItem(time, label) {
     const f = t.flight || {};
@@ -2925,16 +2985,17 @@ async function _generateScheduleInner(t, btn, startedAt) {
       // 가는 편은 절반, 오는 편은 나머지 — 두 편을 더하면 왕복 총액과 정확히 같다.
       cost: isArrival ? flightHalfKRW : flightTotalKRW - flightHalfKRW,
       ...(plan.includeFlight ? {} : { excludedFromBudget: true }),
-      placeId: airportPlace?.place_id || `airport-${t.cityName}`,
+      placeId: airportPlace?.place_id || `${ground ? 'station' : 'airport'}-${t.cityName}`,
       latitude:  airportPlace?.latitude,
       longitude: airportPlace?.longitude,
       // 공항 주소 대신 항공편 정보 (편명·항공사·시간) 표시
       address:   flightInfo,
       googleMapsQuery: airportName,
       flightMeta: {
+        ...(ground ? { mode: ground.mode, line: ground.label, from: ground.from, to: ground.to, farePerPerson: ground.fare } : {}),
         roundTripKRW: flightTotalKRW,
         oneWayKRW:    flightHalfKRW,
-        airline:      _flightMeta?.airline || (f.airlines && f.airlines[0]) || (f.classType === 'lcc' ? '제주항공' : '대한항공'),
+        airline:      ground ? ground.label : _flightMeta?.airline || (f.airlines && f.airlines[0]) || (f.classType === 'lcc' ? '제주항공' : '대한항공'),
         flightCode:   _flightMeta?.flightCode || '',
         route:        f.route || 'any',
         startDate:    t.startDate,
@@ -2984,9 +3045,10 @@ async function _generateScheduleInner(t, btn, startedAt) {
     const firstSlot = slots.length ? timeToMin(slots[0][0]) : null;
     const lastEnd = slots.length ? timeToMin(slots[slots.length - 1][0]) + slots[slots.length - 1][2] : null;
     const up5 = (m) => minToTime(Math.ceil(m / 5) * 5);
-    const where = { country: t.country, originCountry: t.originCountry };
+    const where = { country: t.country, originCountry: t.originCountry, ride: flights.ride };
+    const access = flights.ride ? STATION_MIN : 45;
     const flightBack = flights.back;
-    const leaveCity = flightBack - beforeFlight(where) - 45;      // 시내에서 공항으로 나서는 시각
+    const leaveCity = flightBack - beforeFlight(where) - access;      // 시내에서 공항·역으로 나서는 시각
 
     // ── 하루 시작 ──
     if (!localTrip && i < arrivalDay) {
@@ -2998,7 +3060,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
     }
     if (!localTrip && i === arrivalDay) activities.push(_airportItem(minToTime(flights.arr), '도착'));
     if (!isSingleDay && i === arrivalDay) {
-      const checkin = localTrip ? (firstSlot ?? 600) - 30 : flights.arr + landingMinutes(where) + 45;
+      const checkin = localTrip ? (firstSlot ?? 600) - 30 : flights.arr + landingMinutes(where) + access;
       activities.push(_hotelItem(up5(checkin), '체크인·짐 맡기기', 0));
     } else if (!isSingleDay) {
       // 마지막 날은 아침에 체크아웃하며 짐을 맡긴다
@@ -3178,6 +3240,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
     placeMode: mode,
     placeLang: mode === 'famous' ? 'ko' : lang,
     needs: [...(t.needs || [])],
+    departureAirport: t.departureAirport || '', arrivalAirport: t.arrivalAirport || '',
     flight: t.flight ? { ...t.flight, airlines: [...(t.flight.airlines || [])] } : null,
     hotelPref: t.hotelP ? {
       types: [...(t.hotelP.types || [])],

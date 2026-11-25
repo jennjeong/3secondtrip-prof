@@ -1,14 +1,18 @@
 /* 3초 여행 — 여행 비용 계산 기준 (화면과 무관한 순수 계산)
  *
  * 일정 합계·예산 대안·적용 뒤 비교가 모두 이 파일의 같은 항목과 같은 반올림(원 단위)을 쓴다.
- *  항목: 항공(왕복 전체 인원) · 숙소(1박 × 객실 × 박수) · 식비 · 입장·체험 · 쇼핑 · 현지 교통
+ *  항목: 항공 또는 기차·버스(왕복 전체 인원, 항목 키는 모두 flight) · 숙소(1박 × 객실 × 박수) · 식비 · 입장·체험 · 쇼핑 · 현지 교통
  *  상태: live(실시간 조회) · estimate(추정) · excluded(따로 계산) · none(해당 없음)
  *  모르는 비용은 0원이 아니라 unknown 으로 세고 합계에 넣지 않는다.
  */
+import { RIDE, rideOf } from './redesign-ground.js';
+
 export const COMPONENTS = [
   ['flight', '항공'], ['hotel', '숙소'], ['food', '식비'], ['entry', '입장·체험'], ['shopping', '쇼핑'], ['transport', '현지 교통'],
 ];
 const LABEL = Object.fromEntries(COMPONENTS);
+/** 항목 이름 — 오가는 교통은 이동 수단에 따라 ‘항공 · 기차 · 버스 · 전철’ */
+export const componentLabel = (k, ride = 'air') => (k === 'flight' ? (RIDE[ride] || RIDE.air).label : LABEL[k]);
 
 export function costUnknown(a) {
   return !!a && (a.cost === null || a.cost === undefined) && a.category !== '이동' && a.category !== '숙박';
@@ -54,11 +58,11 @@ export function costScope(g, bd = costBreakdown(g)) {
   };
   const excluded = COMPONENTS.map(([k]) => k).filter(k => status[k] === 'excluded');
   const included = COMPONENTS.map(([k]) => k).filter(k => status[k] !== 'excluded' && status[k] !== 'none' && bd[k] > 0);
-  return { status, excluded, included, unknown: bd.unknown, text: scopeText(excluded, bd.unknown) };
+  return { status, excluded, included, unknown: bd.unknown, text: scopeText(excluded, bd.unknown, rideOf(g)), ride: rideOf(g) };
 }
 /** ‘항공비 별도’ · ‘항공비·숙소비 별도’ · ‘항공·숙소 포함’ */
-export function scopeText(excluded, unknown = 0) {
-  const name = { flight: '항공비', hotel: '숙소비' };
+export function scopeText(excluded, unknown = 0, ride = 'air') {
+  const name = { flight: RIDE[ride].fee, hotel: '숙소비' };
   const out = excluded.map(k => name[k] || LABEL[k]);
   return [out.length ? `${out.join('·')} 별도` : '', unknown ? `미확인 ${unknown}곳 제외` : ''].filter(Boolean).join(' · ');
 }
@@ -70,8 +74,8 @@ export function costDuplicates(g) {
   const fl = acts.filter(x => x.a.category === '이동' && x.a.flightMeta && won(x.a.cost) > 0);
   const round = won(fl.find(x => x.a.flightMeta.roundTripKRW)?.a.flightMeta.roundTripKRW);
   const sum = fl.reduce((n, x) => n + won(x.a.cost), 0);
-  if (fl.length > 2) out.push({ code: 'flightTwice', text: '항공권이 세 번 이상 더해졌어요.' });
-  if (round && !fl.some(x => x.a.costEdited || x.a.edited) && Math.abs(sum - round) > 200) out.push({ code: 'flightSum', text: `항공권 합계가 왕복 요금과 달라요(차이 ${Math.abs(sum - round)}원).` });
+  if (fl.length > 2) out.push({ code: 'flightTwice', text: `${rideOf(g) === 'air' ? '항공권이' : `${RIDE[rideOf(g)].ticket} 값이`} 세 번 이상 더해졌어요.` });
+  if (round && !fl.some(x => x.a.costEdited || x.a.edited) && Math.abs(sum - round) > 200) out.push({ code: 'flightSum', text: `${RIDE[rideOf(g)].ticket} 합계가 왕복 요금과 달라요(차이 ${Math.abs(sum - round)}원).` });
   const paid = acts.filter(x => x.a.category === '숙박' && !x.a.excludedFromBudget && won(x.a.cost) > 0);
   const nights = Math.max(0, (g?.days?.length || 1) - 1);
   if (paid.length > nights) out.push({ code: 'hotelTwice', text: `숙박비가 ${nights}박보다 많이(${paid.length}번) 더해졌어요.` });
@@ -94,8 +98,8 @@ export function projectCost(actual, baseEst, nextEst, { rebuilt = false } = {}) 
 }
 
 /** 두 금액표의 차이(큰 것부터). */
-export function compareCost(before, after) {
-  return COMPONENTS.map(([k, label]) => ({ key: k, label, before: won(before[k]), after: won(after[k]), diff: won(after[k]) - won(before[k]) }))
+export function compareCost(before, after, ride) {
+  return COMPONENTS.map(([k]) => ({ key: k, label: componentLabel(k, ride), before: won(before[k]), after: won(after[k]), diff: won(after[k]) - won(before[k]) }))
     .filter(x => x.before || x.after);
 }
 
@@ -104,11 +108,11 @@ export function diffReasons(predicted, actual, info = {}) {
   const diff = won(actual.total) - won(predicted.total);
   if (Math.abs(diff) < 1000) return { diff, same: true, reasons: [] };
   const why = {
-    flight: info.flightLive ? '항공은 실시간 요금을 다시 조회했어요' : '항공 추정이 새 날짜·도시 기준으로 바뀌었어요',
+    flight: info.flightLive ? '항공은 실시간 요금을 다시 조회했어요' : `${componentLabel('flight', info.ride)} 추정이 새 날짜·도시 기준으로 바뀌었어요`,
     hotel: info.hotelLive ? '숙소는 실시간 요금을 다시 조회했어요' : '새로 고른 숙소의 추정 요금이에요',
     food: '식사·카페 수가 달라졌어요', entry: '관광·체험 장소 수가 달라졌어요', shopping: '쇼핑 장소 수가 달라졌어요', transport: '여행 날 수가 달라졌어요',
   };
-  const reasons = compareCost(predicted, actual).filter(x => Math.abs(x.diff) >= 1000).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
+  const reasons = compareCost(predicted, actual, info.ride).filter(x => Math.abs(x.diff) >= 1000).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
     .map(x => ({ key: x.key, label: x.label, diff: x.diff, text: why[x.key] }));
   return { diff, same: false, reasons };
 }

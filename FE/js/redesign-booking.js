@@ -7,12 +7,13 @@
  * 실시간 조회값이 아닌 금액은 모두 '추정가'로 표시하고, 편명·좌석·객실은
  * 확정값처럼 보여 주지 않는다.  후보는 일정과 함께 기기·계정에 저장된다.
  *
- * 기존 규칙 유지: 항공 왕복 1건 + 가격대 대안, 숙소 대안, 예약이 필요한
+ * 기존 규칙 유지: 항공(기차·버스 여행은 표 한 장) 왕복 1건 + 가격대 대안, 숙소 대안, 예약이 필요한
  * 식당·액티비티만, 공항 이동 왕복, 교통패스.
  */
 
 import { trackEvent } from './redesign-api-adapter.js';
 import { el, $, formatCurrency, showToast } from './redesign-ui.js';
+import { RIDE, rideOf } from './redesign-ground.js';
 
 const CATS = {
   flight:     { label: '항공',     order: 1 },
@@ -82,8 +83,17 @@ export function initBooking(state) {
   });
 }
 
+/** 기차·버스 여행이면 ‘항공 · 공항이동’을 ‘기차 · 역 이동’으로 부른다. */
+function _syncRideLabels(g) {
+  const W = RIDE[rideOf(g)];
+  CATS.flight.label = W.label;
+  CATS.airport.label = W === RIDE.air ? '공항이동' : `${W.hub} 이동`;
+  ['flight', 'airport'].forEach(k => { const c = $(`#bookingFilters [data-book-cat="${k}"]`); if (c) c.textContent = CATS[k].label; });
+}
+
 function _open() {
   if (!appState?.generated) { showToast('일정이 없어요'); return; }
+  _syncRideLabels(appState.generated);
   trackEvent('booking_opened');
   items = _buildItems(appState.generated);
   selected = new Set();
@@ -115,6 +125,10 @@ function _googleFlightsUrl(g) {
     ? ` on ${g.days[0].date} through ${g.days.at(-1).date}` : '';
   return 'https://www.google.com/travel/flights?q='
     + encodeURIComponent(`Flights from ${from} to ${g.city}${dates}`);
+}
+/** 역·터미널 사이 대중교통 길찾기 */
+function _transitUrl(fm, g) {
+  return 'https://www.google.com/maps/dir/?api=1&travelmode=transit&origin=' + encodeURIComponent(fm.from || g.originName || '') + '&destination=' + encodeURIComponent(fm.to || g.city);
 }
 function _hotelUrl(g, query) {
   const aid = window.__AFFILIATE?.bookingAid;
@@ -160,11 +174,18 @@ function _buildItems(g) {
     });
   });
   // 옵션 후보군 — 사용자 선택 1개 + 가격대별 대안
+  const ground = rideOf(g) !== 'air' ? g.days.flatMap(d => d.activities || []).find(a => a.category === '이동' && a.flightMeta) : null;
+  if (ground && actualFlightPrice > 0) {       // 기차·버스는 예매할 표 하나만 — 항공 등급별 대안은 없다
+    const fm = ground.flightMeta;
+    out.push({ id: 'flt-pick', cat: 'flight', name: `${fm.from} ⇄ ${fm.to} 왕복 ${fm.line}`,
+      desc: `1인 편도 약 ${(fm.farePerPerson || 0).toLocaleString('ko-KR')}원 · 시간표·좌석은 예매할 때 확인`,
+      price: actualFlightPrice, required: true, sub: '★ 일정 선택 기준', estimated: true, url: _transitUrl(fm, g) });
+  }
   const flightOptions = [];
   const flightUrl = _googleFlightsUrl(g);
   const originLabel = g.originName || g.departureCity || '인천';
   // 1) 사용자 선택 (실제 가격)
-  if (actualFlightPrice > 0) {
+  if (!ground && actualFlightPrice > 0) {
     const userDesc = [];
     if (flight.route === 'direct') userDesc.push('직항');
     else if (flight.route === 'transit') userDesc.push('경유');
@@ -192,7 +213,7 @@ function _buildItems(g) {
   ];
   // 기준 가격 = 실제 가격이 있으면 그것, 없으면 LCC 320k / FSC 580k
   const baseRef = actualFlightPrice || (flight.classType === 'lcc' ? 320000 : 580000);
-  altOptions.forEach(opt => {
+  if (!ground) altOptions.forEach(opt => {
     const p = Math.round(baseRef * opt.mult / 10000) * 10000;
     flightOptions.push({
       id: opt.id, cat: 'flight',
@@ -289,8 +310,13 @@ function _buildItems(g) {
   });
 
   // AIRPORT — arrival + departure
+  if (ground) {
+    out.push({ id:'ap-in',  cat:'airport', name: `${ground.flightMeta.to} → 숙소 이동`, desc:'택시 어림', price: 10000, estimated: true, url: _googleMapsUrl(`${ground.flightMeta.to} 택시`) });
+    out.push({ id:'ap-out', cat:'airport', name: `숙소 → ${ground.flightMeta.to} 이동`, desc:'택시 어림', price: 10000, estimated: true, url: _googleMapsUrl(`${ground.flightMeta.to} 택시`) });
+  } else {
   out.push({ id:'ap-in',  cat:'airport', name: `${city} 공항 → 호텔 이동`, desc:'프라이빗 픽업', price: 38000, estimated: true, url: _googleMapsUrl(`${city} 공항 픽업`) });
   out.push({ id:'ap-out', cat:'airport', name: `호텔 → ${city} 공항 이동`, desc:'프라이빗 샌딩', price: 38000, estimated: true, url: _googleMapsUrl(`${city} 공항 샌딩`) });
+  }
 
   // RESTAURANT / ACTIVITY — only required-reservation items
   g.days.forEach((d, di) => {

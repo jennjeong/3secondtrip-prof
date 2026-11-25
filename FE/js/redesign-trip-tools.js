@@ -7,6 +7,7 @@
 import { api, trackEvent } from './redesign-api-adapter.js';
 import { $, el, formatCurrency, showToast } from './redesign-ui.js';
 import { timeZoneFor, utcOffsetMin, utcLabel } from './redesign-cities.js';
+import { RIDE, rideOf } from './redesign-ground.js';
 
 const STORE_KEY = 'tst_trip_tools_v1';
 const MAX_STORED_TRIPS = 20;
@@ -353,6 +354,8 @@ function _expenseEl(g) {
 function _checklistItems(g) {
   const items = [...BASE_CHECKLIST];
   if (g.country === '대한민국') items.splice(0, 1, '신분증');
+  const ride = rideOf(g);
+  if (ride !== 'air') items.splice(1, 1, `${RIDE[ride].ticket}·숙소 예약 확인`);
   if (CURRENCY_BY_COUNTRY[g.country]) items.push('여행지 전원 어댑터');
   if (g.companion === 'family') items.push('아이 간식·놀이용품');
   return items;
@@ -516,7 +519,7 @@ export function buildIcs(g) {
         at('DTSTART', d.date, a.time, 0),
         at('DTEND', d.date, a.time, len),
         `SUMMARY:${_icsText(a.name)}`,
-        `LOCATION:${_icsText(a.address && !/예시 항공편/.test(a.address) ? a.address : a.name)}`,
+        `LOCATION:${_icsText(a.address && !/예시 (항공편|열차|전철|버스)/.test(a.address) ? a.address : a.name)}`,
         `DESCRIPTION:${_icsText([`${di + 1}일차 · ${a.category || ''} · 현지 ${a.time}`, a.memo].filter(Boolean).join('\n'))}`,
         'END:VEVENT',
       );

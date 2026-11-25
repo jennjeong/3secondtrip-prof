@@ -10,9 +10,11 @@
  *      고정한 장소와 직접 고친 시각은 건드리지 않고 blocked 로 원인을 알려 준다.
  */
 import { openState, hoursText } from './redesign-hours.js';
+import { RIDE, rideMode, rideOf } from './redesign-ground.js';
 
 export const CHECKIN_FROM = 15 * 60;      // 보통 체크인 가능 시간
 export const TOLERANCE = 10;              // 이 정도 어긋남은 문제로 보지 않는다(분)
+export const STATION_MIN = 25;            // 역·터미널 ↔ 시내(위치를 모를 때)
 const DAY_END = 24 * 60 - 5;
 const OPEN_CATS = new Set(['관광', '식사', '카페', '쇼핑', '액티비티']);
 const DWELL_MIN = { 식사: 75, 카페: 60, 관광: 90, 쇼핑: 100, 액티비티: 120, 숙박: 30, 이동: 0 };
@@ -39,9 +41,11 @@ export function travelMinutes(a, b) {
   const km = kmBetween(a, b);
   return km == null ? 20 : Math.max(5, Math.round((km * 1.3 / 18) * 60));
 }
-/** 공항 ↔ 시내 — 공항철도·도로 평균 50km/h + 타고 내리는 15분. 위치를 모르면 45분. */
+/** 공항 ↔ 시내 — 공항철도·도로 평균 50km/h + 타고 내리는 15분. 위치를 모르면 45분.
+ *  역·터미널 ↔ 시내(기차·버스 일정) — 시내버스·택시 평균 30km/h + 나오는 10분. 위치를 모르면 25분. */
 export function airportMinutes(a, b) {
   const km = kmBetween(a, b);
+  if (rideMode(a) !== 'air' || rideMode(b) !== 'air') return km == null ? STATION_MIN : Math.max(10, Math.round(10 + (km * 1.3 / 30) * 60));
   return km == null ? 45 : Math.max(20, Math.round(15 + (km * 1.25 / 50) * 60));
 }
 export function dwellMinutes(cat) { return DWELL_MIN[cat] ?? 90; }
@@ -51,7 +55,7 @@ export function stayMinutes(a) {
   return a?.category === '숙박' ? 15 : dwellMinutes(a?.category);
 }
 
-/* ── 항공 ── */
+/* ── 도착·출발편(항공 · 기차 · 버스) ── */
 export const isFlight = (a) => a?.category === '이동' && !!a.flightMeta;
 export const isArrival = (a) => isFlight(a) && /도착/.test(a.name || '');
 export const isDeparture = (a) => isFlight(a) && /출발/.test(a.name || '');
@@ -73,10 +77,12 @@ export function isInternational(g) {
   const from = g?.originCountry || '대한민국';
   return !!g?.country && g.country !== from;
 }
-/** 착륙 → 입국 심사·수하물 */
-export const landingMinutes = (g) => (isInternational(g) ? 50 : 20);
-/** 출발 전 공항 도착 여유 */
-export const beforeFlight = (g) => (isInternational(g) ? 120 : 60);
+/** 착륙 → 입국 심사·수하물. 기차·버스는 내려서 나오는 10분 */
+export const landingMinutes = (g) => (rideOf(g) !== 'air' ? 10 : isInternational(g) ? 50 : 20);
+/** 출발 전 공항 도착 여유. 기차·버스는 역·터미널에 20분 전, 전철은 10분 전 */
+export const beforeFlight = (g) => ({ train: 20, bus: 20, subway: 10 }[rideOf(g)] || (isInternational(g) ? 120 : 60));
+/** ‘2시간’ · ‘20분’ */
+export const beforeFlightText = (g) => (beforeFlight(g) >= 60 ? `${beforeFlight(g) / 60}시간` : `${beforeFlight(g)}분`);
 
 /* ── 글 ── */
 export function josa(word, withBatchim, without) {
@@ -104,23 +110,25 @@ export function checkDay(g, di) {
     if (text) list.push({ kind, lvl: kind === 'time' ? 'warn' : 'check', code, di, ai: ai ?? null, placeId: ai >= 0 ? acts[ai]?.placeId ?? null : null, fix: fix || null, text });
   };
 
-  // 1) 착륙 → 입국 심사·수하물 → 시내
+  const mode = rideOf(g), air = mode === 'air', W = RIDE[mode];
+  // 1) 착륙 → 입국 심사·수하물 → 시내 (기차·버스는 내려서 시내로)
   const arr = acts.findIndex(isArrival);
   const hit = new Set();
   if (arr >= 0) {
     const ft = flightTimes(acts[arr]);
     const est = ft.estimated ? ' (예상 도착 기준)' : '';
-    if (ft.prevDayDeparture && di === 0) add('time', 'departPrevDay', arr, '전날 출발', '가는 편이 여행 시작 전날에 출발해요. 여행 날짜를 하루 앞당기거나 다른 항공편을 골라 주세요.');
+    if (ft.prevDayDeparture && di === 0) add('time', 'departPrevDay', arr, '전날 출발', '가는 편이 여행 시작 전날에 출발해요. 여행 날짜를 하루 앞당기거나 다른 ' + (air ? '항공편을' : josa(W.vehicle, '을', '를')) + ' 골라 주세요.');
     acts.forEach((a, ai) => {
       if (ai === arr || isFlight(a)) return;
       const t = timeToMin(a.time);
       const ready = ft.arr + landingMinutes(g) + (isStop(a) || a.category === '숙박' ? airportMinutes(acts[arr], a) : 0);
       if (t < ft.arr) {
         hit.add(ai);
-        add('time', 'beforeArrival', ai, '항공편 도착 전이에요', `${a.time} ${shortName(a.name)} — 항공편 도착(${minToTime(ft.arr)})${est} 전에 잡혀 있어요.`, 'time');
+        add('time', 'beforeArrival', ai, `${W.vehicle} 도착 전이에요`, `${a.time} ${shortName(a.name)} — ${W.vehicle} 도착(${minToTime(ft.arr)})${est} 전에 잡혀 있어요.`, 'time');
       } else if (ai < firstAfter(acts, arr) && t + TOLERANCE < ready) {
         hit.add(ai);
-        add('time', 'arrivalTight', ai, '입국·이동 시간이 부족해요', `${a.time} ${shortName(a.name)} — 착륙(${minToTime(ft.arr)}) 뒤 입국·시내 이동을 생각하면 ${minToTime(ready)} 이후가 좋아요.`, 'time');
+        add('time', 'arrivalTight', ai, air ? '입국·이동 시간이 부족해요' : '이동 시간이 부족해요', air ? `${a.time} ${shortName(a.name)} — 착륙(${minToTime(ft.arr)}) 뒤 입국·시내 이동을 생각하면 ${minToTime(ready)} 이후가 좋아요.`
+          : `${a.time} ${shortName(a.name)} — ${W.hub} 도착(${minToTime(ft.arr)}) 뒤 시내 이동을 생각하면 ${minToTime(ready)} 이후가 좋아요.`, 'time');
       }
     });
   }
@@ -138,7 +146,7 @@ export function checkDay(g, di) {
               : `${shortName(prev.name)}에 머무는 시간과 ${shortName(cur.name)} 시작이 약 ${need - cm}분 겹쳐요.`, 'time');
     }
   }
-  // 3) 돌아가는 항공편
+  // 3) 돌아가는 편
   const dep = acts.findIndex(isDeparture);
   if (dep >= 0) {
     const ft = flightTimes(acts[dep]);
@@ -149,14 +157,14 @@ export function checkDay(g, di) {
       if (timeToMin(prev.time) + stayMinutes(prev) > leaveBy + TOLERANCE) {
         let last = -1;
         for (let k = dep - 1; k >= 0; k--) if (isStop(acts[k])) { last = k; break; }
-        add('time', 'departureTight', dep, '공항 이동 시간 빠듯함',
-          `출발 ${beforeFlight(g) / 60}시간 전 공항 도착 기준으로 ${shortName(prev.name)}에서 늦어도 ${minToTime(leaveBy)}에는 나서야 해요.`
+        add('time', 'departureTight', dep, `${W.hub} 이동 시간 빠듯함`,
+          `출발 ${beforeFlightText(g)} 전 ${W.hub} 도착 기준으로 ${shortName(prev.name)}에서 늦어도 ${minToTime(leaveBy)}에는 나서야 해요.`
           + (last >= 0 ? ` ${josa(shortName(acts[last].name), '을', '를')} 빼거나 앞당기면 여유가 생겨요.` : ''), last >= 0 ? 'time' : null);
         list[list.length - 1].dropAi = last >= 0 ? last : null;
       }
     }
     if (arr >= 0 && di === 0 && g.days.length === 1 && ft.dep - beforeFlight(g) < flightTimes(acts[arr]).arr + landingMinutes(g) + 120) {
-      add('time', 'dayTrip', dep, '당일 왕복이 어려워요', '도착과 출발 사이에 머물 시간이 2시간도 되지 않아요. 하루 묵거나 다른 항공편을 골라 주세요.');
+      add('time', 'dayTrip', dep, '당일 왕복이 어려워요', '도착과 출발 사이에 머물 시간이 2시간도 되지 않아요. 하루 묵거나 다른 ' + (air ? '항공편을' : '시간의 ' + josa(W.vehicle, '을', '를')) + ' 골라 주세요.');
     }
   }
   // 4) 같은 장소를 두 번
@@ -228,10 +236,10 @@ export function checkTrip(g) {
 const isLocked = (a) => !!a.pinned || !!a.timeEdited || (!!a.edited && a.timeEdited !== false);
 const up5 = (m) => Math.ceil(m / 5) * 5;
 const down5 = (m) => Math.floor(m / 5) * 5;
-const REASON = {
-  beforeArrival: '항공편 도착 전이라서', arrivalTight: '입국·공항 이동 시간이 모자라서', order: '앞 일정보다 일러서', gap: '이동 시간이 모자라서',
-  departureTight: '공항에 갈 시간이 모자라서', midnight: '자정을 넘겨서', closedNow: '그 시각엔 닫혀 있어서', closedDay: '이날 휴무라서',
-};
+const reasons = (W, air) => ({
+  beforeArrival: `${W.vehicle} 도착 전이라서`, arrivalTight: `${air ? '입국·공항' : W.hub} 이동 시간이 모자라서`, order: '앞 일정보다 일러서', gap: '이동 시간이 모자라서',
+  departureTight: `${W.hub}에 갈 시간이 모자라서`, midnight: '자정을 넘겨서', closedNow: '그 시각엔 닫혀 있어서', closedDay: '이날 휴무라서',
+});
 
 /** 하루를 고친 사본. 바꿀 것이 없으면 changes 가 비어 있다. allowDrop 이 거짓이면 빼지 않고 blocked 로 알린다. */
 export function repairDay(g, di, { allowDrop = true } = {}) {
@@ -245,6 +253,7 @@ export function repairDay(g, di, { allowDrop = true } = {}) {
     return { day: { ...work, activities }, changes, blocked };
   };
   if (!conflicts.length) return done();
+  const mode = rideOf(g), REASON = reasons(RIDE[mode], mode === 'air');
   const reasonOf = (i, later) => REASON[conflicts.find(c => c.ai === i)?.code] || (later === undefined ? REASON[conflicts[0].code] || '' : later ? '앞 일정이 밀려서' : '돌아가는 시간에 맞추느라');
 
   // 항공 도착은 맨 앞, 출발은 맨 뒤
@@ -264,7 +273,7 @@ export function repairDay(g, di, { allowDrop = true } = {}) {
   // 도착 카드의 시각은 출발이 아니라 도착 시각으로
   if (acts.length && isArrival(acts[0]) && timeToMin(acts[0].time) !== flightTimes(acts[0]).arr) {
     const f = acts[0], to = minToTime(flightTimes(f).arr);
-    changes.push({ type: 'move', di, ai: f._i, placeId: f.placeId ?? null, name: f.name, from: f.time, to, reason: '항공편 도착 시각에 맞추느라' });
+    changes.push({ type: 'move', di, ai: f._i, placeId: f.placeId ?? null, name: f.name, from: f.time, to, reason: `${RIDE[mode].vehicle} 도착 시각에 맞추느라` });
     f.time = to;
   }
   const n = () => acts.length;
