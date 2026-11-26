@@ -1703,7 +1703,9 @@ dialog.ask[open] { animation: askIn .16s ease-out !important; }
 .rc--glow .rc-place { order: -1 !important; display: flex !important; align-items: center !important; gap: 6px !important; margin: 0 0 4px !important; font-size: 13px !important; line-height: 18px !important; }
 .rc--glow .rc-place::before { content: '' !important; flex: none !important; width: 8px !important; height: 8px !important; border-radius: 50% !important; background: hsl(var(--h, 215) 78% 64%) !important; }
 .rc--glow .rc-title { display: -webkit-box !important; -webkit-line-clamp: 2 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; font-size: 16px !important; line-height: 22px !important; }
-.rc--glow .rc-info { display: flex !important; flex-flow: row wrap !important; align-items: baseline !important; gap: 0 5px !important; line-height: 20px !important; }
+.rc--glow .rc-info { display: flex !important; flex-flow: row wrap !important; align-items: baseline !important; gap: 0 8px !important; line-height: 20px !important; }
+.rc--glow .rc-info .rc-days::after { content: none !important; }   /* 줄이 바뀌어도 줄 끝에 점이 남지 않게 — 기간은 굵기로 구분 */
+.rc--glow .rc-info > * { white-space: nowrap !important; }
 .glow-grid { gap: 20px 12px !important; align-items: stretch !important; }
 .roadmap-card.rc--glow { height: 100% !important; justify-content: flex-start !important; }
 @media (max-width: 359px) { .glow-grid { grid-template-columns: minmax(0, 1fr) !important; gap: 12px !important; } }
