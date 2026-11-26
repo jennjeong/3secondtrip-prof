@@ -1,0 +1,18 @@
+/* 이용약관 · 개인정보 처리방침 — 단독 문서(앱 안에서도 같은 내용을 불러 보여 준다) */
+:root { color-scheme: light dark; --ink: #151A22; --ink2: #4A5361; --line: #E3E7EE; --bg: #FFFFFF; --tint: #F4F6FA; --accent: #2B5BD7; }
+@media (prefers-color-scheme: dark) { :root { --ink: #E8ECF3; --ink2: #A9B2C1; --line: #2A3140; --bg: #0F131A; --tint: #171C25; --accent: #8FB3FF; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.7 "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", sans-serif; word-break: keep-all; overflow-wrap: anywhere; }
+main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 28px; line-height: 1.3; margin: 0 0 4px; }
+h2 { font-size: 18px; margin: 32px 0 8px; }
+p, li { color: var(--ink); }
+ul { padding-left: 20px; }
+li + li { margin-top: 6px; }
+.policy-meta { color: var(--ink2); font-size: 14px; margin: 0 0 16px; }
+.policy-review { padding: 12px 14px; border-radius: 12px; background: var(--tint); font-size: 14px; color: var(--ink2); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; display: block; overflow-x: auto; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); min-width: 120px; }
+th { color: var(--ink2); font-weight: 600; }
+a { color: var(--accent); }
+.policy-back { margin-top: 40px; font-size: 14px; }

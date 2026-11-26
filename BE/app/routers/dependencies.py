@@ -33,6 +33,9 @@ def get_current_user(creds: HTTPAuthorizationCredentials | None = Depends(_beare
     if not _version_ok(payload, user):
         # 비밀번호가 바뀐 뒤의 옛 토큰 — 화면은 이 값으로 안내 문구를 고른다
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token_revoked")
+    if user.provider == "local" and user.email_verified_at is None:
+        # 이메일 인증 전 계정은 저장·계정 기능을 쓸 수 없다(토큰도 인증 뒤에만 발급되지만 한 번 더 막는다)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="email_unverified")
     return user
 
 

@@ -8,6 +8,9 @@ import { api } from './redesign-api-adapter.js';
 import { $, $$, el, showToast } from './redesign-ui.js';
 import { askConfirm } from './redesign-dialog.js';
 
+/** 이 기기의 오늘 날짜(UTC로 하루 밀리지 않게) */
+function _localDate() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+
 const LOCAL_KEY = 'tst_reviews_v1';
 let appState = null;
 let star = 0;
@@ -95,7 +98,7 @@ async function _submit() {
   if (btn) { btn.disabled = true; btn.textContent = '등록하는 중…'; }
   try {
     if (!appState.currentUser) {
-      _cacheLocal({ stars: star, text, tags: [...tags], city: payload.city, at: new Date().toISOString().slice(0, 10), local: true });
+      _cacheLocal({ stars: star, text, tags: [...tags], city: payload.city, at: _localDate(), local: true });
       lastSentKey = key;
       showToast('이 기기에만 저장했어요. 로그인하면 후기를 게시할 수 있어요', 3000);
       _resetForm();

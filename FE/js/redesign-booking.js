@@ -387,7 +387,7 @@ function _paintSummary() {
 }
 
 function _priceKind(it) {
-  if (!it.estimated) return it.live ? '실시간 조회가' : '일정에 넣은 금액';
+  if (!it.estimated) return it.live ? '조회 당시 가격 · 지금은 다를 수 있어요' : '일정의 예상 금액';
   return it.liveFailed ? '조회 실패 · 추정가' : '추정가';
 }
 

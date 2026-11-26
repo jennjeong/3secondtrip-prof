@@ -59,7 +59,8 @@
   // 앱(iOS·Android)은 localhost 처럼 보이는 주소에서 열리므로 항상 운영 서버를 쓴다.
   window.__API_BASE_URL = (!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
       && /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
-    ? "" : "https://threesecondtrip-prof.onrender.com";
+    ? (function () { try { return localStorage.getItem('tst_dev_api') || ""; } catch (e) { return ""; } })()   // 로컬 시험용 서버를 고를 때만
+    : "https://threesecondtrip-prof.onrender.com";
   // 제휴사 파트너 ID. 값을 넣으면 숙소 링크가 해당 제휴 링크로 바뀐다.
   window.__AFFILIATE = { bookingAid: "" };
   // 잠든 서버를 화면보다 먼저 깨운다(모듈을 다 받을 때까지 기다리지 않음). 결과는 redesign-api-adapter.js 가 이어 쓴다.
@@ -126,6 +127,7 @@ html.theme-dark, html.theme-dark body { background: #111418; }
     if (t === 'dark') document.documentElement.classList.add('theme-dark');
     if (t === 'system') document.documentElement.classList.add('allow-dark');
   } catch (e) { document.documentElement.classList.add('allow-dark'); }
+  try { document.documentElement.dataset.auth = localStorage.getItem('tst_token_v1') ? 'member' : 'guest'; } catch (e) { document.documentElement.dataset.auth = 'guest'; }
 </script>
 </head>
 <body>
@@ -145,12 +147,13 @@ html.theme-dark, html.theme-dark body { background: #111418; }
     <div class="topbar-title sr-only" id="topbarTitle" aria-live="polite">3초 여행</div>
     <nav class="topbar-nav" aria-label="주요 메뉴">
       <a href="#page=explore" data-nav-to="explore">탐색</a>
-      <a href="#page=schedule" data-nav-to="schedule">내 일정</a>
-      <a href="#page=my" data-nav-to="my">마이</a>
+      <a href="#page=schedule" data-nav-to="schedule" data-auth-only="member">내 일정</a>
+      <a href="#page=my" data-nav-to="my" data-auth-only="member" class="topbar-nick" aria-label="내 계정"><span class="nick-text" data-nick-label>내 계정</span></a>
+      <a href="#page=auth" data-nav-to="auth" data-auth-only="guest">로그인</a>
       <a href="#page=create-trip" class="topbar-cta" data-nav-to="create-trip">새 여행 만들기</a>
     </nav>
     <div class="topbar-spacer topbar-actions">
-      <button type="button" class="topbar-text-btn" id="topbarNewPost" data-nav-to="blog">+ 새 글</button>
+      <button type="button" class="topbar-text-btn" id="topbarNewPost" data-nav-to="blog" data-auth-only="member">+ 새 글</button>
       <button type="button" class="icon-btn topbar-share" id="topbarShare" aria-label="이 코스 공유" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><polyline points="7 8 12 3 17 8"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
     </div>
   </header>
@@ -168,6 +171,7 @@ html.theme-dark, html.theme-dark body { background: #111418; }
           <canvas class="nh-globe" id="homeGlobe" aria-hidden="true"></canvas>
           <div class="nh-copy">
             <h1 class="nh-title"><span>다음 여행이</span> <span>여기서 이륙합니다</span></h1>
+            <p class="nh-lead">도시·날짜·예산만 고르면 일정 초안을 만들어 드려요.</p>
             <form class="search-card" id="homeSearchForm" role="search" aria-label="여행 코스 검색">
           <span class="search-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -187,6 +191,7 @@ html.theme-dark, html.theme-dark body { background: #111418; }
           <button type="button" class="chip" data-quick-concept="균형">균형</button>
         </div>
             <button type="button" class="home-create" data-nav-to="create-trip"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>새 여행 만들기</button>
+            <div id="homeTripCard" hidden></div>
           </div>
         </div>
 
@@ -229,6 +234,12 @@ html.theme-dark, html.theme-dark body { background: #111418; }
           </header>
           <div id="reviewPreviewList" class="review-preview-list"></div>
         </section>
+        <footer class="home-foot" aria-label="서비스 정보">
+          <a href="#page=policy&amp;doc=terms" data-policy="terms">이용약관</a>
+          <a href="#page=policy&amp;doc=privacy" data-policy="privacy"><b>개인정보 처리방침</b></a>
+          <a href="#page=feedback" data-nav-to="feedback">문의하기</a>
+          <p class="home-foot-note">© 2026 3초 여행 · 일정·비용은 참고용 추정치예요.</p>
+        </footer>
       </div>
     </section>
 
@@ -910,7 +921,7 @@ html.theme-dark, html.theme-dark body { background: #111418; }
               <li>✓ 계정에 일정 보관 — 현재 개수 제한 없음</li>
               <li class="sub-features-mute">유료 요금제가 생겨도 미리 알리고, 동의 없이 결제되지 않아요</li>
             </ul>
-            <button type="button" class="sub-cta" data-plan-cta="free">현재 사용중</button>
+            <button type="button" class="sub-cta" data-plan-cta="free" disabled>지금은 모두 무료</button>
           </article>
 
           <!-- ② 회당 결제 (payg) — 3개 옵션 -->
@@ -923,7 +934,7 @@ html.theme-dark, html.theme-dark body { background: #111418; }
             </div>
             <div class="payg-options" id="paygOptions">
               <label class="payg-option">
-                <input type="radio" name="paygOpt" value="5" checked />
+                <input type="radio" name="paygOpt" value="5" disabled />
                 <span class="payg-opt-row">
                   <span class="payg-opt-label">5회 묶음</span>
                   <span class="payg-opt-price">1,900원</span>
@@ -931,7 +942,7 @@ html.theme-dark, html.theme-dark body { background: #111418; }
                 </span>
               </label>
               <label class="payg-option">
-                <input type="radio" name="paygOpt" value="10" />
+                <input type="radio" name="paygOpt" value="10" disabled />
                 <span class="payg-opt-row">
                   <span class="payg-opt-label">10회 묶음</span>
                   <span class="payg-opt-price">2,900원</span>
@@ -939,7 +950,7 @@ html.theme-dark, html.theme-dark body { background: #111418; }
                 </span>
               </label>
               <label class="payg-option">
-                <input type="radio" name="paygOpt" value="unlimited" />
+                <input type="radio" name="paygOpt" value="unlimited" disabled />
                 <span class="payg-opt-row">
                   <span class="payg-opt-label">30일 무제한</span>
                   <span class="payg-opt-price">4,900원</span>
@@ -951,7 +962,7 @@ html.theme-dark, html.theme-dark body { background: #111418; }
               <li>✓ 일정 만들기 (묶음 횟수만큼)</li>
               <li class="sub-features-mute">저장 개수 등 세부 조건은 출시 때 정해요</li>
             </ul>
-            <button type="button" class="sub-cta" data-plan-cta="payg">결제하기</button>
+            <button type="button" class="sub-cta" data-plan-cta="payg" disabled>출시 예정</button>
           </article>
 
           <!-- ③ 월 5,900원 Standard -->
@@ -967,19 +978,11 @@ html.theme-dark, html.theme-dark body { background: #111418; }
               <li>✓ 실시간 항공·숙소 요금 조회 (예정)</li>
               <li class="sub-features-mute">무료 체험 기간 · 연간 요금 · 해지 조건은 출시 때 이 화면에 안내해요</li>
             </ul>
-            <button type="button" class="sub-cta sub-cta--primary" data-plan-cta="standard">구독하기</button>
+            <button type="button" class="sub-cta sub-cta--primary" data-plan-cta="standard" disabled>출시 예정</button>
           </article>
 
         </div>
 
-        <div class="sub-cancel-block" id="subCancelBlock" hidden>
-          <div class="sub-cancel-info" id="subCancelInfo">
-            <span class="sub-cancel-label">현재 구독</span>
-            <span class="sub-cancel-plan" id="subCancelPlan">-</span>
-          </div>
-          <button type="button" class="sub-cancel-btn" id="btnCancelSubscription">구독 취소</button>
-          <p class="sub-cancel-help">취소 시 현재 결제 주기 종료일까지 사용 가능하며, 자동 갱신만 중단됩니다.</p>
-        </div>
 
         <div class="sub-footnote">
           <p>· 지금은 결제를 받지 않고, 결제 수단도 연결돼 있지 않아요. 무료 체험이나 자동 갱신도 없어요.</p>
@@ -989,87 +992,171 @@ html.theme-dark, html.theme-dark body { background: #111418; }
       </div>
     </section>
 
-    <!-- ============ AUTH ============ -->
-    <section id="authPage" class="app-page night" data-page="auth" aria-label="로그인">
+    <!-- ============ AUTH (로그인) ============ -->
+    <section id="authPage" class="app-page night acct-page" data-page="auth" aria-labelledby="authTitle">
       <div class="page-scroll">
-        <div class="auth-hero">
-          <img class="auth-logo auth-logo-img" src="assets/icon-192.png?v=plane1" alt="" aria-hidden="true" width="72" height="72">
-          <h2 class="auth-title">3초 여행</h2>
-          <p class="auth-sub" id="authSub">소셜 계정으로 빠르게 시작</p>
+        <div class="acct-wrap">
+          <header class="acct-head acct-head--brand">
+            <img class="acct-logo" src="./assets/logo-3secondtrip-white.png" alt="" width="1000" height="123" decoding="async"/>
+            <h1 class="acct-title" id="authTitle">로그인</h1>
+            <p class="acct-sub" id="authSub">로그인하면 일정을 계정에 저장해 어디서든 열어요</p>
+          </header>
+          <p class="auth-notice" id="authNotice" role="status" hidden></p>
+
+          <form class="acct-form acct-form--float" id="authForm" novalidate>
+            <div class="acct-field acct-field--float">
+              <label class="form-label" for="authEmail">이메일</label>
+              <div class="in-wrap">
+                <input class="form-input" type="email" id="authEmail" name="email" inputmode="email" autocomplete="username email" autocapitalize="off" spellcheck="false" aria-describedby="authEmailErr" required/>
+                <button type="button" class="in-clear" data-clear="authEmail" aria-label="이메일 지우기" hidden><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="currentColor"/><path d="M7 7l6 6M13 7l-6 6" stroke="#08112A" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+              </div>
+              <p class="acct-err" id="authEmailErr" hidden></p>
+            </div>
+            <div class="acct-field acct-field--float">
+              <label class="form-label" for="authPw">비밀번호</label>
+              <div class="pw-wrap in-wrap">
+                <input class="form-input" type="password" id="authPw" name="password" autocomplete="current-password" aria-describedby="authPwErr" required/>
+                <button type="button" class="pw-eye" data-pw-toggle="authPw" aria-label="비밀번호 보기" aria-pressed="false">보기</button>
+                <button type="button" class="in-clear" data-clear="authPw" aria-label="비밀번호 지우기" hidden><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="currentColor"/><path d="M7 7l6 6M13 7l-6 6" stroke="#08112A" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+              </div>
+              <p class="acct-err" id="authPwErr" hidden></p>
+            </div>
+            <div class="acct-row">
+              <label class="acct-remember"><input type="checkbox" id="authRemember"/>이메일 저장</label>
+              <button type="button" class="link-btn auth-forgot" id="authForgot">비밀번호 찾기</button>
+            </div>
+            <p class="acct-err acct-err--form" id="authFormErr" role="alert" hidden></p>
+            <button type="submit" class="btn btn-primary btn-block acct-main" id="authSubmit">로그인</button>
+          </form>
+
+          <div class="acct-social" id="authSocial" hidden>
+            <div class="auth-divider"><span>다른 방법으로 로그인</span></div>
+            <div class="social-stack">
+              <button type="button" class="social-btn social-btn--kakao" data-oauth-provider="kakao" hidden><span class="social-ico">💬</span>카카오로 계속하기</button>
+              <button type="button" class="social-btn social-btn--naver" data-oauth-provider="naver" hidden><span class="social-ico">N</span>네이버로 계속하기</button>
+              <button type="button" class="social-btn social-btn--google" data-oauth-provider="google" hidden><span class="social-ico">G</span>Google로 계속하기</button>
+              <button type="button" class="social-btn social-btn--apple" data-oauth-provider="apple" hidden><span class="social-ico"></span>Apple로 계속하기</button>
+            </div>
+          </div>
+
+          <form class="acct-form" id="resetForm" hidden novalidate>
+            <h2 class="acct-title acct-title--sm" id="resetTitle">비밀번호 찾기</h2>
+            <div class="acct-field" id="resetEmailRow">
+              <label class="form-label" for="resetEmail">가입한 이메일</label>
+              <input class="form-input" type="email" id="resetEmail" inputmode="email" autocomplete="username email" autocapitalize="off" spellcheck="false" placeholder="you@example.com"/>
+            </div>
+            <div class="acct-field" id="resetPwRow" hidden>
+              <label class="form-label" for="resetPw">새 비밀번호</label>
+              <div class="pw-wrap">
+                <input class="form-input" type="password" id="resetPw" autocomplete="new-password" aria-describedby="resetPwRule"/>
+                <button type="button" class="pw-eye" data-pw-toggle="resetPw" aria-label="비밀번호 보기" aria-pressed="false">보기</button>
+              </div>
+              <p class="acct-hint" id="resetPwRule"></p>
+            </div>
+            <div class="acct-field" id="resetPw2Row" hidden>
+              <label class="form-label" for="resetPw2">새 비밀번호 확인</label>
+              <input class="form-input" type="password" id="resetPw2" autocomplete="new-password"/>
+            </div>
+            <p class="acct-hint" id="resetMsg" role="status" aria-live="polite"></p>
+            <button type="submit" class="btn btn-primary btn-block acct-main" id="resetSubmit">재설정 링크 받기</button>
+            <button type="button" class="btn btn-ghost btn-block acct-second" id="resetBack">로그인으로 돌아가기</button>
+          </form>
+
+          <p class="acct-switch" id="authSwitch">계정이 없나요?<button type="button" class="link-btn" id="authToSignup">회원가입</button></p>
+          <p class="acct-policy"><a href="#page=policy&amp;doc=terms" data-policy="terms">이용약관</a><span aria-hidden="true"> · </span><a href="#page=policy&amp;doc=privacy" data-policy="privacy">개인정보 처리방침</a></p>
         </div>
-        <p class="auth-notice" id="authNotice" role="status" hidden></p>
+      </div>
+    </section>
 
-        <div class="social-stack">
-          <button type="button" class="social-btn social-btn--kakao" data-oauth-provider="kakao">
-            <span class="social-ico">💬</span>카카오로 계속하기
-          </button>
-          <button type="button" class="social-btn social-btn--naver" data-oauth-provider="naver">
-            <span class="social-ico">N</span>네이버로 계속하기
-          </button>
-          <button type="button" class="social-btn social-btn--google" data-oauth-provider="google">
-            <span class="social-ico">G</span>Google로 계속하기
-          </button>
-          <button type="button" class="social-btn social-btn--apple" data-oauth-provider="apple">
-            <span class="social-ico"></span>Apple로 계속하기
-          </button>
+    <!-- ============ SIGNUP (회원가입 — 정보 입력 → 이메일 인증 → 가입 완료) ============ -->
+    <section id="signupPage" class="app-page night acct-page" data-page="signup" aria-labelledby="signupTitle">
+      <div class="page-scroll">
+        <div class="acct-wrap">
+          <header class="acct-head acct-head--back">
+            <button type="button" class="acct-back" id="signupBack" aria-label="뒤로 가기">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <h1 class="acct-title" id="signupTitle">회원가입</h1>
+          </header>
+          <ol class="acct-steps" aria-label="가입 단계">
+            <li data-step="info" aria-current="step">정보 입력</li><li data-step="verify">이메일 인증</li><li data-step="done">가입 완료</li>
+          </ol>
+
+          <form class="acct-form" id="signupForm" novalidate>
+            <div class="acct-field">
+              <label class="form-label" for="suEmail">이메일</label>
+              <input class="form-input" type="email" id="suEmail" inputmode="email" autocomplete="username email" autocapitalize="off" spellcheck="false" placeholder="you@example.com" aria-describedby="suEmailErr" required/>
+              <p class="acct-err" id="suEmailErr" hidden></p>
+            </div>
+            <div class="acct-field">
+              <label class="form-label" for="suPw">비밀번호</label>
+              <p class="acct-hint" id="suPwRule"></p>
+              <div class="pw-wrap">
+                <input class="form-input" type="password" id="suPw" autocomplete="new-password" aria-describedby="suPwRule suPwErr" required/>
+                <button type="button" class="pw-eye" data-pw-toggle="suPw" aria-label="비밀번호 보기" aria-pressed="false">보기</button>
+              </div>
+              <p class="acct-err" id="suPwErr" hidden></p>
+            </div>
+            <div class="acct-field">
+              <label class="form-label" for="suPw2">비밀번호 확인</label>
+              <input class="form-input" type="password" id="suPw2" autocomplete="new-password" aria-describedby="suPw2Err" required/>
+              <p class="acct-err" id="suPw2Err" hidden></p>
+            </div>
+            <div class="acct-field">
+              <label class="form-label" for="suNick">닉네임</label>
+              <input class="form-input" type="text" id="suNick" autocomplete="nickname" maxlength="30" placeholder="2~30자" aria-describedby="suNickErr" required/>
+              <p class="acct-err" id="suNickErr" hidden></p>
+            </div>
+            <fieldset class="acct-consent" id="suConsent">
+              <legend class="form-label">약관 동의</legend>
+              <label class="consent-all"><input type="checkbox" id="suAgreeAll"/> <span>모두 동의</span></label>
+              <label class="consent-row"><input type="checkbox" id="suAgreeAge" data-consent/> <span><b>[필수]</b> 만 14세 이상이에요</span></label>
+              <label class="consent-row"><input type="checkbox" id="suAgreeTerms" data-consent/> <span><b>[필수]</b> 이용약관에 동의해요</span><a href="#page=policy&amp;doc=terms" data-policy="terms" class="consent-view">보기</a></label>
+              <label class="consent-row"><input type="checkbox" id="suAgreePrivacy" data-consent/> <span><b>[필수]</b> 개인정보 수집·이용에 동의해요</span><a href="#page=policy&amp;doc=privacy" data-policy="privacy" class="consent-view">보기</a></label>
+              <p class="acct-err" id="suConsentErr" hidden></p>
+            </fieldset>
+            <p class="acct-err acct-err--form" id="suFormErr" role="alert" hidden></p>
+            <button type="submit" class="btn btn-primary btn-block acct-main" id="suSubmit">인증 메일 받기</button>
+          </form>
+
+          <form class="acct-form" id="verifyForm" hidden novalidate>
+            <p class="acct-lead" id="verifyLead"></p>
+            <div class="acct-field">
+              <label class="form-label" for="verifyCode">인증 코드 6자리</label>
+              <input class="form-input form-input--code" type="text" id="verifyCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" aria-describedby="verifyErr verifyHint"/>
+              <p class="acct-err" id="verifyErr" role="alert" hidden></p>
+              <p class="acct-hint" id="verifyHint"></p>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block acct-main" id="verifySubmit">인증하기</button>
+            <div class="acct-row-split">
+              <button type="button" class="link-btn" id="verifyResend">코드 다시 받기</button>
+              <button type="button" class="link-btn" id="verifyEdit">이메일 주소 고치기</button>
+            </div>
+          </form>
+
+          <div class="acct-form" id="signupDone" hidden>
+            <p class="acct-lead" id="signupDoneLead">가입을 마쳤어요. 이메일 인증 완료 · 로그인됐어요.</p>
+            <button type="button" class="btn btn-primary btn-block acct-main" id="signupContinue">계속하기</button>
+          </div>
+
+          <p class="acct-switch" id="signupToLogin">이미 계정이 있나요? <button type="button" class="link-btn" id="signupLogin">로그인</button></p>
+          <p class="acct-policy"><a href="#page=policy&amp;doc=terms" data-policy="terms">이용약관</a><span aria-hidden="true"> · </span><a href="#page=policy&amp;doc=privacy" data-policy="privacy">개인정보 처리방침</a></p>
         </div>
+      </div>
+    </section>
 
-        <div class="auth-divider"><span>또는 이메일로</span></div>
-
-        <form class="auth-form" id="authForm">
-          <div class="form-row">
-            <label class="form-label" for="authEmail">이메일</label>
-            <input class="form-input" type="email" id="authEmail" autocomplete="email" placeholder="you@example.com"/>
-          </div>
-          <div class="form-row">
-            <label class="form-label" for="authPw">비밀번호</label>
-            <input class="form-input" type="password" id="authPw" autocomplete="current-password" placeholder="8자 이상"/>
-          </div>
-          <div class="form-row" id="authNickRow" hidden>
-            <label class="form-label" for="authNick">닉네임</label>
-            <div class="form-inline">
-              <input class="form-input" type="text" id="authNick" placeholder="닉네임"/>
-              <button type="button" class="btn btn-soft" id="authCheckNick">중복확인</button>
-            </div>
-            <p class="form-hint" id="authNickHint"></p>
-          </div>
-          <div class="form-row" id="authNameRow" hidden>
-            <label class="form-label" for="authName">이름</label>
-            <input class="form-input" type="text" id="authName"/>
-          </div>
-          <div class="form-row form-row--split" id="authExtraRow" hidden>
-            <div>
-              <label class="form-label" for="authPhone">전화번호</label>
-              <input class="form-input" type="tel" id="authPhone" placeholder="010-0000-0000"/>
-            </div>
-            <div>
-              <label class="form-label" for="authBirth">생년월일</label>
-              <input class="form-input" type="date" id="authBirth"/>
-            </div>
-          </div>
-          <button type="submit" class="btn btn-primary btn-block" id="authSubmit">로그인</button>
-          <button type="button" class="btn btn-ghost btn-block" id="authToggle">이메일 회원가입</button>
-          <button type="button" class="link-btn auth-forgot" id="authForgot" hidden>비밀번호를 잊었어요</button>
-        </form>
-
-        <form class="auth-form" id="resetForm" hidden novalidate>
-          <h3 class="auth-reset-title" id="resetTitle">비밀번호 재설정</h3>
-          <div class="form-row" id="resetEmailRow">
-            <label class="form-label" for="resetEmail">가입한 이메일</label>
-            <input class="form-input" type="email" id="resetEmail" autocomplete="email" placeholder="you@example.com"/>
-          </div>
-          <div class="form-row" id="resetPwRow" hidden>
-            <label class="form-label" for="resetPw">새 비밀번호</label>
-            <input class="form-input" type="password" id="resetPw" autocomplete="new-password" placeholder="영문·숫자 포함 8자 이상"/>
-          </div>
-          <div class="form-row" id="resetPw2Row" hidden>
-            <label class="form-label" for="resetPw2">새 비밀번호 확인</label>
-            <input class="form-input" type="password" id="resetPw2" autocomplete="new-password"/>
-          </div>
-          <p class="form-hint" id="resetMsg" role="status" aria-live="polite"></p>
-          <button type="submit" class="btn btn-primary btn-block" id="resetSubmit">재설정 링크 받기</button>
-          <button type="button" class="btn btn-ghost btn-block" id="resetBack">로그인으로 돌아가기</button>
-        </form>
+    <!-- ============ POLICY (이용약관 · 개인정보 처리방침 — 공개 문서 terms.html / privacy.html 을 불러 보여 준다) ============ -->
+    <section id="policyPage" class="app-page acct-page acct-page--doc" data-page="policy" aria-labelledby="policyTitle">
+      <div class="page-scroll">
+        <div class="acct-wrap acct-wrap--doc">
+          <header class="acct-head acct-head--back">
+            <button type="button" class="acct-back" id="policyBack" aria-label="뒤로 가기">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <h1 class="acct-title" id="policyTitle">이용약관</h1>
+          </header>
+          <article class="policy-doc" id="policyDoc" aria-live="polite"><p>불러오는 중…</p></article>
+        </div>
       </div>
     </section>
 
@@ -1353,15 +1440,20 @@ html.theme-dark, html.theme-dark body { background: #111418; }
       <svg class="tab-ico" aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="6"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       <span class="tab-label">만들기</span>
     </button>
-    <button type="button" class="tab-button" data-nav-to="schedule">
+    <button type="button" class="tab-button" data-nav-to="auth" data-auth-only="guest">
+      <svg class="tab-ico" aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      <span class="tab-label">로그인</span>
+    </button>
+    <button type="button" class="tab-button" data-nav-to="schedule" data-auth-only="member">
       <svg class="tab-ico" aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       <span class="tab-label">내 일정</span>
     </button>
-    <button type="button" class="tab-button" data-nav-to="my">
+    <button type="button" class="tab-button" data-nav-to="my" data-auth-only="member">
       <svg class="tab-ico" aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span class="tab-label">마이</span>
+      <span class="tab-label nick-text" data-nick-label>내 계정</span>
     </button>
   </nav>
+  <script>try { var n = localStorage.getItem('tst_nick_v1'); if (n && localStorage.getItem('tst_token_v1')) document.querySelectorAll('[data-nick-label]').forEach(function (e) { e.textContent = n; e.title = n; }); } catch (e) {}</script>
 
   <!-- ============ BOOKING BOTTOM SHEET ============ -->
   <div class="sheet-backdrop" id="bookingBackdrop" hidden></div>
@@ -1406,7 +1498,7 @@ html.theme-dark, html.theme-dark body { background: #111418; }
     <div class="sheet-body save-choice" id="saveChoiceDesc">
       <div class="save-opt is-current">
         <p class="save-opt-title">이 기기 <span class="save-opt-tag">지금 여기에 있어요</span></p>
-        <p>로그인하지 않아도 ‘내 일정’에서 다시 열 수 있어요. 다른 기기에서는 볼 수 없고, 브라우저 데이터를 지우거나 설정의 ‘이 기기 데이터 초기화’를 하면 사라져요.</p>
+        <p>로그인하지 않아도 이 기기의 ‘만들기’에서 다시 열 수 있어요. 다른 기기에서는 볼 수 없고, 브라우저 데이터를 지우거나 설정의 ‘이 기기 데이터 초기화’를 하면 사라져요.</p>
       </div>
       <div class="save-opt">
         <p class="save-opt-title">계정 <span class="save-opt-tag">로그인 필요</span></p>
@@ -1550,6 +1642,9 @@ html.theme-dark, html.theme-dark body { background: #111418; }
           <span>피드백 보내기</span><span class="setting-arrow">›</span>
         </button>
           <button type="button" class="setting-row" data-set-go="data"><span class="sr-label">이 기기 데이터</span><span class="setting-arrow" aria-hidden="true">›</span></button>
+          <button type="button" class="setting-row" id="settingContact"><span class="sr-label">문의하기</span><span class="setting-meta">의견 보내기</span><span class="setting-arrow" aria-hidden="true">›</span></button>
+          <a class="setting-row" href="#page=policy&amp;doc=terms" data-policy="terms"><span class="sr-label">이용약관</span><span class="setting-arrow" aria-hidden="true">›</span></a>
+          <a class="setting-row" href="#page=policy&amp;doc=privacy" data-policy="privacy"><span class="sr-label">개인정보 처리방침</span><span class="setting-arrow" aria-hidden="true">›</span></a>
         </div>
       </div>
       <div class="set-view" data-set-view="display" data-set-title="화면" hidden><div class="setting-list">
@@ -1579,6 +1674,8 @@ html.theme-dark, html.theme-dark body { background: #111418; }
         <p class="set-note" id="accountGuestNote">로그인하면 비밀번호 변경·로그아웃·계정 삭제를 할 수 있어요.</p>
         <div class="setting-list">
         <div id="accountSettings" hidden>
+          <button type="button" class="setting-row" id="settingNick"><span>닉네임</span><span class="setting-meta nick-text" id="settingNickMeta"></span><span class="setting-arrow" aria-hidden="true">›</span></button>
+          <button type="button" class="setting-row" id="settingLogout"><span>로그아웃</span><span class="setting-arrow" aria-hidden="true">›</span></button>
           <button type="button" class="setting-row" id="settingPw" aria-expanded="false" aria-controls="pwPanel">
             <span>비밀번호 변경</span><span class="setting-arrow">›</span>
           </button>

@@ -85,6 +85,11 @@ export function initTripFlow(state) {
   }, 60));
 
   // 코스 상세의 '이 코스로 여행 만들기' — 도시·기간·스타일을 채우고 나머지는 사용자가 고른다.
+  // 홈의 '이어 하던 여행' 카드
+  document.addEventListener('redesign:nav', (e) => { if (e.detail?.page === 'home') _paintHomeTrip(); });
+  ['redesign:auth-ready', 'redesign:schedule-changed', 'redesign:trip-changed'].forEach(ev => document.addEventListener(ev, _paintHomeTrip));
+  setTimeout(_paintHomeTrip, 0);
+
   document.addEventListener('redesign:trip-prefill', (e) => {
     const d = e.detail || {};
     _resetTripState();
@@ -124,6 +129,49 @@ function _enterCreateTrip(meta = {}) {
   step = resume ? Math.min(4, Math.max(1, t._draftStep || 1)) : 1;
   _showStep(); _applyState();
   _showDraftBanner(resume);
+  _showDeviceTrip();
+}
+
+/** 이 기기에 만들어 둔 일정 — 게스트는 '내 일정' 메뉴가 없으므로 만들기에서 다시 연다. 저장 상태를 함께 보여 준다. */
+/** 홈 — 이 기기에서 보던 일정이나 만들던 여행을 바로 이어서 연다. */
+function _paintHomeTrip() {
+  const box = document.getElementById('homeTripCard');
+  if (!box) return;
+  const g = appState.generated, t = appState.trip || {};
+  let title = '', state = '', go = null, label = '';
+  if (g?.days?.length) {
+    const city = g.city || g.trip?.cityName || '만든 일정';
+    title = `${city} · ${g.days.length > 1 ? `${g.days.length - 1}박 ${g.days.length}일` : '당일치기'}`;
+    state = g.savedScheduleId && appState.currentUser ? '계정에 저장됨' : '이 기기에만 보관';
+    label = '일정 열기'; go = () => navigate('schedule');
+  } else if (t._draft && (t.cityName || t._cityText)) {
+    title = `${t.cityName || t._cityText} 여행`;
+    state = '만들던 중 · 이어서 만들기';
+    label = '이어서 만들기'; go = () => navigate('create-trip');
+  }
+  box.hidden = !go;
+  box.replaceChildren(...(go ? [el('button', { type: 'button', class: 'home-trip', onclick: go, 'aria-label': `${title} ${label}` }, [
+    el('span', { class: 'ht-text' }, [el('b', {}, title), el('span', { class: 'ht-state' }, state)]),
+    el('span', { class: 'ht-go', 'aria-hidden': 'true' }, '›'),
+  ])] : []));
+}
+
+function _showDeviceTrip() {
+  document.getElementById('deviceTripCard')?.remove();
+  const g = appState.generated;
+  if (!g?.days?.length) return;
+  const t = g.trip || appState.trip || {};
+  const where = [t.originName || t.origin || '', t.cityName || t.city || g.city || ''].filter(Boolean).join(' → ') || '만든 일정';
+  const days = g.days.length > 1 ? `${g.days.length - 1}박 ${g.days.length}일` : '당일치기';
+  const saved = !!g.savedScheduleId && !!appState.currentUser;
+  const card = el('div', { id: 'deviceTripCard', class: 'draft-banner device-trip', role: 'group', 'aria-label': '이 기기의 일정' }, [
+    el('span', { class: 'dt-text' }, [
+      el('b', {}, `${where} · ${days}`),
+      el('span', { class: 'dt-state' }, saved ? '계정에 저장됨' : '이 기기에만 보관'),
+    ]),
+    el('button', { type: 'button', class: 'btn-text', onclick: () => navigate('schedule') }, '열기'),
+  ]);
+  $('#tripStepProgress')?.before(card);
 }
 
 /* ============ Builders ============ */
@@ -892,6 +940,12 @@ function _bindStepHandlers() {
     if (step < 4) { step++; _showStep(); _stepTop(); }
   });
   $('#stepGenerate')?.addEventListener('click', async () => {
+    // 저장해 둔 초안으로 4단계에 바로 왔을 수 있다 — 지난 날짜·지워진 도시까지 앞 단계를 모두 다시 확인한다.
+    for (let s = 1; s <= 3; s++) {
+      step = s;
+      if (!_validateStep()) { _showStep(); _stepTop(); _validateStep(); return; }
+    }
+    step = 4;
     if (!_validateStep()) return;
     trackEvent('trip_step_budget');
     // 실패하면 _generateSchedule 이 '다시 시도' 화면을 띄운다.
@@ -928,6 +982,7 @@ function _wonShort(v) {
   const n = Math.round((Number(v) || 0) / 1000) * 1000;
   if (n >= 1000000) return `${Math.round(n / 10000).toLocaleString('ko-KR')}만 원`;
   const man = Math.floor(n / 10000), cheon = Math.round((n % 10000) / 1000);
+  if (n === 0) return Number(v) > 0 ? '1천 원 미만' : '0원';
   return n < 10000 ? `${cheon}천 원` : `${man}만${cheon ? ` ${cheon}천` : ''} 원`;
 }
 
@@ -1123,7 +1178,7 @@ function _showDraftBanner(show) {
   if (!show) { bar?.remove(); return; }
   if (!bar) {
     bar = el('div', { id: 'draftBanner', class: 'draft-banner', role: 'status' }, [
-      el('span', {}, '작성하던 여행을 이어서 보여 드려요.'),
+      el('span', {}, '작성하던 여행을 이어서 보여 드려요 · 이 기기에만 보관 중'),
       el('button', { type: 'button', class: 'btn-text', onclick: () => {
         _resetTripState(); step = 1; _showStep(); _applyState(); _showDraftBanner(false);
         showToast('새 여행을 처음부터 시작해요');
@@ -2404,8 +2459,14 @@ function _syncTripFromGenerated(g, t = appState.trip) {
 }
 
 export async function regenerateSchedule({ skipSync = false, quietFail = false, lock = null } = {}) {
+  if (_generating) { trackEvent('gen_duplicate_blocked'); return false; }
   const g = appState.generated;
   if (g?.days?.length && !skipSync) _syncTripFromGenerated(g);
+  const dateErr = _dateError(appState.trip);
+  if (dateErr) {
+    showToast(/지났/.test(dateErr) ? '여행 날짜가 이미 지나서 다시 만들 수 없어요. 새 날짜로 여행을 만들어 주세요.' : dateErr, 4200);
+    return false;
+  }
   _pinnedCarry = [];
   g?.days?.forEach((d, di) => d.activities.forEach(a => { if (a.pinned) _pinnedCarry.push({ di, a: JSON.parse(JSON.stringify(a)) }); }));
   _regenerating = true;
@@ -2523,7 +2584,7 @@ function _genNote(text) {
   const sub = document.querySelector('#genLoadingOverlay #glSub');
   if (sub) sub.textContent = text;
 }
-function _showGenFailure(message) {
+function _showGenFailure(message, retry = () => regenerateSchedule()) {
   const ov = document.getElementById('genLoadingOverlay');
   if (!ov) return;
   ov.classList.add('is-failed');
@@ -2532,7 +2593,7 @@ function _showGenFailure(message) {
   const act = ov.querySelector('#glActions');
   act.innerHTML = '';
   act.append(
-    el('button', { type: 'button', class: 'btn btn-primary', onclick: () => { _hideGenLoading(); regenerateSchedule(); } }, '다시 시도'),
+    el('button', { type: 'button', class: 'btn btn-primary', onclick: () => { _hideGenLoading(); retry(); } }, '다시 시도'),
     el('button', { type: 'button', class: 'btn btn-ghost gl-close', onclick: () => { _hideGenLoading(); } }, '입력 화면으로'),
   );
   act.querySelector('button')?.focus();
@@ -2710,7 +2771,7 @@ async function _generateSchedule() {
     const pe = providerError(e);
     _lastGenError = { ...pe, message: _regenerating ? `${pe.text} 지금 일정은 그대로 남아 있어요.` : `${pe.text} 입력한 내용은 그대로 남아 있어요.` };
     if (_quietFail) _hideGenLoading();
-    else _showGenFailure(_lastGenError.message);
+    else _showGenFailure(_lastGenError.message, _regenerating ? () => regenerateSchedule() : () => _generateSchedule());
     return false;
   } finally {
     _generating = false;
@@ -2957,7 +3018,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
       name: hotelName,
       latitude:  Number.isFinite(c.latitude)  ? c.latitude  : hotelPlace?.latitude,
       longitude: Number.isFinite(c.longitude) ? c.longitude : hotelPlace?.longitude,
-      address: hotelPlace?.address || '', place_id: 'serp-hotel', price_level: null, link: c.link || null,
+      address: c.address || '', place_id: 'serp-hotel', price_level: null, link: c.link || null,
     };
     _perRoomNight = Math.round(c.price_per_night);       // 실시간가는 반올림 없이
     _hotelPriceSource = 'serpapi';
@@ -3013,6 +3074,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
       // 공항 주소 대신 항공편 정보 (편명·항공사·시간) 표시
       address:   flightInfo,
       googleMapsQuery: airportName,
+      ...(ground || airportPlace ? {} : { sample: true }),   // 찾지 못해 이름만 지은 공항
       flightMeta: {
         ...(ground ? { mode: ground.mode, line: ground.label, from: ground.from, to: ground.to, farePerPerson: ground.fare } : {}),
         roundTripKRW: flightTotalKRW,
@@ -3047,6 +3109,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
       longitude: hotelPlace?.longitude,
       address:   hotelPlace?.address || '',
       googleMapsQuery: hotelName,
+      ...(hotelPlace ? {} : { sample: true }),
     };
   }
 
@@ -3299,7 +3362,7 @@ async function _generateScheduleInner(t, btn, startedAt) {
   } else if (!plan.fits) {
     showToast('일정을 만들었어요. 예산보다 많이 들어서 맞출 방법을 함께 보여 드려요.');
   } else {
-    showToast(review.conflicts ? `일정을 만들었어요. 고정한 시간과 맞지 않는 곳 ${review.conflicts}건은 점검에서 확인해 주세요.` : keptPins ? `일정을 다시 만들었어요. 고정한 장소 ${keptPins}곳은 그대로 남겼어요` : '일정을 만들었어요');
+    showToast(review.conflicts ? `일정을 만들었어요. 시간이 맞지 않는 곳 ${review.conflicts}건은 점검에서 확인해 주세요.` : keptPins ? `일정을 다시 만들었어요. 고정한 장소 ${keptPins}곳은 그대로 남겼어요` : '일정을 만들었어요');
   }
   navigate('schedule');
 }

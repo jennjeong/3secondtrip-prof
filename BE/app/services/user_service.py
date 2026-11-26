@@ -1,5 +1,5 @@
 """User service — duplicate checks, password user creation, oauth upsert."""
-from datetime import date
+from datetime import datetime, date
 from typing import Optional
 
 from fastapi import HTTPException, status
@@ -31,6 +31,34 @@ def is_nickname_available(db: Session, nickname: str) -> bool:
     if not nickname:
         return False
     return db.query(User).filter(User.nickname == nickname.strip()).first() is None
+
+
+def upsert_pending_user(db: Session, *, email: str, password: str, nickname: str,
+                        terms_version: str, privacy_version: str) -> User:
+    """이메일 가입 — 인증 전 계정을 만들거나(같은 이메일로 다시 가입하면) 고쳐 쓴다. 계정은 늘 하나.
+
+    이미 인증된 계정이나 소셜 계정이 그 이메일을 쓰면 409. 인증 전 계정은 아직 아무것도 저장할 수 없으므로
+    다시 가입하면 비밀번호·닉네임·동의를 새 값으로 바꾼다(주소를 잘못 적었다 고친 경우 등).
+    """
+    en = normalize_email(email)
+    existing = db.query(User).filter(User.email_normalized == en).first()
+    if existing and (existing.provider != "local" or existing.email_verified_at is not None):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 가입된 이메일이에요. 로그인하거나 비밀번호를 찾아 주세요.")
+    nick = nickname.strip()
+    taken = db.query(User).filter(User.nickname == nick).first()
+    if taken and (not existing or taken.id != existing.id):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용 중인 닉네임이에요.")
+    now = datetime.utcnow()
+    user = existing or User(provider="local", provider_user_id=en, email_normalized=en)
+    user.email = email.strip()
+    user.nickname = nick
+    user.password_hash = hash_password(password)
+    user.terms_version, user.privacy_version, user.agreed_at = terms_version, privacy_version, now
+    if not existing:
+        db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 def create_password_user(db: Session, *, email: str, password: str, nickname: str,

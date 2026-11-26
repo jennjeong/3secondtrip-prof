@@ -7,6 +7,11 @@
  */
 
 const TABS = ['home', 'explore', 'create-trip', 'schedule', 'my'];
+// 탭을 오가도 목록 위치를 지키는 화면
+const KEEP_SCROLL = ['home', 'explore', 'my'];
+// 상세·하위 화면이 어느 메뉴 아래인지
+const PARENT = { 'roadmap-detail': 'explore', 'local-write': 'explore', 'my-saved': 'my', 'my-roadmaps': 'my', 'my-reviews': 'my', 'my-blogs': 'my',
+  subscription: 'my', survey: 'my', feedback: 'my', blog: 'my', signup: 'auth', policy: 'auth' };
 const PAGE_TITLES = {
   home: '3초 여행',
   explore: '여행 코스 탐색',
@@ -14,6 +19,8 @@ const PAGE_TITLES = {
   schedule: '내 일정',
   my: '마이',
   auth: '로그인',
+  signup: '회원가입',
+  policy: '정책',
   'roadmap-detail': '여행 코스',
   blog: '블로그 쓰기',
   feedback: '의견 보내기',
@@ -70,7 +77,7 @@ export function navigate(pageId, opts = {}) {
   document.querySelectorAll('.app-page').forEach(p => p.classList.remove('is-active'));
   page.classList.add('is-active');
   const scroller = page.querySelector('.page-scroll');
-  const restoreTo = state.byPop ? scrollMemory[pageId] : null;
+  const restoreTo = (state.byPop || KEEP_SCROLL.includes(pageId)) ? scrollMemory[pageId] : null;
   scroller?.scrollTo({ top: 0, behavior: 'instant' });
 
   _syncTabs(pageId);
@@ -105,7 +112,12 @@ function _focusPage(page) {
 /** 뒤로 — 앱 안에서 쌓은 기록이 있으면 브라우저 뒤로와 같게, 없으면 홈으로. */
 export function goBack() {
   if (state.idx > 0) { history.back(); return true; }
-  if (state.current !== 'home') { navigate('home', { replace: true }); return true; }
+  // 공유 링크로 바로 들어온 상세 화면은 그 메뉴(예: 탐색)로 돌아간다.
+  if (state.current !== 'home') {
+    const up = PARENT[state.current];
+    navigate(up && up !== 'auth' && up !== state.current ? up : 'home', { replace: true });
+    return true;
+  }
   return false;
 }
 
@@ -130,8 +142,7 @@ function _goByHistory(data) {
 
 function _syncTabs(pageId) {
   // 상세·하위 화면에서도 어느 메뉴 아래인지 보이게 한다.
-  const parent = { 'roadmap-detail': 'explore', 'local-write': 'explore', 'my-saved': 'my', 'my-roadmaps': 'my', 'my-reviews': 'my', 'my-blogs': 'my',
-    subscription: 'my', survey: 'my', feedback: 'my', blog: 'my', auth: 'my' }[pageId] || pageId;
+  const parent = PARENT[pageId] || pageId;
   document.querySelectorAll('.bottom-tab-nav [data-nav-to], .topbar-nav [data-nav-to]').forEach(btn => {
     if (btn.classList.contains('topbar-cta')) return;
     const isActive = btn.dataset.navTo === parent;

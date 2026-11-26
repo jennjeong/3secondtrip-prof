@@ -37,8 +37,35 @@ def _create_schema():
         pass
 
 
+class _Client(TestClient):
+    """예전 테스트의 `/users/signup` 한 번 호출을 '가입 + 이메일 인증'으로 이어 준다.
+
+    가입은 이제 202(인증 대기)이고 토큰은 인증 뒤에 나온다. 동의 항목(agree_*)이 없는 예전 형식의
+    요청이면 동의를 넣어 가입하고, 개발 환경 응답의 dev_code 로 바로 인증해 인증 응답(토큰 포함)을 돌려준다.
+    가입·인증 자체를 시험하는 테스트는 agree_* 를 넣어 보내면 이 도우미를 거치지 않는다.
+    """
+    def post(self, url, *a, **kw):
+        body = kw.get("json")
+        if url == "/users/signup" and isinstance(body, dict) and "agree_terms" not in body:
+            r = super().post(url, json={**body, "agree_terms": True, "agree_privacy": True, "agree_age": True})
+            if r.status_code != 202:
+                return r
+            code = r.json().get("dev_code")
+            return super().post("/users/verify-email", json={"email": body["email"], "code": code})
+        return super().post(url, *a, **kw)
+
+
 @pytest.fixture()
 def client():
     """FastAPI TestClient (startup 이벤트 포함)."""
-    with TestClient(app) as c:
+    with _Client(app) as c:
         yield c
+
+
+@pytest.fixture(autouse=True)
+def _clear_auth_limits():
+    """가입·로그인·인증 요청 제한은 테스트마다 새로 — 여러 테스트가 같은 IP(testclient)로 가입한다."""
+    from app.routers import users
+    for lim in (users._signup_limit, users._login_limit, users._verify_limit):
+        lim._hits.clear(); lim._all.clear()
+    yield

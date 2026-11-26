@@ -1236,7 +1236,7 @@ function _selectEditPlace(p) {
 
 
 function _openEdit(di, ai) {
-  editing = { di, ai, isNew: false };
+  editing = { di, ai, isNew: false, ref: appState.generated.days[di]?.activities[ai] };
   const a = appState.generated.days[di].activities[ai];
   _editPickedPlace = null;     // 기존 항목 편집 — 좌표는 유지하되 선택 상태는 초기화
   $('#editName').value = a.name || '';
@@ -1314,7 +1314,9 @@ function _commitEdit() {
     showToast('장소를 추가했어요' + _checkNote(di));
   } else {
     const { di, ai } = editing;
-    const a = appState.generated.days[di].activities[ai];
+    const a = appState.generated.days[di]?.activities[ai];
+    if (!a || (editing.ref && a !== editing.ref)) { _closeEdit(); renderSchedule(); showToast('그사이 일정이 바뀌었어요. 장소를 다시 골라 주세요'); return; }
+    const prevName = a.name;
     const changed = a.name !== name || a.time !== time || (a.cost ?? null) !== cost;
     if (a.time !== time) a.timeEdited = true; else if (a.timeEdited == null && !a.edited) a.timeEdited = false;
     if ((a.cost ?? null) !== cost) a.costEdited = true;
@@ -1331,9 +1333,12 @@ function _commitEdit() {
       a.longitude = picked.longitude;
       a.address   = picked.address || '';
       a.googleMapsQuery = picked.name;
-    } else if (name !== (a.googleMapsQuery || '').split(' ')[0]) {
-      // 직접 입력된 이름 — 좌표는 유지, 지도 쿼리만 갱신
+    } else if (name !== prevName) {
+      // 직접 입력한 다른 곳 — 이전 장소의 영업시간·위치·평점을 그대로 두면 점검과 이동 시간이 틀린다.
       a.googleMapsQuery = (name + ' ' + cityName).trim();
+      a.openingPeriods = null; a.rating = null; a.reviews = null; a.local = '';
+      delete a.latitude; delete a.longitude; delete a.sample;
+      a.address = ''; a.placeId = 'custom-' + Date.now();
     }
     // 다른 날짜로 옮기기
     const toDay = Number($('#editDay')?.value);
@@ -1359,12 +1364,11 @@ async function _deleteEdit() {
   if (!editing) return;
   if (editing.isNew) { _closeEdit(); return; }   // 추가 모드: 취소만 함
   const { di, ai } = editing;
-  const day = appState.generated.days[di];
-  const target = day.activities[ai];
+  const target = editing.ref || appState.generated.days[di]?.activities[ai];
   if (!await askConfirm('이 장소를 삭제할까요?', { ok: '삭제', danger: true })) return;
-  const at = day.activities.indexOf(target);
-  if (at < 0) return;
-  day.activities.splice(at, 1);
+  const at = appState.generated.days[di]?.activities.indexOf(target) ?? -1;
+  if (at < 0) { _closeEdit(); renderSchedule(); showToast('그사이 일정이 바뀌었어요. 장소를 다시 골라 주세요'); return; }
+  appState.generated.days[di].activities.splice(at, 1);
   _closeEdit();
   renderSchedule();
   showToast('삭제했어요' + _checkNote(di));
@@ -1414,6 +1418,13 @@ function _moveActivity(srcAi, dstAi, after) {
   let insertIdx = after ? dstAi + 1 : dstAi;
   if (srcAi < insertIdx) insertIdx -= 1;                     // 제거로 인한 인덱스 보정
   insertIdx = Math.max(0, Math.min(insertIdx, acts.length - 1));
+  {
+    const mv = (x) => x.category !== '이동' && x.category !== '숙박';
+    const rest = acts.filter((_, i) => i !== srcAi);
+    let lo = 0; while (lo < rest.length && !mv(rest[lo])) lo++;
+    let hi = rest.length; while (hi > lo && !mv(rest[hi - 1])) hi--;
+    insertIdx = Math.max(lo, Math.min(insertIdx, hi));
+  }
   if (insertIdx === srcAi) return;                           // 제자리 → 변화 없음
   const movedAct = acts[srcAi];
   const movedKey = movedAct ? (movedAct.placeId || movedAct.id || (movedAct.name || '').trim()) : '';
@@ -1602,7 +1613,7 @@ function _paintSaveStatus() {
   if (saveState === 'saving') text = '계정에 보관하는 중…';
   else if (saveState === 'error') { text = '계정에 보관하지 못했어요. 이 기기에는 있어요.'; cls = 'is-error'; }
   else if (onAccount) text = '계정에 보관됨 · 마이 › 계정에 보관한 일정';
-  else text = appState.currentUser ? '이 기기에 있어요 · 하트를 누르면 계정에도 보관' : '이 기기에 있어요 · 내 일정에서 다시 열 수 있어요';
+  else text = appState.currentUser ? '이 기기에만 보관 중 · 일정 저장을 누르면 계정에도 저장' : '이 기기에만 보관 중 · 만들기에서 다시 열 수 있어요';
   box.className = 'save-status ' + cls;
   box.replaceChildren(...[el('span', {}, text),
     saveState === 'error' ? el('button', { type: 'button', class: 'btn-text', onclick: _saveToAccount }, '다시 시도') : null].filter(Boolean));
@@ -1628,7 +1639,13 @@ async function _toggleSave() {
   await _saveToAccount();
 }
 
-async function _saveToAccount() {
+let _saving = null;      // 진행 중인 저장 — 연속 탭·로그인 복귀가 겹쳐도 계정에 한 번만 만든다
+function _saveToAccount() {
+  if (_saving) return _saving;
+  _saving = _saveToAccountOnce().finally(() => { _saving = null; });
+  return _saving;
+}
+async function _saveToAccountOnce() {
   const g = appState.generated;
   if (!g || !appState.currentUser) return;
   saveState = 'saving'; _paintSaveStatus();
@@ -1646,7 +1663,7 @@ async function _saveToAccount() {
     saveState = 'saved';
   } catch (e) {
     console.warn('[schedule] 계정 저장 실패', e?.status, e?.message);
-    if (e?.status === 404 && g.savedScheduleId) { g.savedScheduleId = null; return _saveToAccount(); }
+    if (e?.status === 404 && g.savedScheduleId) { g.savedScheduleId = null; return _saveToAccountOnce(); }
     saveState = 'error';
     trackEvent('trip_save_fail');
     showToast(e?.status === 401 ? '로그인이 만료됐어요. 다시 로그인하면 이어서 보관할 수 있어요' : '계정에 보관하지 못했어요. 이 기기에는 있어요');
@@ -1681,7 +1698,7 @@ function _initSaveChoice() {
   $('#saveChoiceBackdrop')?.addEventListener('click', _closeSaveChoice);
   $('#saveChoiceLocal')?.addEventListener('click', () => {
     _closeSaveChoice();
-    showToast('이 기기에 있어요 · 아래 ‘내 일정’에서 다시 열어요', 3600);
+    showToast('이 기기에만 보관했어요 · 만들기에서 다시 열 수 있어요', 3600);
   });
   $('#saveChoiceLogin')?.addEventListener('click', () => {
     const g = appState.generated;
@@ -1700,6 +1717,7 @@ function _initSaveChoice() {
       return;
     }
     navigate('schedule', { replace: true });
+    if (intent.viaSignup) showToast('가입을 마쳤어요 · 이메일 인증 완료. 만들던 일정을 계정에 저장할게요', 3200);
     if (g.savedScheduleId) { showToast('로그인했어요 · 이 일정은 이미 계정에 보관돼 있어요'); return; }
     _saveToAccount();
   });

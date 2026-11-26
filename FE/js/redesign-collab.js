@@ -22,6 +22,23 @@ let lastSynced = '';
 let saveTimer = null;
 let pollTimer = null;
 let saving = false;
+let sharedObj = null;     // 함께 편집 중인 일정 객체 — 다른 일정을 열면 올리지 않고 멈춘다
+let failNoted = false;
+
+// 기기마다 다른 값(내 계정의 저장 번호)은 공유 데이터에 싣지 않는다 — 실으면 받은 사람 계정에 사본이 계속 생긴다.
+function _strip(g) {
+  if (!g) return g;
+  const { savedScheduleId, sharedView, ...rest } = g;
+  return rest;
+}
+function _json(g) { return JSON.stringify(_strip(g)); }
+/** 지금 화면의 일정이 함께 편집 중인 그 여행인가(다시 만들기는 같은 여행 번호를 이어받는다). */
+function _sameTrip(g) {
+  if (!g || !sharedObj) return false;
+  if (g === sharedObj) return true;
+  return !!(g.tripUid && g.tripUid === sharedObj.tripUid);
+}
+function _editing() { const s = document.getElementById('editSheet'); return !!(s && !s.hidden); }
 
 function _setToken(value, manageKey) {
   token = value;
@@ -59,13 +76,20 @@ function _link() {
 
 function _applyRemote(remote) {
   version = remote.version;
-  lastSynced = JSON.stringify(remote.data);
-  appState.generated = remote.data;
+  const data = _strip(remote.data) || {};
+  const cur = appState.generated;
+  // 내 계정에 저장해 둔 같은 여행이면 내 저장 번호를 그대로 쓴다.
+  if (cur?.savedScheduleId && (cur === sharedObj || (cur.tripUid && cur.tripUid === data.tripUid))) data.savedScheduleId = cur.savedScheduleId;
+  lastSynced = _json(data);
+  appState.generated = data;
+  sharedObj = data;
   rerender();
 }
 
 async function _pull() {
-  if (!token || saving || saveTimer || document.hidden) return;
+  if (!token || saving || saveTimer || document.hidden || _editing()) return;
+  // 올리지 못한 내 수정이 있으면 받아서 덮지 않고 다시 올린다.
+  if (_sameTrip(appState.generated) && _json(appState.generated) !== lastSynced) { saveTimer = setTimeout(_push, SAVE_DELAY_MS); return; }
   try {
     const remote = await api.getSharedTrip(token);
     if (remote.version > version) {
@@ -80,20 +104,25 @@ async function _pull() {
 async function _push() {
   saveTimer = null;
   const g = appState.generated;
-  if (!token || !g) return;
-  const json = JSON.stringify(g);
+  if (!token || !g || !_sameTrip(g)) return;
+  const json = _json(g);
   if (json === lastSynced) return;
   saving = true;
   try {
-    const saved = await api.updateSharedTrip(token, { data: g, version });
+    const saved = await api.updateSharedTrip(token, { data: _strip(g), version });
     version = saved.version;
     lastSynced = json;
+    sharedObj = g;
+    if (failNoted) { failNoted = false; showToast('함께 편집 일정에 저장했어요'); }
   } catch (e) {
     if (e?.status === 409) {
-      _applyRemote(await api.getSharedTrip(token));
+      try { _applyRemote(await api.getSharedTrip(token)); } catch (_) {}
       showToast('다른 분의 수정이 먼저 저장돼 최신 일정으로 바꿨어요');
+    } else if (e?.status === 404) {
+      _stop('공유 일정이 만료되거나 회수됐어요. 내 기기의 일정은 그대로 있어요');
     } else {
-      console.warn('[collab] 저장 실패:', e?.message);
+      console.warn('[collab] 저장 실패:', e?.status || '');
+      if (!failNoted) { failNoted = true; showToast('함께 편집 일정에 아직 저장하지 못했어요. 연결되면 다시 저장할게요'); }
     }
   } finally {
     saving = false;
@@ -102,7 +131,10 @@ async function _push() {
 
 function _onChanged() {
   if (!token || !appState.generated) return;
-  if (JSON.stringify(appState.generated) === lastSynced) return;
+  // 다른 일정(저장한 일정·새 여행·보기 링크)을 열었다 — 함께 편집 중인 일정을 덮어쓰지 않게 이 기기에서 멈춘다.
+  if (!_sameTrip(appState.generated)) { _stop('다른 일정을 열어서 함께 편집을 멈췄어요. 편집 링크로 다시 열 수 있어요', { keepManage: true }); return; }
+  sharedObj = appState.generated;
+  if (_json(appState.generated) === lastSynced) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(_push, SAVE_DELAY_MS);
 }
@@ -113,11 +145,14 @@ function _start() {
   _paint();
 }
 
-function _stop(message) {
+function _stop(message, { keepManage = false } = {}) {
   clearInterval(pollTimer);
   clearTimeout(saveTimer);
   saveTimer = null;
-  _setToken(null);
+  sharedObj = null; failNoted = false;
+  // 링크를 만든 사람은 나중에 링크로 다시 열어 회수할 수 있게 관리 키를 남긴다.
+  if (keepManage) { token = null; try { localStorage.removeItem(TOKEN_KEY); } catch (_) {} }
+  else _setToken(null);
   _paint();
   if (message) showToast(message);
 }
@@ -126,10 +161,13 @@ async function _create() {
   const btn = $('#collabStart');
   if (btn) btn.disabled = true;
   try {
-    const created = await api.createSharedTrip({ data: appState.generated });
+    const g = appState.generated;
+    if (!g.tripUid) g.tripUid = 'trip-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+    const created = await api.createSharedTrip({ data: _strip(g) });
     _setToken(created.token, created.manage_key);
     version = created.version;
-    lastSynced = JSON.stringify(created.data);
+    sharedObj = g;
+    lastSynced = _json(created.data);
     _start();
     trackEvent('collab_started');
     await _copy();
@@ -200,6 +238,12 @@ export async function initCollab(state, renderSchedule) {
 
   try {
     const remote = await api.getSharedTrip(candidate);
+    // 저장된 편집 링크로 이어 갈 때, 방금 연 보기 링크·다른 일정을 덮지 않는다.
+    const cur = appState.generated;
+    if (!fromUrl && cur && (cur.sharedView || (remote.data?.tripUid && cur.tripUid !== remote.data.tripUid))) {
+      try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+      return;
+    }
     _setToken(candidate);
     _applyRemote(remote);
     _start();

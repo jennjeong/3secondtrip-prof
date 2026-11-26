@@ -10,6 +10,7 @@ from app.models.blog import Blog
 from app.models.booking import Booking
 from app.models.feedback import Feedback
 from app.models.local_course import LocalCourse
+from app.models.email_verification import EmailVerification
 from app.models.password_reset import PasswordReset
 from app.models.review import Review
 from app.models.roadmap import Roadmap
@@ -29,7 +30,7 @@ def delete_account(db: Session, user: User) -> dict:
     if trip_ids:
         counts["trip_places"] = db.query(TripPlace).filter(TripPlace.trip_id.in_(trip_ids)).delete(synchronize_session=False)
     for name, model in (("trips", Trip), ("schedules", Schedule), ("bookings", Booking), ("reviews", Review),
-                        ("blogs", Blog), ("surveys", TasteSurvey), ("roadmaps", Roadmap), ("local_courses", LocalCourse), ("password_resets", PasswordReset)):
+                        ("blogs", Blog), ("surveys", TasteSurvey), ("roadmaps", Roadmap), ("local_courses", LocalCourse), ("password_resets", PasswordReset), ("email_verifications", EmailVerification)):
         counts[name] = db.query(model).filter(model.user_id == uid).delete(synchronize_session=False)
     counts["feedback_anonymized"] = db.query(Feedback).filter(Feedback.user_id == uid).update(
         {Feedback.user_id: None}, synchronize_session=False)

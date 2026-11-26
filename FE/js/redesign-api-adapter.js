@@ -263,6 +263,8 @@ export const api = {
   checkEmail:       (email)    => apiRequest('/users/check-email?email='       + encodeURIComponent(email)),
   signup:           (payload) => apiRequest('/users/signup', { method: 'POST', body: JSON.stringify(payload) }),
   loginEmail:       (payload) => apiRequest('/users/login',  { method: 'POST', body: JSON.stringify(payload) }),
+  verifyEmail:      (payload) => apiRequest('/users/verify-email', { method: 'POST', body: JSON.stringify(payload) }),
+  resendVerification: (email) => apiRequest('/users/verify-email/resend', { method: 'POST', body: JSON.stringify({ email }) }),
   updateMe:         (payload) => apiRequest('/users/me',     { method: 'PATCH', body: JSON.stringify(payload) }),
 
   // Social login is a top-level redirect; expose a helper that doesn't fetch
@@ -342,7 +344,7 @@ export const api = {
   // 예전 서버처럼 이 주소가 없으면 모두 켜진 것으로 보고, 실패하면 각 호출의 대체 처리가 맡는다.
   features: ({ fresh = false } = {}) => { if (fresh) _featuresPromise = null; return (_featuresPromise ||= apiRequest('/api/features', { quiet: true })
     .then(f => ({ liveFlights: !!f.live_flights, liveHotels: !!f.live_hotels, ai: !!f.ai_summary, places: f.places !== false,
-                  passwordReset: !!f.password_reset, oauth: f.oauth || null, checkedAt: new Date().toISOString() }))
+                  passwordReset: !!f.password_reset, emailSignup: f.email_signup !== false, passwordPolicy: f.password_policy || null, oauth: f.oauth || null, checkedAt: new Date().toISOString() }))
     // 서버 상태를 알 수 없으면 외부 기능은 꺼진 것으로 본다(실패할 호출을 미리 하지 않고 추정치를 쓴다).
     .catch(() => { _featuresPromise = null; return { liveFlights: false, liveHotels: false, ai: false, places: true, passwordReset: false, oauth: null, checkedAt: null, unknown: true }; })); },
   // 로그인한 상태에서 비밀번호 변경(다른 기기는 로그아웃) · 모든 기기에서 로그아웃

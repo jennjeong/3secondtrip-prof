@@ -1773,5 +1773,211 @@ dialog.ask[open] { animation: askIn .16s ease-out !important; }
   .bottom-tab-nav::before { box-shadow: inset 0 1px 0 var(--g-hi) !important; }
   .app-page > .page-scroll { scroll-padding-bottom: var(--dock-space) !important; }
 }
+
+/* ── 로그인 상태에 따른 메뉴(웹 상단·앱 하단) ── */
+:root:not([data-auth="member"]) [data-auth-only="member"] { display: none !important; }
+:root[data-auth="member"] [data-auth-only="guest"] { display: none !important; }
+.nick-text { display: inline-block !important; max-width: 9em !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; vertical-align: bottom !important; }
+.topbar-nick .nick-text { max-width: 140px !important; }
+.bottom-tab-nav .tab-label.nick-text { max-width: 100% !important; padding: 0 4px !important; }
+@media (max-width: 1023px) {
+  :root[data-auth="guest"] .bottom-tab-nav::before { width: calc((100% - 12px) / 4) !important; }
+  :root[data-auth="guest"] .bottom-tab-nav { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  :root[data-auth="member"] .bottom-tab-nav { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+  .bottom-tab-nav.bottom-tab-nav:has(.tab-button[data-nav-to="home"].is-active)::before { transform: translateX(0) !important; }
+  .bottom-tab-nav.bottom-tab-nav:has(.tab-button[data-nav-to="explore"].is-active)::before { transform: translateX(100%) !important; }
+  .bottom-tab-nav.bottom-tab-nav:has(.tab-button[data-nav-to="create-trip"].is-active)::before { transform: translateX(200%) !important; }
+  .bottom-tab-nav.bottom-tab-nav:has(.tab-button[data-nav-to="auth"].is-active)::before, .bottom-tab-nav.bottom-tab-nav:has(.tab-button[data-nav-to="schedule"].is-active)::before { transform: translateX(300%) !important; }
+  .bottom-tab-nav.bottom-tab-nav:has(.tab-button[data-nav-to="my"].is-active)::before { transform: translateX(400%) !important; }
+}
+
+/* ── 로그인 · 회원가입 · 이메일 인증 (같은 틀, 대표 행동만 다르게) ── */
+.acct-page > .page-scroll { padding-bottom: var(--dock-space) !important; }
+.acct-wrap { max-width: 420px !important; margin: 0 auto !important; padding: calc(env(safe-area-inset-top, 0px) + 24px) 0 24px !important; }
+@media (min-width: 1024px) { .acct-wrap { padding-top: 120px !important; } }
+.acct-head { display: flex !important; flex-direction: column !important; gap: 8px !important; margin: 0 0 24px !important; }
+.acct-head--back { flex-direction: row !important; align-items: center !important; gap: 4px !important; margin-left: -10px !important; }
+.acct-back { display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 44px !important; height: 44px !important; padding: 0 !important; border: 0 !important; border-radius: 12px !important; background: none !important; color: inherit !important; cursor: pointer !important; }
+.acct-title { margin: 0 !important; font-size: 28px !important; line-height: 36px !important; font-weight: 600 !important; letter-spacing: -.03em !important; color: #FFFFFF !important; }
+.acct-title--sm { font-size: 22px !important; line-height: 30px !important; margin-bottom: 16px !important; }
+.acct-sub, .acct-lead { margin: 0 !important; font-size: 15px !important; line-height: 23px !important; color: var(--n-ink2, #A9B2C1) !important; }
+.acct-lead { margin-bottom: 16px !important; }
+.acct-mail { display: block !important; margin-top: 4px !important; font-weight: 600 !important; color: #FFFFFF !important; overflow-wrap: anywhere !important; }
+.acct-form { display: flex !important; flex-direction: column !important; gap: 0 !important; margin: 0 !important; }
+.acct-field { display: flex !important; flex-direction: column !important; margin: 0 0 16px !important; }
+.acct-field .form-label, .acct-consent legend { margin: 0 0 8px !important; padding: 0 !important; font-size: 14px !important; line-height: 20px !important; font-weight: 600 !important; }
+.acct-field .form-input { width: 100% !important; height: 52px !important; padding: 0 16px !important; font-size: 16px !important; }
+.acct-field .form-input[aria-invalid="true"] { border-color: #FF8A80 !important; }
+.form-input--code { letter-spacing: .4em !important; font-size: 22px !important; text-align: center !important; font-variant-numeric: tabular-nums !important; }
+.pw-wrap { position: relative !important; }
+.pw-wrap .form-input { padding-right: 72px !important; }
+.pw-eye { position: absolute !important; top: 4px !important; right: 4px !important; height: 44px !important; min-width: 60px !important; padding: 0 10px !important; border: 0 !important; border-radius: 10px !important; background: none !important; color: var(--n-ink2, #A9B2C1) !important; font: inherit !important; font-size: 14px !important; font-weight: 600 !important; cursor: pointer !important; }
+.acct-hint { margin: 0 0 8px !important; font-size: 13px !important; line-height: 19px !important; color: var(--n-ink2, #A9B2C1) !important; }
+.acct-field > .acct-hint:last-child { margin: 6px 0 0 !important; }
+.acct-err { margin: 6px 0 0 !important; font-size: 13px !important; line-height: 19px !important; color: #FF9E95 !important; }
+.acct-err--form { margin: 0 0 12px !important; padding: 10px 12px !important; border-radius: 12px !important; background: rgba(255, 112, 99, .12) !important; }
+.acct-row-end { display: flex !important; justify-content: flex-end !important; margin: -4px 0 12px !important; }
+#authPage .acct-row-end #authForgot { margin-left: auto !important; text-align: right !important; }
+.acct-row-split { display: flex !important; justify-content: space-between !important; gap: 12px !important; margin-top: 8px !important; }
+.acct-row-end .link-btn, .acct-row-split .link-btn, .acct-switch .link-btn { width: auto !important; min-height: 44px !important; padding: 0 2px !important; font-size: 14px !important; }
+.acct-main, .acct-second { height: 52px !important; min-height: 52px !important; margin: 0 !important; font-size: 16px !important; }
+.acct-second { margin-top: 8px !important; background: transparent !important; border: 1px solid rgba(255, 255, 255, .28) !important; color: #FFFFFF !important; }
+.acct-social { margin-top: 28px !important; }
+.acct-social .social-stack { display: flex !important; flex-direction: column !important; gap: 8px !important; }
+.acct-steps { display: flex !important; gap: 6px !important; margin: -8px 0 20px !important; padding: 0 !important; list-style: none !important; font-size: 13px !important; color: var(--n-ink2, #A9B2C1) !important; counter-reset: st !important; }
+.acct-steps li { counter-increment: st !important; display: flex !important; align-items: center !important; gap: 6px !important; }
+.acct-steps li::before { content: counter(st) !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 20px !important; height: 20px !important; border-radius: 50% !important; border: 1px solid currentColor !important; font-size: 12px !important; }
+.acct-steps li + li::after { content: none !important; }
+.acct-steps li[aria-current="step"] { color: #FFFFFF !important; font-weight: 600 !important; }
+.acct-consent { margin: 4px 0 16px !important; padding: 12px 14px !important; border: 1px solid rgba(255, 255, 255, .16) !important; border-radius: 14px !important; min-width: 0 !important; }
+.acct-consent legend { float: left !important; width: 100% !important; }
+#signupPage .consent-all, #signupPage .consent-row { color: #FFFFFF !important; display: flex !important; align-items: center !important; gap: 10px !important; min-height: 44px !important; font-size: 15px !important; }
+#signupPage .consent-all { clear: both !important; width: 100% !important; font-weight: 600 !important; border-bottom: 1px solid rgba(255, 255, 255, .12) !important; margin-bottom: 4px !important; }
+.consent-row span { flex: 1 !important; min-width: 0 !important; }
+.consent-row b { font-weight: 600 !important; color: #9CC0FF !important; }
+#signupPage .acct-consent input[type="checkbox"] { -webkit-appearance: checkbox !important; appearance: auto !important; display: inline-block !important; position: static !important; opacity: 1 !important; flex: none !important; width: 20px !important; height: 20px !important; margin: 0 !important; accent-color: #9CC0FF !important; }
+.consent-view { flex: none !important; min-height: 44px !important; display: inline-flex !important; align-items: center !important; padding: 0 4px !important; font-size: 14px !important; color: var(--n-ink2, #A9B2C1) !important; text-decoration: underline !important; }
+.acct-switch { margin: 20px 0 0 !important; text-align: center !important; font-size: 14px !important; color: var(--n-ink2, #A9B2C1) !important; }
+.acct-policy { margin: 24px 0 0 !important; text-align: center !important; font-size: 13px !important; color: var(--n-ink2, #A9B2C1) !important; }
+.acct-policy a { color: inherit !important; text-decoration: underline !important; }
+/* 정책 문서(밝은 화면) */
+.acct-page--doc .acct-title { color: var(--p-ink) !important; font-size: 24px !important; line-height: 32px !important; }
+.acct-wrap--doc { max-width: 720px !important; padding-left: 0 !important; padding-right: 0 !important; }
+.policy-doc { font-size: 15px !important; line-height: 1.7 !important; color: var(--p-ink) !important; word-break: keep-all !important; overflow-wrap: anywhere !important; }
+.policy-doc h2 { margin: 28px 0 8px !important; font-size: 17px !important; }
+.policy-doc table { display: block !important; width: 100% !important; overflow-x: auto !important; border-collapse: collapse !important; font-size: 14px !important; }
+.policy-doc th, .policy-doc td { min-width: 120px !important; padding: 8px 10px !important; text-align: left !important; vertical-align: top !important; border-bottom: 1px solid var(--p-line) !important; }
+.policy-doc .policy-meta { color: var(--p-ink2) !important; font-size: 14px !important; }
+.policy-doc .policy-review { padding: 12px 14px !important; border-radius: 12px !important; background: var(--p-tint) !important; font-size: 14px !important; color: var(--p-ink2) !important; }
+/* 홈 맨 아래 */
+.home-foot { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 4px 16px !important; margin: 40px 0 0 !important; padding: 20px 0 0 !important; border-top: 1px solid var(--n-line) !important; font-size: 13px !important; }
+.home-foot a { display: inline-flex !important; align-items: center !important; min-height: 44px !important; color: var(--n-ink2, #A9B2C1) !important; text-decoration: none !important; }
+.home-foot a b { font-weight: 600 !important; color: #DCE6FA !important; }
+.home-foot-note { flex-basis: 100% !important; margin: 0 !important; color: var(--n-ink2, #A9B2C1) !important; }
+
+/* 휴대폰: 위쪽 앱 바가 이미 '뒤로 + 화면 이름'을 보여 주므로, 화면 안의 같은 제목 줄은 숨긴다(읽기 프로그램용 제목은 남김) */
+@media (max-width: 1023px) {
+  .acct-head--back { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; margin: 0 !important; }
+  #authPage .acct-title { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; }
+  .acct-wrap { padding-top: 8px !important; }
+}
+
+/* 회원가입 화면도 로그인과 같은 밤 바탕·입력 모양 */
+#signupPage, :root[data-page="signup"] .app-main { background: var(--n-bg) !important; }
+#signupPage.app-page:not(#homePage) > .page-scroll { background: radial-gradient(130% 60% at 50% 112%, #1E4EA6 0%, #0F2654 36%, #081126 66%, var(--n-bg) 94%) !important; min-height: 100% !important; }
+:root[data-page="signup"] .app-page:not(#homePage) > .page-scroll { --gx: max(16px, calc((100vw - 420px) / 2)) !important; }
+#signupPage .form-label, #signupPage .acct-consent, #signupPage .acct-back, #authPage .acct-back { color: #FFFFFF !important; }
+#signupPage .form-input { background: rgba(255, 255, 255, .1) !important; border-color: rgba(255, 255, 255, .24) !important; color: #FFFFFF !important; }
+#signupPage .form-input::placeholder { color: rgba(226, 235, 255, .62) !important; }
+:root[data-page="signup"] .bottom-tab-nav { --g-bg: rgba(12, 18, 36, .9) !important; --g-line: rgba(255, 255, 255, .22) !important; }
+#authPage .auth-notice { margin: 0 0 20px !important; }
+#createTripPage .device-trip { justify-content: space-between !important; margin: 10px 0 0 !important; }
+#createTripPage .device-trip .dt-text { display: flex !important; flex-direction: column !important; gap: 2px !important; min-width: 0 !important; }
+#createTripPage .device-trip .dt-text b { font-weight: 600 !important; color: #FFFFFF !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+#createTripPage .device-trip .dt-state { font-size: 13px !important; color: var(--n-ink2, #A9B2C1) !important; }
+
+/* 뒤로 가기 — 커서를 올리거나 누를 때 색이 바뀌지 않게(키보드 초점 테두리만 남긴다) */
+.app-topbar .topbar-back.topbar-back:hover, .app-topbar .topbar-back.topbar-back:active,
+.acct-back.acct-back:hover, .acct-back.acct-back:active { background: transparent !important; color: #FFFFFF !important; opacity: 1 !important; }
+
+/* ===== 로그인 시안 A — 로고 · 테두리 입력칸 · 이메일 저장/비밀번호 찾기 한 줄 · 아래 가입 안내 ===== */
+#authPage .acct-head.acct-head--brand { display: block !important; text-align: center !important; margin: 28px 0 36px !important; }
+#authPage .acct-logo { display: block !important; width: 188px !important; height: auto !important; margin: 0 auto 12px !important; }
+#authPage .acct-head--brand .acct-title { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; }
+#authPage .acct-head--brand .acct-sub { margin: 0 !important; font-size: 14px !important; line-height: 1.5 !important; color: var(--n-ink2, #A9B2C1) !important; text-align: center !important; }
+#authPage .acct-field.acct-field--float { position: relative !important; margin: 0 0 18px !important; }
+#authPage .acct-field--float > .form-label { position: absolute !important; left: 12px !important; top: -8px !important; z-index: 2 !important; margin: 0 !important; padding: 0 6px !important; font-size: 12px !important; line-height: 16px !important; font-weight: 500 !important; color: var(--n-ink2, #A9B2C1) !important; background: #05070D !important; border-radius: 4px !important; }
+#authPage .acct-field--float:focus-within > .form-label { color: #FFFFFF !important; }
+#authPage .in-wrap { position: relative !important; }
+#authPage .acct-field--float .form-input { height: 56px !important; min-height: 56px !important; padding: 0 52px 0 16px !important; border-radius: 12px !important; border: 1px solid rgba(255, 255, 255, .22) !important; background: rgba(255, 255, 255, .03) !important; color: #FFFFFF !important; font-size: 16px !important; box-shadow: none !important; }
+#authPage .acct-field--float .pw-wrap .form-input { padding-right: 112px !important; }
+#authPage .acct-field--float .form-input:focus { border-color: #FFFFFF !important; outline: none !important; background: rgba(255, 255, 255, .05) !important; }
+#authPage .acct-field--float .form-input[aria-invalid="true"] { border-color: #FF8A8A !important; }
+#authPage .in-clear { position: absolute !important; top: 50% !important; right: 8px !important; transform: translateY(-50%) !important; width: 36px !important; height: 36px !important; padding: 0 !important; border: 0 !important; border-radius: 50% !important; background: none !important; color: rgba(255, 255, 255, .32) !important; display: grid !important; place-items: center !important; cursor: pointer !important; }
+#authPage .in-clear[hidden] { display: none !important; }
+#authPage .acct-field--float .pw-eye { top: 50% !important; right: 44px !important; transform: translateY(-50%) !important; height: 40px !important; min-width: 52px !important; }
+#authPage .acct-field--float .pw-wrap:has(.in-clear[hidden]) .pw-eye { right: 6px !important; }
+#authPage .acct-row { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; margin: 0 0 24px !important; }
+#authPage .acct-remember { display: inline-flex !important; align-items: center !important; gap: 8px !important; min-height: 44px !important; font-size: 14px !important; color: #C9D0DC !important; cursor: pointer !important; }
+#authPage .acct-remember input { appearance: auto !important; width: 18px !important; height: 18px !important; margin: 0 !important; accent-color: #FFFFFF !important; }
+#authPage .acct-row #authForgot { min-height: 44px !important; padding: 0 !important; font-size: 14px !important; color: #C9D0DC !important; text-decoration: none !important; }
+#authPage .acct-main { height: 56px !important; min-height: 56px !important; border-radius: 12px !important; }
+#authPage .acct-social { margin: 28px 0 0 !important; }
+#authPage .acct-switch { margin: 32px 0 0 !important; text-align: center !important; font-size: 14px !important; color: var(--n-ink2, #A9B2C1) !important; }
+#authPage .acct-switch[hidden] { display: none !important; }
+#authPage .acct-switch .link-btn { margin-left: 6px !important; min-height: 44px !important; padding: 0 4px !important; font-size: 14px !important; font-weight: 700 !important; color: #FFFFFF !important; text-decoration: none !important; }
+#authPage .acct-policy { margin: 8px 0 0 !important; }
+#authPage .acct-row .auth-forgot.auth-forgot { flex: none !important; width: auto !important; margin: 0 0 0 auto !important; text-align: right !important; }
+#authPage .social-stack .social-btn.social-btn { height: 52px !important; min-height: 52px !important; border-radius: 12px !important; background: transparent !important; border: 1px solid rgba(255, 255, 255, .18) !important; color: #FFFFFF !important; font-size: 15px !important; font-weight: 600 !important; }
+#authPage .social-stack { display: flex !important; flex-direction: column !important; gap: 10px !important; }
+/* 가입·비밀번호 찾기 입력칸도 로그인과 같은 테두리 칸 */
+#signupPage .acct-form .form-input, #authPage #resetForm .form-input { height: 56px !important; min-height: 56px !important; border-radius: 12px !important; border: 1px solid rgba(255, 255, 255, .22) !important; background: rgba(255, 255, 255, .03) !important; color: #FFFFFF !important; font-size: 16px !important; box-shadow: none !important; }
+#signupPage .acct-form .form-input:focus, #authPage #resetForm .form-input:focus { border-color: #FFFFFF !important; outline: none !important; }
+#signupPage .acct-main, #signupPage .acct-second, #authPage #resetForm .acct-main, #authPage #resetForm .acct-second { height: 56px !important; min-height: 56px !important; border-radius: 12px !important; }
+
+/* ===== 홈 7:3 — ‘새 여행 만들기’ 하나에 힘, 검색·스타일은 가볍게, 이어 하던 여행은 바로 ===== */
+#homePage .nh-lead { margin: 12px 0 0 !important; font-size: 15px !important; line-height: 1.5 !important; color: var(--n-ink2, #A9B2C1) !important; }
+#homePage .home-create.home-create { display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; min-height: 56px !important; padding: 0 28px !important; border: 0 !important; border-radius: 14px !important; background: #FFFFFF !important; color: #0A1530 !important; font-size: 17px !important; font-weight: 700 !important; margin-top: 24px !important; }
+#homePage .home-create.home-create:hover { background: #EEF2FF !important; }
+#homePage .search-card .search-submit { background: transparent !important; color: #C9D0DC !important; font-weight: 600 !important; box-shadow: none !important; }
+#homePage .home-trip { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; width: 100% !important; min-height: 60px !important; margin: 16px 0 0 !important; padding: 12px 16px !important; border: 1px solid rgba(255, 255, 255, .12) !important; border-radius: 14px !important; background: rgba(8, 14, 30, .78) !important; color: #FFFFFF !important; font: inherit !important; text-align: left !important; cursor: pointer !important; }
+#homePage .home-trip:hover { border-color: rgba(255, 255, 255, .3) !important; }
+#homePage .ht-text { display: flex !important; flex-direction: column !important; gap: 2px !important; min-width: 0 !important; }
+#homePage .ht-text b { font-size: 15px !important; font-weight: 600 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+#homePage .ht-state { font-size: 13px !important; color: var(--n-ink2, #A9B2C1) !important; }
+#homePage .ht-go { flex: none !important; font-size: 22px !important; line-height: 1 !important; color: #C9D0DC !important; }
+@media (min-width: 1024px) {
+  #homePage .nh-lead { text-align: center !important; }
+  #homePage #homeTripCard { width: min(520px, 100%) !important; margin: 0 auto !important; }
+}
+@media (max-width: 1023px) {
+  #homePage .nh-copy.nh-copy { align-items: stretch !important; text-align: left !important; }
+  #homePage .nh-title.nh-title { margin-left: 0 !important; margin-right: 0 !important; width: auto !important; max-width: none !important; text-align: left !important; font-size: 30px !important; line-height: 1.3 !important; font-weight: 700 !important; letter-spacing: -.02em !important; }
+  #homePage .home-create.home-create { width: 100% !important; margin-top: 22px !important; }
+  #homePage .search-card.search-card { margin-top: 12px !important; }
+  #homePage .home-styles.home-styles { flex-wrap: nowrap !important; justify-content: flex-start !important; overflow-x: auto !important; margin: 12px -16px 0 !important; padding: 0 16px 2px !important; scrollbar-width: none !important; -webkit-overflow-scrolling: touch !important; }
+  #homePage .home-styles::-webkit-scrollbar { display: none !important; }
+  #homePage .home-styles .chip { flex: none !important; }
+}
+@media (max-width: 359px) {
+  #homePage .nh-title.nh-title { font-size: 26px !important; }
+}
+
+/* ===== 공통 위계 — 화면 제목은 한 가지 굵기, 주 버튼은 한 가지 크기 ===== */
+.app-page .page-title.page-title, #createTripPage .create-q.create-q { font-weight: 700 !important; letter-spacing: -.02em !important; }
+@media (max-width: 1023px) {
+  .app-page .page-title.page-title { font-size: 28px !important; line-height: 1.3 !important; }
+  #createTripPage .create-q.create-q { font-size: 24px !important; line-height: 1.35 !important; }
+  #createTripPage #stepPrev, #createTripPage #stepNext, #createTripPage #stepGenerate { height: 56px !important; min-height: 56px !important; border-radius: 14px !important; font-size: 16px !important; }
+}
+@media (max-width: 359px) {
+  .app-page .page-title.page-title { font-size: 24px !important; }
+  #createTripPage .create-q.create-q { font-size: 22px !important; }
+}
+#explorePage .page-title.page-title, #schedulePage .page-title.page-title, #myPage .my-title.my-title { font-weight: 700 !important; letter-spacing: -.02em !important; }
+@media (max-width: 1023px) {
+  #explorePage .page-title.page-title, #myPage .my-title.my-title { font-size: 28px !important; line-height: 36px !important; }
+}
+@media (min-width: 1024px) {
+  #explorePage .page-title.page-title, #myPage .my-title.my-title { font-size: 40px !important; line-height: 50px !important; }
+}
+#homePage .nh-title.nh-title { font-weight: 700 !important; letter-spacing: -.02em !important; }
+/* 홈 — 제목·설명은 가운데, ‘새 여행 만들기’는 검색 바로 아래 */
+@media (max-width: 1023px) {
+  #homePage .nh-title.nh-title { margin-left: auto !important; margin-right: auto !important; text-align: center !important; }
+  #homePage .nh-title.nh-title span { text-align: center !important; }
+  #homePage .nh-lead { text-align: center !important; }
+  #homePage .search-card.search-card { margin-top: 22px !important; }
+  #homePage .home-create.home-create { margin-top: 12px !important; }
+}
+#homePage .home-create.home-create { margin-top: 12px !important; }
+/* 홈 — ‘새 여행 만들기’는 스타일 칩 아래, 검색·칩과 같은 알약 모양으로 작게 */
+#homePage .home-create.home-create { align-self: center !important; width: auto !important; min-height: 48px !important; height: 48px !important; margin: 18px auto 0 !important; padding: 0 24px !important; border-radius: 999px !important; font-size: 16px !important; }
+@media (max-width: 1023px) {
+  #homePage .home-create.home-create { width: auto !important; margin-top: 18px !important; }
+  #homePage .search-card.search-card { margin-top: 22px !important; }
+}
+/* 홈 맨 위 로고 — 테두리·상자 없이 로고만 */
+body:has(#homePage.is-active) #appTopbar.app-topbar { border-color: transparent !important; border-width: 0 !important; background: transparent !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 /* POLISH-END */
 }

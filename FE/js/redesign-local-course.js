@@ -4,7 +4,7 @@
  * 올린 글은 운영자가 확인한 뒤 탐색에 나온다. 쓰던 글은 이 기기에 초안으로 남는다.
  */
 import { api } from './redesign-api-adapter.js';
-import { navigate, getCurrent } from './redesign-navigation.js';
+import { navigate, getCurrent, getMeta } from './redesign-navigation.js';
 import { $, el, showToast } from './redesign-ui.js';
 import { searchCities } from './redesign-cities.js';
 import { sameText } from './redesign-search.js';
@@ -72,13 +72,22 @@ export function initLocalCourse(state) {
   });
   $('#localForm').addEventListener('submit', (e) => { e.preventDefault(); _submit(); });
   document.addEventListener('redesign:nav', (e) => { if (e.detail.page === 'local-write') _open(e.detail.meta || {}); });
-  document.addEventListener('redesign:auth-ready', () => { if (getCurrent() === 'local-write') _paintGuest(); });
+  document.addEventListener('redesign:auth-ready', () => {
+    if (getCurrent() !== 'local-write') return;
+    if (appState?.currentUser && (getMeta() || {}).id) _open(getMeta()); else _paintGuest();
+  });
   if (getCurrent() === 'local-write') _open(Object.fromEntries(new URLSearchParams(location.hash.replace(/^#/, ''))));
 }
 
 /* ---------- 열기 · 초안 ---------- */
+function _hasToken() { try { return !!localStorage.getItem('tst_token_v1'); } catch (_) { return false; } }
 async function _open(meta) {
   c = blank();
+  // 고치기 주소를 로그아웃 상태로 열면 — 로그인하고 같은 코스로 돌아온다.
+  if (meta.id && !appState?.currentUser && !_hasToken()) {
+    navigate('auth', { replace: true, meta: { return: { page: 'local-write', meta: { id: String(meta.id) } } } });
+    return;
+  }
   if (meta.id) {
     try {
       const mine = await api.myLocalCourses();
@@ -281,7 +290,8 @@ export async function renderMyCourses() {
   if (!list || !empty) return;
   list.replaceChildren();
   const text = empty.querySelector('.empty-text'), btn = empty.querySelector('.btn');
-  const showEmpty = (msg, label, to) => { empty.hidden = false; text.textContent = msg; btn.textContent = label; btn.dataset.navTo = to; };
+  const showEmpty = (msg, label, to) => { empty.hidden = false; text.textContent = msg; btn.textContent = label; btn.dataset.navTo = to;
+    if (to === 'auth') btn.dataset.metaReturn = 'my-roadmaps'; else delete btn.dataset.metaReturn; };
   if (!appState?.currentUser) { showEmpty('내가 쓴 코스를 보려면 로그인해 주세요', '로그인', 'auth'); return; }
   empty.hidden = true;
   try {

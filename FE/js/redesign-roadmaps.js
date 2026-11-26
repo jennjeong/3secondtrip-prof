@@ -12,7 +12,7 @@ import { searchCities } from './redesign-cities.js';
 import { prepare, prepareQuery, matchKey, sameText } from './redesign-search.js';
 import { sampleCourseFor } from './redesign-course-samples.js';
 import { publicLink, publicPath, shareLink } from './redesign-native.js';
-import { askForm, showCopy } from './redesign-dialog.js';
+import { askForm, askConfirm, showCopy } from './redesign-dialog.js';
 
 // In-memory cache for landmark image URLs we've already verified loadable.
 const LANDMARK_OK = new Set();
@@ -175,10 +175,7 @@ export function initRoadmaps(state) {
   $('#useRoadmapBtn')?.addEventListener('click', () => {
     const m = window.__redesign?.__currentRoadmap;
     if (!m) { navigate('create-trip'); return; }
-    navigate('create-trip', { meta: { prefill: true } });
-    document.dispatchEvent(new CustomEvent('redesign:trip-prefill', {
-      detail: { city: m.city, country: m.country, concept: m.concept, days: m.days, title: m.title },
-    }));
+    _prefillTrip({ city: m.city, country: m.country, concept: m.concept, days: m.days, title: m.title });
   });
   $('#shareRoadmapBtn')?.addEventListener('click', _shareCurrent);
   $('#topbarShare')?.addEventListener('click', _shareCurrent);
@@ -586,7 +583,7 @@ export function renderExplore() {
     const city = q ? searchCities(q, 3).find(c => [c.name, ...(c.aliases || [])].some(n => sameText(n, q))) : null;
     make.hidden = !city || total > 0;
     make.textContent = city ? `${city.name} 여행 만들기` : '';
-    make.onclick = city ? () => { document.dispatchEvent(new CustomEvent('redesign:trip-prefill', { detail: { city: city.name } })); navigate('create-trip', { meta: { prefill: true } }); } : null;
+    make.onclick = city ? () => _prefillTrip({ city: city.name }) : null;
     const msg = empty?.querySelector('.empty-text');
     if (msg) msg.textContent = city ? `${city.name} 코스는 아직 없어요. 바로 여행을 만들어 보세요.` : '조건에 맞는 여행 코스가 없어요. 다른 도시나 스타일로 찾아보세요.';
   }
@@ -645,6 +642,18 @@ function _resetDocTitle() {
   if (d && d.content !== DOC_DESC) d.content = DOC_DESC;
 }
 
+/** 코스·도시로 여행 만들기를 채운다. 작성 중인 여행이 있으면 바꿀지 먼저 묻는다. */
+async function _prefillTrip(detail) {
+  const t = appState?.trip;
+  if (t?._draft && (t.cityName || t._cityText || t.startDate)) {
+    const name = t.cityName || t._cityText || '';
+    const ok = await askConfirm(`작성 중인 여행을 바꿀까요?\n${name ? name + ' ' : ''}여행을 만들던 중이에요. 바꾸면 그 내용은 지워져요.`, { ok: '이 코스로 바꾸기', cancel: '그대로 두기' });
+    if (!ok) { navigate('create-trip'); return; }
+  }
+  navigate('create-trip', { meta: { prefill: true } });
+  document.dispatchEvent(new CustomEvent('redesign:trip-prefill', { detail }));
+}
+
 let detailSeq = 0;
 async function _openDetail(id, city) {
   const seq = ++detailSeq;
@@ -684,6 +693,8 @@ async function _openDetail(id, city) {
     await loaded;
     m = roadmaps.find(r => r.id === String(id));
   }
+  // 서버 목록이 늦게 와 예시 목록을 덮어써도 예시 코스 주소는 계속 열린다.
+  if (!m) { const s = POPULAR_ROADMAPS.find(r => r.id === String(id)); if (s) m = { ...s, isSample: true }; }
   if (!m && /^\d+$/.test(String(id))) {
     try { m = _fromApi(await api.getRoadmap(id)); }
     catch (e) {
@@ -751,8 +762,8 @@ function _renderRoadmapDetail(m) {
     const pills = [
       ['기간', _daysLabel(m.days)],
       ['여행 스타일', m.concept],
-      m.isLocal ? ['작성자', '동네 사람이 씀'] : ['좋아요', `♥ ${m.likes.toLocaleString('ko-KR')}`],
-    ];
+      m.isLocal ? ['작성자', '동네 사람이 씀'] : (m.isSample ? null : ['좋아요', `♥ ${Number(m.likes || 0).toLocaleString('ko-KR')}`]),
+    ].filter(Boolean);
     meta.replaceChildren(...pills.map(([k, v]) => el('span', { class: 'meta-pill' }, [el('span', { class: 'sr-only' }, k + ' '), v])),
       ...(m.isSample && !m.cost?.amount ? [el('span', { class: 'meta-pill meta-pill--sample' }, '예시')] : []));
   }

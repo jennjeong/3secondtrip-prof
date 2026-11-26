@@ -7,7 +7,8 @@
 from fastapi import APIRouter
 
 from app.core.config import settings
-from app.services import password_reset_service
+from app.core import password_policy
+from app.services import email_verification_service, password_reset_service
 
 router = APIRouter(prefix="/api", tags=["features"])
 
@@ -22,6 +23,8 @@ def features() -> dict:
         "places": bool(settings.google_maps_server_key),
         # 메일 서비스가 없으면 운영에서는 꺼진다(개발 환경은 서버 로그로 링크 확인)
         "password_reset": password_reset_service.is_enabled(),
+        "email_signup": email_verification_service.is_enabled(),     # 인증 메일을 보낼 수 있을 때만 가입을 연다
+        "password_policy": password_policy.describe(),
         # 설정이 안 된 소셜 로그인은 화면에서 '준비 중'으로 막는다(JSON 오류 화면 방지)
         "oauth": {
             "google": bool(settings.google_client_id and settings.google_client_secret),

@@ -116,7 +116,10 @@ export function renderMap() {
 /* ============================================================
  *  Public renderer for a given day
  * ============================================================ */
+let _renderSeq = 0;
 export async function renderDayRoute(dayIdx) {
+  const seq = ++_renderSeq;
+  const stale = () => seq !== _renderSeq;
   activeDay = Math.max(0, Number(dayIdx) || 0);
   pendingRender = false;
   const card  = $('#scheduleMapCard');
@@ -156,12 +159,14 @@ export async function renderDayRoute(dayIdx) {
   // Make sure Maps JS is loaded + map instance exists
   try {
     await loadGoogleMapsScript();
+    if (stale()) return;
     await initializeScheduleMap(activeDay);
   } catch (e) {
     // Loading failed — show inline warning but keep app running.
-    _mapLoadFailed(warn, e);
+    if (!stale()) _mapLoadFailed(warn, e);
     return;
   }
+  if (stale()) return;
 
   // Resolve coordinates (skip places we can't locate).  Track whether
   // any activity's name/coords got updated — if so, ask schedule.js to
@@ -174,6 +179,7 @@ export async function renderDayRoute(dayIdx) {
     const beforeName = p._ref?.name;
     const beforeLat  = p._ref?.latitude;
     const r = await normalizePlaceCoordinates(p);
+    if (stale()) return;
     if (r) {
       resolved.push(r);
       const afterName = p._ref?.name;
@@ -227,6 +233,7 @@ export async function renderDayRoute(dayIdx) {
     for (const m of tryOrder) {
       try {
         route = await requestRouteFromBackend(resolved, m);
+        if (stale()) return;
         usedMode = m;
         break;
       } catch (e) {
@@ -310,7 +317,7 @@ export function loadGoogleMapsScript() {
     let backendOk = false;
     let lastErr = null;
     try {
-      const res = await fetch(API_URL + '/api/config/maps');
+      const res = await fetch(API_URL + '/api/config/maps', typeof AbortSignal?.timeout === 'function' ? { signal: AbortSignal.timeout(12000) } : {});
       backendOk = res.ok;
       if (res.ok) {
         const cfg = await res.json();
@@ -334,10 +341,11 @@ export function loadGoogleMapsScript() {
       scriptInjected = true;
       await new Promise((resolve, reject) => {
         const cbName = '__gmInitCb_' + Date.now();
-        window[cbName] = () => { delete window[cbName]; resolve(); };
+        const timer = setTimeout(() => reject(new Error('Maps script timeout')), 20000);
+        window[cbName] = () => { clearTimeout(timer); delete window[cbName]; resolve(); };
         const s = document.createElement('script');
         s.async = true; s.defer = true;
-        s.onerror = (e) => { scriptInjected = false; delete window[cbName]; reject(new Error('Maps script load failed')); };
+        s.onerror = (e) => { clearTimeout(timer); scriptInjected = false; delete window[cbName]; reject(new Error('Maps script load failed')); };
         s.src = 'https://maps.googleapis.com/maps/api/js'
               + '?key=' + encodeURIComponent(key)
               + '&libraries=geometry,marker&v=quarterly&language=ko&region=KR&loading=async'
@@ -345,8 +353,9 @@ export function loadGoogleMapsScript() {
         document.head.appendChild(s);
       });
     } else {
-      // Script tag already in DOM but flag wasn't flipped — wait briefly
-      await new Promise(r => setTimeout(r, 200));
+      // 스크립트는 이미 넣었다 — 늦게 끝나는 중일 수 있으니 잠깐씩 기다린다(최대 10초).
+      for (let i = 0; i < 50 && !window.google?.maps; i++) await new Promise(r => setTimeout(r, 200));
+      if (!window.google?.maps) throw new Error('Maps script not ready');
     }
     mapsLoaded = true;
     if (loading) loading.hidden = true;

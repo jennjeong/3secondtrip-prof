@@ -5,7 +5,14 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 
-_PW_RE = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{8,128}$")
+from app.core import password_policy
+
+
+def _pw(v: str) -> str:
+    msg = password_policy.check(v)
+    if msg:
+        raise ValueError(msg)
+    return v
 
 
 class PasswordSignupRequest(BaseModel):
@@ -15,13 +22,22 @@ class PasswordSignupRequest(BaseModel):
     name: Optional[str] = Field(default=None, max_length=80)
     phone: Optional[str] = Field(default=None, max_length=30)
     birth_date: Optional[date] = None
+    # 필수 동의 — 셋 다 참이어야 가입된다(화면에서 정책 전문을 열어 볼 수 있다)
+    agree_terms: bool = False
+    agree_privacy: bool = False
+    agree_age: bool = False
+
+    @field_validator("agree_terms", "agree_privacy", "agree_age")
+    @classmethod
+    def _must_agree(cls, v: bool) -> bool:
+        if v is not True:
+            raise ValueError("필수 항목에 동의해 주세요.")
+        return v
 
     @field_validator("password")
     @classmethod
     def _pw_complexity(cls, v: str) -> str:
-        if not _PW_RE.match(v):
-            raise ValueError("비밀번호는 8자 이상이며 영문/숫자를 각각 포함해야 합니다.")
-        return v
+        return _pw(v)
 
     @field_validator("birth_date")
     @classmethod
@@ -42,9 +58,7 @@ class PasswordResetConfirm(BaseModel):
     @field_validator("password")
     @classmethod
     def _pw_complexity(cls, v: str) -> str:
-        if not _PW_RE.match(v):
-            raise ValueError("비밀번호는 8자 이상이며 영문/숫자를 각각 포함해야 합니다.")
-        return v
+        return _pw(v)
 
 
 class PasswordChangeRequest(BaseModel):
@@ -54,9 +68,27 @@ class PasswordChangeRequest(BaseModel):
     @field_validator("new_password")
     @classmethod
     def _pw_complexity(cls, v: str) -> str:
-        if not _PW_RE.match(v):
-            raise ValueError("비밀번호는 8자 이상이며 영문/숫자를 각각 포함해야 합니다.")
-        return v
+        return _pw(v)
+
+
+class SignupPending(BaseModel):
+    """가입 요청을 받았다 — 이메일 인증을 마쳐야 로그인된다."""
+    status: str = "verification_required"
+    email: str
+    expires_in: int
+    resend_after: int
+    sent: bool
+    dev_code: Optional[str] = None   # 개발 환경 + 메일 미설정일 때만(운영에서는 늘 비어 있다)
+
+
+class VerifyEmailRequest(BaseModel):
+    email: Optional[EmailStr] = None
+    code: Optional[str] = Field(default=None, min_length=6, max_length=6)
+    token: Optional[str] = Field(default=None, min_length=16, max_length=200)
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
 
 
 class PasswordLoginRequest(BaseModel):
@@ -85,6 +117,7 @@ class UserPublic(BaseModel):
     birth_date: Optional[date] = None
     profile_image_url: Optional[str] = None
     created_at: Optional[datetime] = None
+    email_verified_at: Optional[datetime] = None
 
 
 class SignupResponse(BaseModel):

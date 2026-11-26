@@ -6,7 +6,7 @@
 
 import { api, trackEvent } from './redesign-api-adapter.js';
 import { $, el, formatCurrency, showToast } from './redesign-ui.js';
-import { timeZoneFor, utcOffsetMin, utcLabel } from './redesign-cities.js';
+import { timeZoneFor, utcOffsetMin, utcLabel, nowIn } from './redesign-cities.js';
 import { RIDE, rideOf } from './redesign-ground.js';
 import { askConfirm } from './redesign-dialog.js';
 
@@ -29,6 +29,7 @@ const BASE_CHECKLIST = ['여권·신분증', '항공권·숙소 예약 확인', 
 
 let appState = null;
 let lastKey = '';
+let lastG = null;   // 다시 만들기·받은 일정은 같은 여행 번호여도 새 객체 — 도구가 옛 일정을 붙들지 않게
 const fetched = {};   // 같은 여행의 날씨·환율을 다시 부르지 않도록 메모리에 보관
 
 export function initTripTools(state) {
@@ -77,11 +78,11 @@ export function render() {
   const wrap = $('#tripTools');
   const g = appState?.generated;
   if (!wrap) return;
-  if (!g?.days?.length) { wrap.hidden = true; lastKey = ''; return; }
+  if (!g?.days?.length) { wrap.hidden = true; lastKey = ''; lastG = null; return; }
   wrap.hidden = false;
   const key = _tripKey(g);
-  if (key === lastKey) return;   // 날짜 칩 이동마다 다시 그리면 입력 중인 값이 지워진다
-  lastKey = key;
+  if (key === lastKey && g === lastG) return;   // 날짜 칩 이동마다 다시 그리면 입력 중인 값이 지워진다
+  lastKey = key; lastG = g;
 
   wrap.innerHTML = '';
   wrap.append(
@@ -322,7 +323,7 @@ function _expenseEl(g) {
         d.expenses[editing] = { ...d.expenses[editing], ...rec, editedAt: new Date().toISOString() };
         showToast('기록을 고쳤어요');
       } else {
-        d.expenses.push({ ...rec, date: new Date().toISOString().slice(0, 10) });
+        d.expenses.push({ ...rec, date: nowIn(_tzFor(g)).iso });   // 여행지 날짜(UTC로 하루 밀리지 않게)
       }
       _saveTripData(g, d);
       resetForm();
@@ -515,7 +516,7 @@ export function buildIcs(g) {
       len = Math.max(15, len);
       lines.push(
         'BEGIN:VEVENT',
-        `UID:${tripId}-${di}-${ai}@3secondtrip`,
+        `UID:${tripId}-${d.date}-${_uidPart(a, acts, ai)}@3secondtrip`,
         `DTSTAMP:${stamp}`,
         at('DTSTART', d.date, a.time, 0),
         at('DTEND', d.date, a.time, len),
@@ -543,11 +544,19 @@ function _fold(line) {
   return out.join('\r\n ');
 }
 
+/** 순서를 바꾸거나 지워도 같은 장소는 같은 일정으로 갱신되게 — 장소 기준(같은 날 같은 곳이면 몇 번째인지) */
+function _uidPart(a, acts, ai) {
+  const id = String(a.placeId || a.name || 'x').replace(/[^0-9A-Za-z가-힣]/g, '').slice(0, 40) || 'x';
+  const nth = acts.slice(0, ai).filter(x => (x.placeId || x.name) === (a.placeId || a.name)).length;
+  return nth ? `${id}-${nth}` : id;
+}
+
 function _downloadIcs(g) {
   const url = URL.createObjectURL(new Blob([buildIcs(g)], { type: 'text/calendar;charset=utf-8' }));
-  const a = el('a', { href: url, download: `3초여행-${g.city}.ics` });
+  const a = el('a', { href: url, download: `3초여행-${g.city}.ics`, hidden: true });
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 4000);   // 바로 지우면 사파리·파이어폭스에서 저장이 취소된다
   trackEvent('trip_exported');
   showToast('캘린더 파일을 저장했어요');
 }

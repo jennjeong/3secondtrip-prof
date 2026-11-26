@@ -46,6 +46,13 @@ class User(Base):
     # 비밀번호를 바꾸면 1 올린다 — 이전 번호로 발급된 로그인 토큰은 모두 거절된다
     token_version = Column(Integer, nullable=False, default=0, server_default="0")
 
+    # ── 이메일 인증·약관 동의 ───────────────────────────────────────
+    # 이메일 가입 계정은 인증해야 쓸 수 있다(소셜 계정은 공급자가 확인). 상태: 인증 완료 = 이 값이 있음
+    email_verified_at = Column(DateTime, nullable=True)
+    terms_version = Column(String(20), nullable=True)       # 동의한 이용약관 판
+    privacy_version = Column(String(20), nullable=True)     # 동의한 개인정보 처리방침 판
+    agreed_at = Column(DateTime, nullable=True)             # 동의한 시각(UTC)
+
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

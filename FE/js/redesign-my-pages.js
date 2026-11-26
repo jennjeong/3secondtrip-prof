@@ -72,6 +72,7 @@ function _requireLogin(emptyId, msg) {
     if (btn) {
       btn.textContent = '로그인 하러 가기';
       btn.dataset.navTo = 'auth';
+      btn.dataset.metaReturn = getCurrent() || 'my';
     }
   }
   return true;
@@ -107,8 +108,13 @@ function _days(data) {
 }
 function _dateOf(s) { return s.updated_at || s.created_at || ''; }
 
-function _openSchedule(data, savedId, title) {
+async function _openSchedule(data, savedId, title) {
   if (!_days(data).length) { showToast('이 일정은 날짜별 데이터가 없어 열 수 없어요'); return; }
+  const cur = appState.generated;
+  if (cur?.days?.length && !cur.savedScheduleId && !cur.sharedView && String(savedId || '') !== String(cur.savedScheduleId || '')) {
+    const ok = await askConfirm(`이 기기에만 있는 일정이 있어요\n${cur.city || ''} 일정은 계정에 저장하지 않았어요. 다른 일정을 열면 이 기기에서 사라져요.`, { ok: '그래도 열기', cancel: '취소', danger: true });
+    if (!ok) return;
+  }
   appState.generated = { ...data, savedScheduleId: savedId || null };
   if (title) appState.generated.title = title;
   delete appState.generated.sharedView;

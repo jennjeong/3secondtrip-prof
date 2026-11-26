@@ -7,7 +7,10 @@
 
 import { $, $$, el, showToast } from './redesign-ui.js';
 import { api, setAccessToken, trackEvent } from './redesign-api-adapter.js';
-import { signOutLocally } from './redesign-auth.js';
+import { signOutLocally, paintAuthState } from './redesign-auth.js';
+import { askForm } from './redesign-dialog.js';
+import { navigate } from './redesign-navigation.js';
+import { checkNickname, displayName } from './redesign-auth-rules.js';
 
 const THEME_KEY = 'tst_theme_v1';
 const OLD_DARK_KEY = 'tst_dark_v1';
@@ -124,6 +127,7 @@ function _paintAccount() {
   if (!box) return;
   box.hidden = !me;
   if (!me) return;
+  const nm = $('#settingNickMeta'); if (nm) { nm.textContent = displayName(me); nm.title = displayName(me); }
   const local = me.provider === 'local';
   $('#settingPw').hidden = !local;
   $('#pwSocialNote').hidden = local;
@@ -193,12 +197,16 @@ async function _deleteAccount(ev) {
   if (cf !== '계정 삭제') { msg.textContent = '‘계정 삭제’라고 그대로 입력해 주세요.'; $('#delConfirm').focus(); return; }
   const btn = $('#deleteConfirm'); btn.disabled = true;
   try {
-    await api.deleteAccount(cf, local ? pw : null);
+    const res = await api.deleteAccount(cf, local ? pw : null);
     $('#delPassword').value = ''; $('#delConfirm').value = '';
     _togglePanel('deletePanel', 'settingDelete', false);
     trackEvent('account_deleted');
     closeSettings();
-    signOutLocally('계정을 삭제했어요. 그동안 이용해 주셔서 고마워요');
+    const d = res?.deleted || {};
+    const n = (k) => Number(d[k]) || 0;
+    const parts = [['일정', n('schedules') + n('trips')], ['후기', n('reviews')], ['블로그', n('blogs')], ['코스', n('roadmaps') + n('local_courses')]].filter(([, v]) => v).map(([k, v]) => `${k} ${v}개`);
+    signOutLocally(`계정을 삭제했어요${parts.length ? ` (${parts.join(' · ')} 함께 삭제)` : ''}. 이 기기의 일정은 남아 있어요`);
+    navigate('home', { replace: true });
   } catch (e) {
     msg.textContent = _errText(e, '계정을 삭제하지 못했어요. 잠시 뒤 다시 시도해 주세요.');
     if (/비밀번호/.test(msg.textContent)) $('#delPassword').focus();
@@ -206,6 +214,26 @@ async function _deleteAccount(ev) {
 }
 
 /* ============ 시트 ============ */
+async function _editNickname() {
+  const me = appState?.currentUser;
+  if (!me) return;
+  const v = await askForm({ title: '닉네임 바꾸기', ok: '저장', fields: [{ name: 'nickname', label: '닉네임 (2~30자)', value: me.nickname || '', max: 30, check: (x) => checkNickname(x) }] });
+  if (!v) return;
+  try {
+    const nick = v.nickname.trim();
+    if (nick === (me.nickname || '')) return;
+    const ok = await api.checkNickname(nick).catch(() => ({ available: true }));
+    if (ok && ok.available === false) { showToast('이미 쓰는 사람이 있는 닉네임이에요. 다른 닉네임을 정해 주세요', 3200); return; }
+    const user = await api.updateMe({ nickname: nick });
+    appState.currentUser = { ...me, ...user };
+    paintAuthState();                     // 웹 상단 메뉴·앱 하단 탭·마이 카드가 함께 바뀐다
+    _paintAccount();
+    showToast('닉네임을 바꿨어요');
+  } catch (e) {
+    showToast(_errText(e, '닉네임을 바꾸지 못했어요. 잠시 뒤 다시 시도해 주세요'), 3200);
+  }
+}
+
 export function initSettings(state) {
   appState = state || appState;
   $('#openSettingsBtn')?.addEventListener('click', openSettings);
@@ -229,6 +257,10 @@ export function initSettings(state) {
   document.documentElement.lang = 'ko';
 
   $('#settingReset')?.addEventListener('click', () => ($('#resetPanel')?.hidden ? _openReset() : _closeReset()));
+  $('#settingNick')?.addEventListener('click', _editNickname);
+  $('#settingLogout')?.addEventListener('click', () => { closeSettings(); $('#myLogoutBtn')?.click(); });
+  $('#settingContact')?.addEventListener('click', () => { closeSettings(); navigate('feedback'); });
+  document.querySelectorAll('#settingsSheet [data-policy], .set-view [data-policy]').forEach(a => a.addEventListener('click', () => closeSettings()));
   $('#resetCancel')?.addEventListener('click', _closeReset);
   $('#resetConfirm')?.addEventListener('click', _doReset);
 
