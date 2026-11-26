@@ -6,7 +6,7 @@ name: Keep backend warm
 
 on:
   schedule:
-    - cron: "4,11,18,25,32,39,46,53 0-15,23 * * *"   # UTC 23시~15시 = 한국 08시~익일 00시대
+    - cron: "3,10,17,24,31,38,45,52 0-15,23 * * *"   # UTC 23시~15시 = 한국 08시~익일 00시대
   workflow_dispatch:
 
 concurrency:
