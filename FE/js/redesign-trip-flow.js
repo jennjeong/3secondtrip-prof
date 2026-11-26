@@ -16,7 +16,7 @@ import { mustPlaceholder } from './redesign-landmarks.js';
 import { checkTrip, repairTrip, timeToMin, minToTime, travelMinutes, dwellMinutes, landingMinutes, beforeFlight, STATION_MIN, josa } from './redesign-plan-check.js';
 import { groundRoute, RIDE, rideOf } from './redesign-ground.js';
 import { COMPONENTS, costBreakdown, costScope, scopeText, projectCost, compareCost, diffReasons } from './redesign-plan-cost.js';
-import { openState } from './redesign-hours.js';
+import { openState, stayState } from './redesign-hours.js';
 
 const CONCEPTS = [
   { key: '가성비',   emoji: '💰', desc: '합리적인 가격으로 알차게' },
@@ -2328,13 +2328,13 @@ function _queryFor(slot, t, level) {
 
 /** Pick the next Places result that hasn't been used today. */
 /** 아직 안 쓴 후보 중에서, 그날 그 시각에 문을 여는 곳을 먼저 고른다.
- *  영업시간을 모르는 곳은 그다음, 확실히 닫힌 곳은 마지막(대안이 없을 때만). */
-function _pickUnused(candidates, usedIds, isoDate, hhmm, prev) {
+ *  영업시간을 모르는 곳은 그다음, 머무는 중에 문을 닫는 곳은 그 뒤, 확실히 닫힌 곳은 마지막(대안이 없을 때만). */
+function _pickUnused(candidates, usedIds, isoDate, hhmm, prev, stayMin = 60) {
   const fresh = candidates.filter(c => !usedIds.has(c.place_id));
   const pool = fresh.length ? fresh : candidates;
   if (!isoDate) return pool[0] || null;
   const stepFree = (appState?.trip?.needs || []).includes('stepFree');
-  const rank = (c, i) => ({ open: 0, unknown: 1, closedNow: 2, closedDay: 3 })[openState(c.opening_periods, isoDate, hhmm)] * 4
+  const rank = (c, i) => ({ open: 0, unknown: 1, closingSoon: 1.5, closedNow: 2, closedDay: 3 })[stayState(c.opening_periods, isoDate, hhmm, stayMin)] * 4
     + (stepFree ? (c.step_free === true ? 0 : c.step_free === false ? 2 : 1) : 0)
     // 앞 장소에서 멀수록 뒤로 — 한 동네를 이어서 다니게
     + (prev && isoDate ? Math.min(8, Math.max(0, travelMinutes(prev, c) - 12) / 11) : 0)
@@ -3100,13 +3100,13 @@ async function _generateScheduleInner(t, btn, startedAt) {
       const famousTurn = mode === 'mix' && CATEGORY_BY_SLOT[slot] === '관광' && !activities.some(a => a.local === 'famous') && famousPlaces.some(c => !usedIds.has(c.place_id));
       if (famousTurn) candidates = famousPlaces;
       const prevAct = activities[activities.length - 1];
-      let pick = _pickUnused(candidates, usedIds, _isoLocal(d), time, prevAct);
+      let pick = _pickUnused(candidates, usedIds, _isoLocal(d), time, prevAct, stayMin);
       // 문을 닫았거나 이미 다른 날에 쓴 곳뿐이면 같은 종류의 다른 후보(이미 찾아 둔 것)에서 다시 고른다.
       const shut = (c) => ['closedDay', 'closedNow'].includes(openState(c?.opening_periods, _isoLocal(d), time));
       if (!pick || shut(pick) || usedIds.has(pick.place_id)) {
         const alt = [...slotCache.entries()].filter(([k]) => CATEGORY_BY_SLOT[k.split('#')[0]] === CATEGORY_BY_SLOT[slot] && k.split('#')[0] !== slot).flatMap(([, v]) => v)
           .filter(c => !usedIds.has(c.place_id) && !shut(c));
-        pick = _pickUnused(alt, usedIds, _isoLocal(d), time, prevAct) || (pick && !usedIds.has(pick.place_id) ? pick : null);
+        pick = _pickUnused(alt, usedIds, _isoLocal(d), time, prevAct, stayMin) || (pick && !usedIds.has(pick.place_id) ? pick : null);
       }
 
       if (pick) {

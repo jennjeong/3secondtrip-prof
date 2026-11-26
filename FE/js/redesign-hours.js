@@ -42,3 +42,17 @@ export function hoursText(periods, isoDate) {
   const f = (m) => `${String(Math.floor((m % 1440) / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
   return today.map(p => (p.o === 0 && p.c === 1440) ? '24시간' : `${f(p.o)}~${p.c === 1440 ? '24:00' : f(p.c)}`).join(', ');
 }
+
+/** 도착 시각부터 머무는 동안 문을 여는지 — openState 에 'closingSoon'(도착은 되지만 머무는 중에 닫음)을 더한다.
+ *  자정을 넘기는 머묾은 따지지 않는다(밤 일정은 대개 자정 전에 끝난다). */
+export function stayState(periods, isoDate, hhmm, stayMin = 60) {
+  const st = openState(periods, isoDate, hhmm);
+  if (st !== 'open') return st;
+  const t = _min(hhmm);
+  if (t == null) return st;
+  const end = t + Math.max(30, Math.min(90, stayMin || 60));
+  if (end >= 24 * 60) return st;
+  const hh = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
+  return openState(periods, isoDate, hh) === 'open' ? 'open' : 'closingSoon';
+}
+
