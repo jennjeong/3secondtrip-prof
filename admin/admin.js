@@ -33,7 +33,7 @@ async function api(path, opts = {}) {
   try {
     res = await fetch(API + path, { ...opts, headers });
   } catch (netErr) {
-    const e = new Error('서버에 연결할 수 없어요. 백엔드(localhost:8000)가 떠 있는지 확인하세요.');
+    const e = new Error(window.__ADMIN_SERVER === 'local' ? '서버에 연결할 수 없어요. 백엔드(localhost:8000)가 떠 있는지 확인하세요.' : '실제 서버에 연결할 수 없어요. 잠시 뒤 다시 해 주세요.');
     e.cause = netErr; throw e;
   }
   let body = null;
@@ -629,3 +629,16 @@ boot().catch(e => {
   console.error('[admin] boot failed:', e);
   showScreen('login');
 });
+
+// 관리할 서버 고르기 — 바꾸면 다른 서버의 토큰이 섞이지 않게 로그아웃하고 다시 연다
+(function () {
+  const pick = document.getElementById('serverPick');
+  if (!pick) return;
+  const local = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  if (!local) { pick.closest('label').hidden = true; document.getElementById('serverHint').hidden = true; return; }
+  pick.value = window.__ADMIN_SERVER || 'prod';
+  pick.addEventListener('change', () => {
+    try { localStorage.setItem('tst_admin_server', pick.value); localStorage.removeItem(TOKEN_KEY); } catch (e) { /* 저장 못 해도 이번 화면에서는 바뀐다 */ }
+    location.reload();
+  });
+})();

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 앱 바탕(밤하늘). 오래된 WebView 에서는 상태 막대·아래 막대 뒤에 이 색이 보인다 -->
+    <color name="tst_night">#020A1E</color>
+</resources>

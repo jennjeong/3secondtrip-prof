@@ -8,8 +8,11 @@
   <link rel="stylesheet" href="./admin.css" />
   <script>
     // 백엔드 주소 (필요 시 수정)
+    // 내 컴퓨터에서 열면 어느 서버를 관리할지 고른다(로그인 화면에서 바꿈)
+    window.__ADMIN_SERVERS = { prod: 'https://threesecondtrip-prof.onrender.com', local: 'http://localhost:8000' };
+    window.__ADMIN_SERVER = (function () { try { return localStorage.getItem('tst_admin_server') === 'local' ? 'local' : 'prod'; } catch (e) { return 'prod'; } })();
     window.__ADMIN_API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-      ? 'http://localhost:8000' : '';
+      ? window.__ADMIN_SERVERS[window.__ADMIN_SERVER] : '';
   </script>
 </head>
 <body data-screen="loading">
@@ -30,6 +33,13 @@
       <span class="login-tag">관리자 콘솔</span>
     </div>
     <p class="muted">관리자 권한이 부여된 계정의 토큰으로 로그인하세요.</p>
+    <label class="server-pick">관리할 서버
+      <select id="serverPick">
+        <option value="prod">실제 서버 (Render)</option>
+        <option value="local">내 컴퓨터 (localhost:8000)</option>
+      </select>
+    </label>
+    <p class="hint" id="serverHint">실제 서버가 잠들어 있으면 첫 로그인에 30초쯤 걸려요.</p>
 
     <div class="tabs">
       <button class="tab is-on" data-tab="token">소셜 토큰</button>

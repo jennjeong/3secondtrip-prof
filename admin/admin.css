@@ -180,3 +180,6 @@ body[data-screen="app"] .screen[data-screen-for="app"] { display: grid; grid-tem
   .nav { flex-direction: row; }
   .nav-btn { white-space: nowrap; }
 }
+.server-pick { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 4px; font-size: 13px; font-weight: 600; color: var(--text); }
+.server-pick select { padding: 9px 12px; background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: 8px; outline: none; font-size: 13px; font-weight: 400; color: var(--text); }
+.server-pick select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
