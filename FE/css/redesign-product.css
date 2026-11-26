@@ -1642,4 +1642,24 @@ dialog.ask[open] { animation: askIn .16s ease-out !important; }
 .rd-stop:has(.rd-tip) { padding-bottom: 6px !important; }
 .rd-report { margin: 24px 0 0 !important; text-align: right !important; }
 .rd-report .btn-text { min-height: 44px !important; color: var(--p-ink2) !important; font-weight: 400 !important; }
+
+/* 홈 제목을 줄여 지구본이 더 보이게 한다(지구본은 제목·검색 바로 아래에서 시작) */
+@media (max-width: 1023px) {
+  #homePage .nh-title { font-size: 32px !important; }
+  #homePage .nh-copy { padding-top: calc(env(safe-area-inset-top, 0px) + 76px) !important; }
+  #homePage .search-card { margin-top: 22px !important; }
+}
+@media (max-width: 359px) {
+  #homePage .nh-title { font-size: 28px !important; }
+  #homePage .nh-copy { padding-top: calc(env(safe-area-inset-top, 0px) + 68px) !important; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  #homePage .nh-title { font-size: 44px !important; }
+  #homePage .nh-copy { padding-top: calc(env(safe-area-inset-top, 0px) + 104px) !important; }
+}
+@media (min-width: 1024px) {
+  #homePage .nh-title { font-size: 52px !important; }
+  #homePage .nh-copy { padding-top: 120px !important; }
+  :is(#homePage, #explorePage) .search-card { margin-top: 28px !important; }
+}
 }

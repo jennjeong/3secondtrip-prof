@@ -7,7 +7,7 @@
  * 홈 화면 앱을 오프라인에서 처음 열 때 빈 오류 화면이 뜬다.
  * 새 JS·CSS 파일을 추가하면 SHELL 목록에도 넣는다.
  */
-const CACHE = 'tst-shell-v24';
+const CACHE = 'tst-shell-v25';
 const SHELL = [
   '/index-redesign.html',
   '/manifest.webmanifest',

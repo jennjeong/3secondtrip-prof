@@ -103,7 +103,7 @@ export function initGlobe(canvas, { cities = [], onCity } = {}) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     // 글자·검색·칩 바로 아래에서 지평선이 시작한다(안전 영역·글자 확대에도 따라간다)
     const copy = canvas.parentElement?.querySelector('.nh-copy')?.getBoundingClientRect();
-    const top = copy ? copy.bottom - b.top + (w < 768 ? 26 : 62) : h * .6;
+    const top = copy ? copy.bottom - b.top + (w < 768 ? 26 : 44) : h * .6;
     if (!placed) { lat = tilt(); placed = true; }
     R = w < 768 ? Math.max(w * .88, 320) : Math.min(w * .5, 720);
     cx = w / 2; cy = top + R;
