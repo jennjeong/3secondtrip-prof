@@ -11,7 +11,7 @@
 
 import { navigate } from './redesign-navigation.js';
 import { timeZoneFor, utcOffsetMin, utcLabel, nowIn } from './redesign-cities.js';
-import { checkDay, repairTrip, repairDay, recomputeDay, isFlight, josa as _josa, shortName as _short,
+import { checkDay, repairTrip, repairDay, recomputeDay, isFlight, isArrival, josa as _josa, shortName as _short,
   timeToMin as _timeToMin, kmBetween as _kmBetween, travelMinutes as _travelMinutes, airportMinutes, beforeFlightText } from './redesign-plan-check.js';
 import { RIDE, rideMode, rideOf } from './redesign-ground.js';
 import { localQuery, rankLocal, localMix, langOf, LANG_NAME } from './redesign-local.js';
@@ -202,7 +202,10 @@ export function renderSchedule() {
   const nDays = g.days.length;
   if (title) title.textContent = g.title || `${g.originName ? g.originName + ' → ' : ''}${g.city} 여행`;
   title?.classList.toggle('is-long', title.textContent.length > 12);      // 긴 이름은 조금 작게
+  const _md = (iso) => (/^\d{4}-(\d{2})-(\d{2})/.exec(iso || '') || []).slice(1).map(Number).join('.');
+  const d0 = _md(g.days[0]?.date), d1 = _md(g.days[nDays - 1]?.date);
   if (sub) sub.textContent = [
+    d0 ? (d1 && d1 !== d0 ? `${d0} – ${d1}` : d0) : '',
     nDays <= 1 ? '당일치기' : `${nDays - 1}박 ${nDays}일`,
     g.people ? `${g.people}명` : _companion(g.companion),
     g.concept,
@@ -540,6 +543,7 @@ function _renderTimeline(g) {
     }, [
       el('div', { class: 'sc-when' }, [
         el('span', { class: 'schedule-time' }, n.time || '미정'),
+        n.time ? el('span', { class: 'sc-kind' + (movable ? '' : ' is-fixed') }, movable ? '예상' : '시각 고정') : null,
         el('span', { class: 'sc-num', 'aria-hidden': 'true' }, String(ai + 1)),
       ]),
       el('div', { class: 'schedule-card-main' }, [
@@ -603,9 +607,12 @@ function _renderTimeline(g) {
     const next = day.activities[ai + 1];
     if (next) {
       let moveText;
-      const hub = isFlight(next) ? next : isFlight(a) ? a : null;
+      // 가는 편(출발)으로 갈 때와 오는 편(도착)에서 나올 때만 공항 문구 — 도착 편 앞에 놓인 장소(시간 충돌)는 일반 이동으로 본다
+      const toDep = isFlight(next) && !isArrival(next), fromArr = isFlight(a) && isArrival(a);
+      const hub = toDep ? next : fromArr ? a : null;
       if (hub && rideMode(hub) !== 'air') moveText = hub === next ? `${RIDE[rideMode(hub)].hub === '역' ? '역으로' : '터미널로'} 이동 약 ${airportMinutes(a, next)}분 · 출발 ${beforeFlightText(g)} 전 도착` : `${RIDE[rideMode(hub)].hub}에서 시내로 약 ${airportMinutes(a, next)}분`;
-      else if (isFlight(a) || isFlight(next)) moveText = isFlight(next) ? `공항으로 이동 약 ${airportMinutes(a, next)}분 · 출발 2시간 전 도착` : `입국·수하물 뒤 시내로 약 ${airportMinutes(a, next)}분`;
+      else if (hub) moveText = toDep ? `공항으로 이동 약 ${airportMinutes(a, next)}분 · 출발 2시간 전 도착` : `입국·수하물 뒤 시내로 약 ${airportMinutes(a, next)}분`;
+      else if (isFlight(next)) moveText = '';
       else {
         const km = _kmBetween(a, next);
         const min = _travelMinutes(a, next);
@@ -613,7 +620,7 @@ function _renderTimeline(g) {
         moveText = km == null ? `이동 약 ${min}분`
           : `${km < 1.2 ? '도보' : '대중교통'} 약 ${min}분 · ${km < 1 ? Math.round(km * 1000) + 'm' : km.toFixed(1) + 'km'}`;
       }
-      tl.appendChild(el('p', { class: 'tl-move' }, moveText));
+      if (moveText) tl.appendChild(el('p', { class: 'tl-move' }, moveText));
     }
   });
 }
@@ -1883,7 +1890,9 @@ function _renderAiSummary(g) {
   } else {
     return;   // 서버 상태를 아직 모르면 카드를 띄우지 않는다
   }
-  tl.parentNode.insertBefore(card, tl);
+  // 일정을 다 읽은 뒤 열어 보는 자리 — 타임라인 아래, 지도·예산 앞
+  const at = document.getElementById('mapSec');
+  if (at) { card.classList.add('after-sec'); at.before(card); } else tl.parentNode.insertBefore(card, tl);
 }
 
 /* ── 공유: 일정을 URL에 담는 자체 링크 + 일자별 텍스트 요약 ── */
@@ -1929,4 +1938,10 @@ document.addEventListener('redesign:nav', (e) => {
       review.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, 80);
+});
+
+// 일정 아래 ‘지도로 보기’ — 바꾼 뒤 지도가 있는 자리로 올라간다.
+document.addEventListener('click', (e) => {
+  if (!e.target.closest?.('#mapSec [data-view]')) return;
+  setTimeout(() => document.getElementById('scheduleSplit')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
 });

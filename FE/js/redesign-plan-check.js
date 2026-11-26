@@ -110,6 +110,9 @@ export function checkDay(g, di) {
     if (text) list.push({ kind, lvl: kind === 'time' ? 'warn' : 'check', code, di, ai: ai ?? null, placeId: ai >= 0 ? acts[ai]?.placeId ?? null : null, fix: fix || null, text });
   };
 
+  // 0) 날짜 범위 — 공유·가져온 일정에서 여행 기간 밖 날짜가 섞이면 알린다
+  const s0 = g?.startDate || g?.trip?.startDate, e0 = g?.endDate || g?.trip?.endDate;
+  if (day?.date && s0 && e0 && (day.date < s0 || day.date > e0) && acts.length) add('time', 'outOfRange', 0, '여행 기간 밖', `${day.date}은 여행 기간(${s0} ~ ${e0}) 밖이에요. 날짜를 기간 안으로 옮기거나 이 날 일정을 지워 주세요.`, 'date');
   const mode = rideOf(g), air = mode === 'air', W = RIDE[mode];
   // 1) 착륙 → 입국 심사·수하물 → 시내 (기차·버스는 내려서 시내로)
   const arr = acts.findIndex(isArrival);
@@ -124,7 +127,7 @@ export function checkDay(g, di) {
       const ready = ft.arr + landingMinutes(g) + (isStop(a) || a.category === '숙박' ? airportMinutes(acts[arr], a) : 0);
       if (t < ft.arr) {
         hit.add(ai);
-        add('time', 'beforeArrival', ai, `${W.vehicle} 도착 전이에요`, `${a.time} ${shortName(a.name)} — ${W.vehicle} 도착(${minToTime(ft.arr)})${est} 전에 잡혀 있어요.`, 'time');
+        add('time', 'beforeArrival', ai, `${W.vehicle} 도착 전이에요`, `${a.time} ${shortName(a.name)} — ${W.vehicle} 도착(${minToTime(ft.arr)})${est} 전에 잡혀 있어요. ${minToTime(ready)} 이후로 옮겨 주세요.`, 'time');
       } else if (ai < firstAfter(acts, arr) && t + TOLERANCE < ready) {
         hit.add(ai);
         add('time', 'arrivalTight', ai, air ? '입국·이동 시간이 부족해요' : '이동 시간이 부족해요', air ? `${a.time} ${shortName(a.name)} — 착륙(${minToTime(ft.arr)}) 뒤 입국·시내 이동을 생각하면 ${minToTime(ready)} 이후가 좋아요.`
@@ -137,13 +140,13 @@ export function checkDay(g, di) {
     const prev = acts[ai - 1], cur = acts[ai];
     if (isFlight(prev) || isFlight(cur) || hit.has(ai)) continue;
     const pm = timeToMin(prev.time), cm = timeToMin(cur.time);
-    if (cm < pm) { add('time', 'order', ai, '앞 일정보다 이른 시간', `${cur.time} ${shortName(cur.name)} — 앞 일정(${prev.time})보다 이른 시간이에요.`, 'time'); continue; }
+    if (cm < pm) { add('time', 'order', ai, '앞 일정보다 이른 시간', `${cur.time} ${shortName(cur.name)} — 앞 일정(${prev.time})보다 이른 시간이에요. ${minToTime(Math.min(pm + stayMinutes(prev), 23 * 60 + 59))} 이후로 옮겨 주세요.`, 'time'); continue; }
     const known = kmBetween(prev, cur) != null;
     const need = pm + stayMinutes(prev) + (known ? travelMinutes(prev, cur) : 0);   // 위치를 모르면 머무는 시간만 본다
     if (cm + TOLERANCE < need) {
       add('time', 'gap', ai, known ? '이동 시간이 부족해요' : '앞 일정과 겹쳐요',
-        known ? `${shortName(prev.name)} → ${shortName(cur.name)} 사이 시간이 약 ${need - cm}분 모자라요.`
-              : `${shortName(prev.name)}에 머무는 시간과 ${shortName(cur.name)} 시작이 약 ${need - cm}분 겹쳐요.`, 'time');
+        known ? `${shortName(prev.name)} → ${shortName(cur.name)} 사이 시간이 약 ${need - cm}분 모자라요. ${josa(shortName(cur.name), "을", "를")} ${minToTime(Math.min(need, 23 * 60 + 59))} 이후로 옮겨 주세요.`
+              : `${shortName(prev.name)}에 머무는 시간과 ${shortName(cur.name)} 시작이 약 ${need - cm}분 겹쳐요. ${josa(shortName(cur.name), "을", "를")} ${minToTime(Math.min(need, 23 * 60 + 59))} 이후로 옮겨 주세요.`, 'time');
     }
   }
   // 3) 돌아가는 편

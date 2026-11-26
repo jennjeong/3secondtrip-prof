@@ -1979,5 +1979,178 @@ dialog.ask[open] { animation: askIn .16s ease-out !important; }
 }
 /* 홈 맨 위 로고 — 테두리·상자 없이 로고만 */
 body:has(#homePage.is-active) #appTopbar.app-topbar { border-color: transparent !important; border-width: 0 !important; background: transparent !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+
+/* ===================== 출시 다듬기(2026-11-27) ===================== */
+:root { --gut: 20px !important; --tap: 48px !important; }
+@media (max-width: 359px) { :root { --gut: 16px !important; } }
+
+/* --- 홈: 로고·제목·입력·버튼이 한 왼쪽 기준선 --- */
+#homePage .nh-hero.nh-hero { display: flex !important; flex-direction: column !important; min-height: 0 !important; height: auto !important; padding: 0 0 32px !important; border-radius: 0 0 28px 28px !important; margin: 0 !important; }
+#homePage .nh-copy.nh-copy { order: 1 !important; align-items: stretch !important; text-align: left !important; padding: calc(env(safe-area-inset-top, 0px) + 76px) var(--gut) 0 !important; }
+#homePage .nh-title.nh-title, #homePage .nh-title.nh-title span { margin: 0 !important; max-width: none !important; width: auto !important; text-align: left !important; font-size: 30px !important; line-height: 1.3 !important; font-weight: 700 !important; }
+#homePage .nh-lead.nh-lead { margin: 8px 0 0 !important; text-align: left !important; font-size: 15px !important; line-height: 1.5 !important; color: rgba(255,255,255,.72) !important; }
+#homePage .nh-globe.nh-globe { order: 2 !important; position: relative !important; inset: auto !important; width: 100% !important; height: clamp(150px, 24svh, 220px) !important; margin-top: 8px !important; pointer-events: auto !important; }
+#homePage .nh-hero > .home-window { order: 3 !important; }
+body:has(#homePage.is-active) #appTopbar .topbar-brand { position: static !important; left: auto !important; right: auto !important; transform: none !important; margin: 0 !important; justify-content: flex-start !important; }
+@media (max-width: 1023px) {
+  body:has(#homePage.is-active) #appTopbar.app-topbar { justify-content: flex-start !important; padding-left: var(--gut) !important; padding-right: var(--gut) !important; }
+}
+
+#homePage .trip-start { display: flex !important; gap: 8px !important; margin: 20px 0 0 !important; width: 100% !important; }
+#homePage .ts-field { position: relative !important; flex: 1 1 auto !important; min-width: 0 !important; display: flex !important; align-items: center !important; height: var(--tap) !important; border-radius: 12px !important; border: 1px solid rgba(255,255,255,.28) !important; background: rgba(255,255,255,.06) !important; }
+#homePage .ts-field:focus-within { border-color: #FFFFFF !important; }
+#homePage .ts-ico { flex: 0 0 auto !important; margin-left: 14px !important; color: rgba(255,255,255,.7) !important; }
+#homePage .ts-field input { flex: 1 1 auto !important; min-width: 0 !important; height: 100% !important; border: 0 !important; outline: 0 !important; background: transparent !important; color: #FFFFFF !important; font-size: 16px !important; padding: 0 8px 0 10px !important; }
+#homePage .ts-field input::placeholder { color: rgba(255,255,255,.5) !important; }
+#homePage .ts-field .search-clear { position: static !important; flex: 0 0 auto !important; width: 44px !important; height: 44px !important; display: grid !important; place-items: center !important; background: transparent !important; border: 0 !important; color: rgba(255,255,255,.7) !important; }
+#homePage .ts-go { flex: 0 0 auto !important; height: var(--tap) !important; padding: 0 18px !important; border-radius: 12px !important; border: 0 !important; background: #FFFFFF !important; color: #05070D !important; font-size: 16px !important; font-weight: 700 !important; white-space: nowrap !important; }
+#homePage .ts-go:focus-visible { outline: 2px solid #9CC0FF !important; outline-offset: 2px !important; }
+#homePage .ts-chips { display: flex !important; gap: 8px !important; margin: 12px 0 0 !important; overflow-x: auto !important; scrollbar-width: none !important; padding-bottom: 2px !important; }
+#homePage .ts-chips::-webkit-scrollbar { display: none !important; }
+#homePage .dest-chip { flex: 0 0 auto !important; height: 36px !important; padding: 0 14px !important; border-radius: 999px !important; border: 1px solid rgba(255,255,255,.2) !important; background: transparent !important; color: rgba(255,255,255,.86) !important; font-size: 14px !important; font-weight: 500 !important; }
+#homePage .dest-chip[aria-pressed="true"] { background: #FFFFFF !important; color: #05070D !important; border-color: #FFFFFF !important; font-weight: 700 !important; }
+#homePage #homeTripCard:not([hidden]) { margin-top: 16px !important; }
+#homePage .home-styles, #homePage .home-create, #homePage #citySection, #homePage #recoSection { display: none !important; }
+
+/* --- 홈: 일정 예시 = 결과 화면과 같은 타임라인 --- */
+#homePage .home-window.home-window { width: auto !important; margin: 24px var(--gut) 0 !important; }
+#homePage .hw-head .section-title.section-title { margin: 0 !important; font-size: 22px !important; line-height: 1.35 !important; font-weight: 700 !important; }
+#homePage .hw-head .section-sub { margin: 4px 0 12px !important; font-size: 14px !important; color: rgba(255,255,255,.6) !important; }
+#homePage .hw.hw { display: block !important; border: 1px solid rgba(255,255,255,.12) !important; border-radius: 16px !important; background: rgba(255,255,255,.03) !important; box-shadow: none !important; padding: 16px !important; }
+#homePage .hw-main.hw-main { padding: 0 !important; }
+#homePage .hw-place { margin: 0 !important; font-size: 13px !important; color: rgba(255,255,255,.6) !important; }
+#homePage .hw-title.hw-title { margin: 4px 0 0 !important; font-size: 18px !important; line-height: 1.35 !important; font-weight: 700 !important; }
+#homePage .hw-meta { margin: 4px 0 0 !important; font-size: 14px !important; color: rgba(255,255,255,.66) !important; }
+#homePage .hw-tabs.hw-tabs { display: flex !important; gap: 0 !important; margin: 16px 0 4px !important; padding: 0 !important; border: 0 !important; border-bottom: 1px solid rgba(255,255,255,.12) !important; background: transparent !important; }
+#homePage .hw-tab.hw-tab { flex: 0 0 auto !important; min-height: 44px !important; padding: 0 14px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: rgba(255,255,255,.6) !important; font-size: 15px !important; font-weight: 500 !important; border-bottom: 2px solid transparent !important; margin-bottom: -1px !important; }
+#homePage .hw-tab.hw-tab[aria-selected="true"] { color: #FFFFFF !important; font-weight: 700 !important; border-bottom-color: #FFFFFF !important; background: transparent !important; }
+#homePage .hw-go.hw-go { width: 100% !important; height: var(--tap) !important; min-height: var(--tap) !important; margin-top: 16px !important; border-radius: 12px !important; background: transparent !important; color: #FFFFFF !important; border: 1px solid rgba(255,255,255,.28) !important; font-size: 15px !important; font-weight: 600 !important; }
+
+.tl { list-style: none !important; margin: 0 !important; padding: 0 !important; }
+.tl-row { display: grid !important; grid-template-columns: 56px 16px minmax(0, 1fr) !important; column-gap: 8px !important; align-items: start !important; padding: 10px 0 !important; }
+.tl-time { display: flex !important; flex-direction: column !important; font-size: 15px !important; font-variant-numeric: tabular-nums !important; line-height: 1.3 !important; color: rgba(255,255,255,.88) !important; }
+.tl-kind { font-size: 11px !important; line-height: 1.4 !important; color: rgba(255,255,255,.5) !important; }
+.tl-row.is-fixed .tl-time { font-weight: 700 !important; color: #FFFFFF !important; }
+.tl-row.is-fixed .tl-kind { color: #9CC0FF !important; font-weight: 600 !important; }
+.tl-mark { width: 10px !important; height: 10px !important; margin: 5px auto 0 !important; border-radius: 50% !important; border: 2px solid rgba(255,255,255,.7) !important; }
+.tl-row.is-fixed .tl-mark { border-radius: 2px !important; background: #9CC0FF !important; border-color: #9CC0FF !important; }
+.tl-body { display: flex !important; flex-direction: column !important; gap: 2px !important; min-width: 0 !important; }
+.tl-name { font-size: 15px !important; line-height: 1.4 !important; font-weight: 600 !important; color: #FFFFFF !important; overflow-wrap: anywhere !important; }
+.tl-sub { font-size: 13px !important; color: rgba(255,255,255,.6) !important; }
+.tl-move { margin: 0 0 0 64px !important; padding: 2px 0 2px 16px !important; border-left: 2px dotted rgba(255,255,255,.25) !important; font-size: 13px !important; color: rgba(255,255,255,.6) !important; }
+
+/* 카드마다 붙던 예시 배지 정리 */
+#homePage .rc-sample-tag { display: none !important; }
+
+/* --- 태블릿·데스크톱: 같은 위계, 넓은 화면은 검색 | 일정 예시 두 칸 --- */
+@media (min-width: 768px) {
+  :root { --gut: 32px !important; }
+  #homePage .nh-copy.nh-copy { padding-top: 120px !important; max-width: 560px !important; }
+  #homePage .nh-title.nh-title, #homePage .nh-title.nh-title span { font-size: 44px !important; }
+  #homePage .nh-lead.nh-lead { font-size: 17px !important; }
+  #homePage .home-window.home-window { max-width: 640px !important; }
+}
+@media (min-width: 1024px) {
+  #homePage .nh-hero.nh-hero { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; grid-template-rows: auto !important; column-gap: 48px !important; align-items: start !important; padding: 0 max(40px, calc((100% - 1200px) / 2)) 56px !important; margin: 0 !important; border-radius: 0 0 28px 28px !important; min-height: 0 !important; }
+  #homePage .nh-copy.nh-copy { grid-column: 1 !important; grid-row: 1 !important; padding: 168px 0 0 !important; max-width: 560px !important; }
+  #homePage .nh-title.nh-title, #homePage .nh-title.nh-title span { font-size: 52px !important; line-height: 1.2 !important; }
+  #homePage .nh-globe.nh-globe { position: absolute !important; inset: auto 0 0 0 !important; height: 46% !important; width: 100% !important; margin: 0 !important; opacity: .55 !important; z-index: 0 !important; }
+  #homePage .nh-hero > .home-window.home-window { grid-column: 2 !important; grid-row: 1 !important; position: relative !important; z-index: 2 !important; margin: 132px 0 0 !important; max-width: none !important; }
+  #homePage .nh-hero.is-stacked { display: flex !important; padding-left: 0 !important; padding-right: 0 !important; }
+  #homePage .nh-hero.is-stacked > .nh-copy { margin: 0 auto !important; padding-left: 0 !important; padding-right: 0 !important; width: min(1120px, 100% - 80px) !important; max-width: none !important; }
+  #homePage .nh-hero.is-stacked > .home-window { margin: 48px auto 0 !important; width: min(1120px, 100% - 80px) !important; }
+  #homePage .nh-hero.is-stacked .nh-globe { position: relative !important; height: 240px !important; opacity: 1 !important; }
+}
+body:has(#homePage.is-active) #appTopbar a.topbar-brand { padding: 0 !important; margin-left: 0 !important; }
+#homePage .nh-globe.nh-globe { height: clamp(130px, 20svh, 190px) !important; -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent) !important; mask-image: linear-gradient(to bottom, #000 72%, transparent) !important; }
+@media (max-width: 1023px) {
+  body:has(#homePage.is-active) #appTopbar a.topbar-brand { grid-column: 1 / 3 !important; justify-self: start !important; }
+}
+@media (max-width: 1023px) {
+  body:has(#homePage.is-active) #appTopbar.app-topbar.app-topbar { padding-left: max(0px, calc(var(--gut) - 16px)) !important; }
+}
+#homePage .hw-tabs.hw-tabs { flex-direction: row !important; width: auto !important; height: auto !important; grid-column: auto !important; }
+#homePage .hw-tab.hw-tab { width: auto !important; text-align: center !important; justify-content: center !important; }
+#homePage #homeTripCard.home-trip-wrap, #homePage #homeTripCard { margin-left: 0 !important; margin-right: 0 !important; width: 100% !important; }
+#homePage #homeTripCard .home-trip { margin-left: 0 !important; margin-right: 0 !important; width: 100% !important; }
+@media (min-width: 1024px) {
+  #homePage .nh-hero.nh-hero { padding-left: max(40px, calc((100% - 1120px) / 2)) !important; padding-right: max(40px, calc((100% - 1120px) / 2)) !important; }
+  body:has(#homePage.is-active) #appTopbar.app-topbar.app-topbar { padding-left: 0 !important; padding-right: 0 !important; }
+  #homePage .nh-globe.nh-globe { height: 56% !important; opacity: .8 !important; }
+}
+#homePage .hw.hw { background: #0B1020 !important; }
+
+/* --- 탐색: 검색창 + 취소, 최근·추천·자동완성 행 --- */
+#explorePage .search-row { display: flex !important; align-items: center !important; gap: 8px !important; }
+#explorePage .search-row > .search-card.search-card { flex: 1 1 auto !important; min-width: 0 !important; margin: 0 !important; height: var(--tap) !important; min-height: var(--tap) !important; border-radius: 12px !important; }
+#explorePage .search-cancel { flex: 0 0 auto !important; min-width: 44px !important; height: 44px !important; padding: 0 4px !important; border: 0 !important; background: transparent !important; color: #FFFFFF !important; font-size: 16px !important; font-weight: 600 !important; }
+#explorePage .search-panel { margin: 8px 0 0 !important; }
+#explorePage .sp-sec + .sp-sec { margin-top: 16px !important; }
+#explorePage .sp-head { display: flex !important; align-items: center !important; justify-content: space-between !important; min-height: 32px !important; }
+#explorePage .sp-h { margin: 0 !important; font-size: 14px !important; font-weight: 700 !important; color: rgba(255,255,255,.7) !important; }
+#explorePage .sp-clear { min-height: 44px !important; padding: 0 !important; border: 0 !important; background: transparent !important; color: rgba(255,255,255,.6) !important; font-size: 13px !important; }
+#explorePage .sp-list { display: flex !important; flex-direction: column !important; }
+#explorePage .sp-row { display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; grid-template-areas: "name extra" "sub extra" !important; align-items: center !important; column-gap: 12px !important; row-gap: 2px !important; min-height: 56px !important; padding: 8px 0 !important; border: 0 !important; border-bottom: 1px solid rgba(255,255,255,.08) !important; background: transparent !important; text-align: left !important; color: #FFFFFF !important; }
+#explorePage .sp-name { grid-area: name !important; font-size: 16px !important; font-weight: 600 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+#explorePage .sp-sub { grid-area: sub !important; font-size: 13px !important; color: rgba(255,255,255,.6) !important; }
+#explorePage .sp-extra { grid-area: extra !important; font-size: 13px !important; color: rgba(255,255,255,.6) !important; }
+#explorePage.is-searching .lc-cta, #explorePage.is-searching #localSection { display: none !important; }
+#explorePage .explore-state.is-error { color: #FFB4A8 !important; }
+#explorePage .rc-skel { display: block !important; height: 132px !important; border-radius: 16px !important; background: rgba(255,255,255,.06) !important; animation: tstPulse 1.2s ease-in-out infinite alternate !important; }
+@keyframes tstPulse { from { opacity: .55 !important; } to { opacity: 1 !important; } }
+@media (prefers-reduced-motion: reduce) { #explorePage .rc-skel { animation: none !important; } }
+/* 카드 글 — 이름 → 지역·스타일 → 기간 */
+.roadmap-card .rg-cap .rc-title { order: 1 !important; }
+.roadmap-card .rg-cap .rc-place--line { order: 2 !important; display: block !important; margin-top: 4px !important; font-size: 13px !important; color: rgba(255,255,255,.66) !important; }
+.roadmap-card .rg-cap .rc-place--line::before { display: none !important; }
+.roadmap-card .rg-cap .rc-info--sub { order: 3 !important; margin-top: 4px !important; font-size: 13px !important; color: rgba(255,255,255,.66) !important; }
+/* 키보드가 올라온 동안(입력 중)에는 하단 바를 숨겨 버튼과 겹치지 않게 */
+@media (max-width: 1023px) {
+  body:has(.app-page.is-active input:focus, .app-page.is-active textarea:focus) .bottom-tab-nav { display: none !important; }
+}
+
+/* --- 결과: 목적지 → 기간 → 저장·편집, 타임라인 뒤에 지도·예산 --- */
+#schedulePage #mapSec:has(> #scheduleToolbar[hidden]), #schedulePage #budgetFold:has(> #budgetPanel[hidden]) { display: none !important; }
+#schedulePage .after-sec { margin: 32px var(--gut) 0 !important; }
+#schedulePage .after-h { margin: 0 0 12px !important; font-size: 18px !important; font-weight: 700 !important; line-height: 1.4 !important; }
+#schedulePage details.after-fold { border-top: 1px solid var(--line, rgba(0,0,0,.1)) !important; border-bottom: 1px solid var(--line, rgba(0,0,0,.1)) !important; }
+#schedulePage details.after-fold > summary { list-style: none !important; display: flex !important; align-items: center !important; justify-content: space-between !important; min-height: 56px !important; margin: 0 !important; cursor: pointer !important; }
+#schedulePage details.after-fold > summary::-webkit-details-marker { display: none !important; }
+#schedulePage details.after-fold > summary::after { content: "열기" !important; font-size: 14px !important; font-weight: 500 !important; opacity: .7 !important; }
+#schedulePage details.after-fold[open] > summary::after { content: "접기" !important; }
+#schedulePage details.after-fold > .budget-panel { margin: 0 0 16px !important; }
+#schedulePage #mapSec .schedule-toolbar { margin: 0 !important; padding: 0 !important; }
+#schedulePage .schedule-actions .btn-edit { height: 44px !important; min-height: 44px !important; padding: 0 14px !important; border-radius: 12px !important; }
+.schedule-card .sc-kind { display: block !important; font-size: 11px !important; line-height: 1.3 !important; opacity: .7 !important; }
+.schedule-card .sc-kind.is-fixed { opacity: 1 !important; font-weight: 700 !important; color: var(--accent, #2F5BD3) !important; }
+#schedulePage .after-sec.after-sec { margin-left: 0 !important; margin-right: 0 !important; }
+
+/* --- 하단 바: 아이콘·라벨 한 기준선, 활성 탭은 굵기와 아이콘 채움으로도 --- */
+.bottom-tab-nav .tab-button { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 4px !important; min-height: 48px !important; }
+.bottom-tab-nav .tab-button .tab-ico { display: block !important; width: 22px !important; height: 22px !important; flex: 0 0 22px !important; }
+.bottom-tab-nav .tab-button .tab-label { display: block !important; font-size: 12px !important; line-height: 14px !important; font-weight: 500 !important; max-width: 100% !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+.bottom-tab-nav .tab-button.is-active .tab-label, .bottom-tab-nav .tab-button[aria-current="page"] .tab-label { font-weight: 800 !important; }
+.bottom-tab-nav .tab-button.is-active .tab-ico, .bottom-tab-nav .tab-button[aria-current="page"] .tab-ico { stroke-width: 2.6 !important; }
+.bottom-tab-nav .tab-button.is-active .tab-ico :is(path, rect, circle, polygon):first-child, .bottom-tab-nav .tab-button[aria-current="page"] .tab-ico :is(path, rect, circle, polygon):first-child { fill: currentColor !important; fill-opacity: .22 !important; }
+/* 페이지 끝 내용이 하단 바·홈 표시줄에 가리지 않게 */
+@media (max-width: 1023px) {
+  .app-page .page-scroll { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+/* 로그인·가입·약관은 독립 화면 — 하단 바 없이, 버튼이 가려지지 않게 */
+@media (max-width: 1023px) {
+  body:has(#authPage.is-active, #signupPage.is-active, #policyPage.is-active) .bottom-tab-nav { display: none !important; }
+  #authPage .page-scroll, #signupPage .page-scroll { padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+/* 큰 글자에서도 저장·공유·편집이 화면 밖으로 밀리지 않게 */
+#schedulePage .schedule-actions.schedule-actions { flex-wrap: wrap !important; row-gap: 8px !important; max-width: 100% !important; min-width: 0 !important; }
+#schedulePage .schedule-actions .btn-edit { flex: 0 0 auto !important; white-space: nowrap !important; }
+#schedulePage .schedule-head.schedule-head { min-width: 0 !important; }
+/* 로그인 후에는 숨긴 ‘로그인’ 탭(4번째)을 빼고 세어야 활성 표시가 제자리에 온다 */
+@media (max-width: 1023px) {
+  :root[data-auth="member"] .bottom-tab-nav:has(.tab-button:nth-child(5).is-active)::before { transform: translateX(300%) !important; }
+  :root[data-auth="member"] .bottom-tab-nav:has(.tab-button:nth-child(6).is-active)::before { transform: translateX(400%) !important; }
+}
+/* 넓은 화면은 일정과 지도가 나란히 보이므로 아래 ‘지도로 보기’ 전환은 쓰지 않는다 */
+@media (min-width: 1024px) { #schedulePage #mapSec { display: none !important; } }
 /* POLISH-END */
 }

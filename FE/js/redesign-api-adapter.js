@@ -254,6 +254,16 @@ const tolerant = (p) => p.catch((e) => {
   throw e;
 });
 
+/** 같은 내용의 만들기·저장 요청은 같은 키 — 중복 탭·네트워크 재시도로 두 번 생기지 않게 서버가 처음 결과를 돌려준다. */
+async function _idemPost(path, bodyStr) {
+  let key = '';
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(path + '\n' + bodyStr));
+    key = 'h-' + [...new Uint8Array(buf)].slice(0, 24).map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch (_) { key = 'r-' + Date.now().toString(36) + Math.random().toString(36).slice(2); }
+  return apiRequest(path, { method: 'POST', body: bodyStr, headers: { 'Idempotency-Key': key } });
+}
+
 export const api = {
   // ===== Auth / Users =====
   me:               () => apiRequest('/auth/me'),
@@ -277,15 +287,15 @@ export const api = {
   // ===== Trips =====
   listTrips:  () => apiRequest('/trips'),
   getTrips:   () => apiRequest('/trips'),
-  createTrip: (trip) => apiRequest('/trips', { method: 'POST', body: JSON.stringify(trip) }),
-  saveTrip:   (trip) => apiRequest('/trips', { method: 'POST', body: JSON.stringify(trip) }),
+  createTrip: (trip) => _idemPost('/trips', JSON.stringify(trip)),
+  saveTrip:   (trip) => _idemPost('/trips', JSON.stringify(trip)),
   updateTrip: (id, trip) => apiRequest(`/trips/${id}`, { method: 'PATCH', body: JSON.stringify(trip) }),
   deleteTrip: (id) => apiRequest(`/trips/${id}`, { method: 'DELETE' }),
 
   // ===== Schedules =====
   listSchedules:   () => apiRequest('/schedules'),
   getSchedules:    () => apiRequest('/schedules'),
-  createSchedule:  (payload) => apiRequest('/schedules', { method: 'POST', body: JSON.stringify(payload) }),
+  createSchedule:  (payload) => _idemPost('/schedules', JSON.stringify(payload)),
   updateSchedule:  (id, payload) => apiRequest(`/schedules/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   deleteSchedule:  (id) => apiRequest(`/schedules/${id}`, { method: 'DELETE' }),
   saveSchedule:    (id) => apiRequest(`/schedules/${id}/save`, { method: 'POST' }),
@@ -365,7 +375,7 @@ export const api = {
   searchFlights: (payload) => tolerant(apiRequest('/api/flights/search', { method: 'POST', body: JSON.stringify(payload) })),
 
   // ===== 함께 편집 — 토큰을 아는 사람만 접근 =====
-  createSharedTrip: (payload) => apiRequest('/api/shared-trips', { method: 'POST', body: JSON.stringify(payload) }),
+  createSharedTrip: (payload) => _idemPost('/api/shared-trips', JSON.stringify(payload)),
   getSharedTrip:    (token) => apiRequest(`/api/shared-trips/${encodeURIComponent(token)}`),
   updateSharedTrip: (token, payload) => apiRequest(`/api/shared-trips/${encodeURIComponent(token)}`, { method: 'PUT', body: JSON.stringify(payload) }),
   revokeSharedTrip: (token, manageKey) => apiRequest(`/api/shared-trips/${encodeURIComponent(token)}`, { method: 'DELETE', headers: { 'X-Manage-Key': manageKey } }),
@@ -373,7 +383,7 @@ export const api = {
   // ===== Google Maps proxy — server-side keys, never exposed =====
   searchPlaces: (payload) => apiRequest('/api/places/search', { method: 'POST', body: JSON.stringify(payload) }),
   computeRoute: (payload) => apiRequest('/api/routes',        { method: 'POST', body: JSON.stringify(payload) }),
-  saveTripPlacesBulk: (items) => apiRequest('/api/trip-places/bulk', { method: 'POST', body: JSON.stringify(items) }),
+  saveTripPlacesBulk: (items) => _idemPost('/api/trip-places/bulk', JSON.stringify(items)),
   listTripPlaces: (tripId, day) => apiRequest('/api/trip-places?trip_id=' + tripId + (day ? '&day_number=' + day : '')),
   getMapsConfig: () => fetch(API_URL + '/api/config/maps').then(r => r.json()),
 };

@@ -126,10 +126,12 @@ function _enterCreateTrip(meta = {}) {
   if (!meta.prefill) document.getElementById('prefillBanner')?.remove();
   const resume = !meta.prefill && !meta.fresh && !!t._draft;
   if (!meta.prefill && !resume) _resetTripState();
+  if (!t.concept) t.concept = '균형';   // 예전 초안에도 기본 스타일을 채운다
   step = resume ? Math.min(4, Math.max(1, t._draftStep || 1)) : 1;
   _showStep(); _applyState();
   _showDraftBanner(resume);
   _showDeviceTrip();
+  if (meta.focusCity) requestAnimationFrame(() => $('#tripCitySearch')?.focus());
 }
 
 /** 이 기기에 만들어 둔 일정 — 게스트는 '내 일정' 메뉴가 없으므로 만들기에서 다시 연다. 저장 상태를 함께 보여 준다. */
@@ -1166,7 +1168,7 @@ function _saveDraft() {
   const t = appState.trip;
   if (!t) return;
   _refreshMoreMeta();
-  t._draft = !!(t.cityName || t.originName || t._originText || t._cityText || t.startDate || t.concept || t.budget);
+  t._draft = !!(t.cityName || t.originName || t._originText || t._cityText || t.startDate || (t.concept && t.concept !== '균형') || t.budget);
   t._draftStep = step;
   _syncPressed();
   document.dispatchEvent(new CustomEvent('redesign:trip-changed'));
@@ -1293,16 +1295,16 @@ function _validateStep() {
   const t = appState.trip;
   if (step === 1) {
     _autoConfirm('origin'); _autoConfirm('dest');
-    if (!t.origin) {
-      _fieldError('origin', $('#tripOrigin')?.value.trim()
-        ? '검색 결과에서 출발 도시를 선택해 주세요.'
-        : '출발 도시를 입력해 주세요.');
-      return false;
-    }
     if (!t.city) {
       _fieldError('dest', $('#tripCitySearch')?.value.trim()
         ? '검색 결과에서 도착 도시를 선택해 주세요. 없으면 아래 ‘국가·도시 직접 선택’을 써 보세요.'
         : '도착 도시를 입력하거나 인기 도시를 골라 주세요.');
+      return false;
+    }
+    if (!t.origin) {
+      _fieldError('origin', $('#tripOrigin')?.value.trim()
+        ? '검색 결과에서 출발 도시를 선택해 주세요.'
+        : '출발 도시를 입력해 주세요.');
       return false;
     }
   }
@@ -1376,7 +1378,7 @@ function _resetTripState() {
   t.companion = 'couple';
   t.adults = 2; t.children = 0; t.rooms = 1; t._roomsTouched = false;
   t._originText = ''; t._cityText = '';
-  t.concept = '';
+  t.concept = '균형';   // 기본값 — 스타일 단계에서 바꿀 수 있다
   t.styles = [];
   t.mustVisit = '';
   t.placeMode = 'local';

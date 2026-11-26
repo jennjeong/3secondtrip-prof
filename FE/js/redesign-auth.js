@@ -43,7 +43,16 @@ function _apiMessage(e, fallback) {
   if (e?.message === 'NETWORK_ERROR' || (!e?.status && !e?.body)) return '서버에 연결하지 못했어요. 입력한 내용은 그대로 있어요. 다시 시도해 주세요.';
   if (e?.status === 429) return _detail(e)?.message || '요청이 너무 많아요. 잠시 뒤 다시 시도해 주세요.';
   const d = _detail(e);
-  if (Array.isArray(d) && d[0]?.msg) return d[0].msg.replace(/^Value error,\s*/, '');
+  if (Array.isArray(d) && d[0]?.msg) {
+    const m = d[0].msg.replace(/^Value error,\s*/, '');
+    if (/[가-힣]/.test(m)) return m;
+    // 서버 검사 문구가 영어로 오면 칸 이름으로 알아들을 수 있게 바꾼다
+    const field = (d[0].loc || []).slice(-1)[0];
+    if (field === 'email') return '받을 수 있는 이메일 주소인지 확인해 주세요. 예: you@example.com';
+    if (field === 'password' || field === 'new_password') return '비밀번호 조건을 확인해 주세요.';
+    if (field === 'nickname') return '닉네임은 2~30자로 정해 주세요.';
+    return fallback || '입력한 내용을 다시 확인해 주세요.';
+  }
   if (d && typeof d === 'object' && d.message) return d.message;
   if (typeof d === 'string' && /[가-힣]/.test(d)) return d;
   return fallback || '요청을 처리하지 못했어요. 잠시 뒤 다시 시도해 주세요.';
@@ -196,7 +205,7 @@ async function _login() {
     if (res?.access_token) setAccessToken(res.access_token);
     try { if ($('#authRemember')?.checked) localStorage.setItem(REMEMBER_KEY, email); else localStorage.removeItem(REMEMBER_KEY); } catch (_) {}
     $('#authPw').value = ''; $('#authPw').dispatchEvent(new Event('input'));
-    await refreshCurrentUser({ fromLogin: true });
+    await refreshCurrentUser({ fromLogin: true, user: res?.user });
     showToast('로그인되었어요');
   } catch (e) {
     if (e?.status === 401) _err('authFormErr', '이메일 또는 비밀번호가 맞지 않아요. 다시 확인하거나 비밀번호 찾기를 이용해 주세요.');
@@ -270,6 +279,7 @@ async function _signup() {
     if (e?.status === 409 && /닉네임/.test(msg)) { _err('suNickErr', msg); $('#suNick').focus(); }
     else if (e?.status === 409) { _err('suEmailErr', msg); $('#suEmail').focus(); }
     else if (e?.status === 422 && /비밀번호/.test(msg)) { _err('suPwErr', msg); $('#suPw').focus(); }
+    else if (e?.status === 422 && /이메일/.test(msg)) { _err('suEmailErr', msg); $('#suEmail').focus(); }
     else _err('suFormErr', msg);
   } finally {
     _busy(btn, false);
@@ -367,10 +377,11 @@ async function _resend() {
 }
 
 /* ============ 로그인 상태 ============ */
-export async function refreshCurrentUser({ fromLogin = false, stay = false } = {}) {
+export async function refreshCurrentUser({ fromLogin = false, stay = false, user = null } = {}) {
   const hadToken = !!getAccessToken();
   try {
-    const me = await api.me();
+    // 로그인 응답에 들어 있는 계정 정보면 한 번 더 묻지 않는다(느린 망에서 화면 전환이 그만큼 빨라진다)
+    const me = (user && user.id) ? user : await api.me();
     appState.currentUser = me;
     appState.authOffline = false;
     _renderProfile();

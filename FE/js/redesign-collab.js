@@ -24,6 +24,8 @@ let pollTimer = null;
 let saving = false;
 let sharedObj = null;     // 함께 편집 중인 일정 객체 — 다른 일정을 열면 올리지 않고 멈춘다
 let failNoted = false;
+let readOnly = false;     // 보기 전용 링크로 연 일정 — 받아서 보기만 하고 올리지 않는다
+const VIEW_KEY = 'tst_collab_view_v1';   // 내가 만든 링크의 보기 전용 토큰
 
 // 기기마다 다른 값(내 계정의 저장 번호)은 공유 데이터에 싣지 않는다 — 실으면 받은 사람 계정에 사본이 계속 생긴다.
 function _strip(g) {
@@ -70,17 +72,33 @@ async function _revoke() {
   }
 }
 
-function _link() {
-  return publicLink(`#page=schedule&collab=${token}`);
+function _link(t = token) {
+  return publicLink(`#page=schedule&collab=${t}`);
+}
+function _viewToken() {
+  try { const v = JSON.parse(localStorage.getItem(VIEW_KEY) || 'null'); return v && v.token === token ? v.view : null; } catch (_) { return null; }
+}
+function _rememberView(view) {
+  if (!view || !token) return;
+  try { localStorage.setItem(VIEW_KEY, JSON.stringify({ token, view })); } catch (_) {}
+}
+async function _copyView() {
+  const v = _viewToken();
+  if (!v) return;
+  try { await navigator.clipboard.writeText(_link(v)); showToast('보기 전용 링크를 복사했어요. 받은 사람은 보기만 하고 고칠 수 없어요'); }
+  catch (_) { showCopy('이 링크를 복사해 주세요', _link(v)); }
 }
 
 function _applyRemote(remote) {
   version = remote.version;
+  readOnly = !!remote.read_only;
+  if (remote.view_token) _rememberView(remote.view_token);
   const data = _strip(remote.data) || {};
   const cur = appState.generated;
   // 내 계정에 저장해 둔 같은 여행이면 내 저장 번호를 그대로 쓴다.
   if (cur?.savedScheduleId && (cur === sharedObj || (cur.tripUid && cur.tripUid === data.tripUid))) data.savedScheduleId = cur.savedScheduleId;
   lastSynced = _json(data);
+  if (readOnly) data.sharedView = true;     // 보기 전용 — 편집 버튼을 감추고 올리지 않는다
   appState.generated = data;
   sharedObj = data;
   rerender();
@@ -89,7 +107,7 @@ function _applyRemote(remote) {
 async function _pull() {
   if (!token || saving || saveTimer || document.hidden || _editing()) return;
   // 올리지 못한 내 수정이 있으면 받아서 덮지 않고 다시 올린다.
-  if (_sameTrip(appState.generated) && _json(appState.generated) !== lastSynced) { saveTimer = setTimeout(_push, SAVE_DELAY_MS); return; }
+  if (!readOnly && _sameTrip(appState.generated) && _json(appState.generated) !== lastSynced) { saveTimer = setTimeout(_push, SAVE_DELAY_MS); return; }
   try {
     const remote = await api.getSharedTrip(token);
     if (remote.version > version) {
@@ -131,6 +149,7 @@ async function _push() {
 
 function _onChanged() {
   if (!token || !appState.generated) return;
+  if (readOnly) { if (!_sameTrip(appState.generated)) _stop('', { keepManage: true }); return; }
   // 다른 일정(저장한 일정·새 여행·보기 링크)을 열었다 — 함께 편집 중인 일정을 덮어쓰지 않게 이 기기에서 멈춘다.
   if (!_sameTrip(appState.generated)) { _stop('다른 일정을 열어서 함께 편집을 멈췄어요. 편집 링크로 다시 열 수 있어요', { keepManage: true }); return; }
   sharedObj = appState.generated;
@@ -165,6 +184,8 @@ async function _create() {
     if (!g.tripUid) g.tripUid = 'trip-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
     const created = await api.createSharedTrip({ data: _strip(g) });
     _setToken(created.token, created.manage_key);
+    _rememberView(created.view_token);
+    readOnly = false;
     version = created.version;
     sharedObj = g;
     lastSynced = _json(created.data);
@@ -192,15 +213,23 @@ function _paint() {
   if (!box) return;
   box.hidden = !appState?.generated;
   box.textContent = '';
-  box.appendChild(el('h3', { class: 'tool-title', id: 'collabTitle', tabIndex: -1 }, '함께 편집 (편집 가능 링크)'));
-  if (token) {
+  box.appendChild(el('h3', { class: 'tool-title', id: 'collabTitle', tabIndex: -1 }, token && readOnly ? '공유받은 일정 (보기 전용)' : '함께 편집 (편집 가능 링크)'));
+  if (token && readOnly) {
+    box.append(
+      el('p', { class: 'tool-note' }, '보기 전용 링크로 보고 있어요. 바뀐 내용은 몇 초마다 받아 오지만, 여기서 고칠 수는 없어요.'),
+      el('div', { class: 'tool-actions' }, [
+        el('button', { type: 'button', class: 'btn btn-soft', onclick: () => _stop('이 기기에서 보기를 그만뒀어요. 링크는 계속 유효해요') }, '이 기기에서 그만보기'),
+      ]),
+    );
+  } else if (token) {
     const mine = !!_manageKey();
     box.append(
       el('p', { class: 'tool-note' }, mine
         ? '함께 편집 중이에요. 링크를 아는 사람은 누구나 일정·메모·비용을 보고 고칠 수 있어요. 필요 없어지면 링크를 회수하세요.'
         : '받은 편집 링크로 함께 고치는 중이에요. 링크 회수는 링크를 만든 사람만 할 수 있어요.'),
       el('div', { class: 'tool-actions' }, [
-        el('button', { type: 'button', class: 'btn btn-soft', onclick: _copy }, '링크 복사'),
+        el('button', { type: 'button', class: 'btn btn-soft', onclick: _copy }, '편집 링크 복사'),
+        mine && _viewToken() ? el('button', { type: 'button', class: 'btn btn-soft', onclick: _copyView }, '보기 전용 링크 복사') : null,
         mine
           ? el('button', { type: 'button', class: 'btn btn-soft is-danger', onclick: _revoke }, '링크 회수')
           : el('button', { type: 'button', class: 'btn btn-soft', onclick: () => _stop('이 기기에서 함께 편집을 그만뒀어요. 링크는 계속 유효해요') }, '이 기기에서 그만하기'),
@@ -247,7 +276,7 @@ export async function initCollab(state, renderSchedule) {
     _setToken(candidate);
     _applyRemote(remote);
     _start();
-    if (fromUrl) showToast('함께 편집하는 일정을 열었어요');
+    if (fromUrl) showToast(readOnly ? '보기 전용으로 공유된 일정을 열었어요' : '함께 편집하는 일정을 열었어요');
   } catch (e) {
     if (e?.status === 404) {
       _setToken(null);
