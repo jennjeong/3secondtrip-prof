@@ -86,4 +86,18 @@ def get_settings() -> Settings:
     return Settings()
 
 
+DEFAULT_JWT_SECRET = "replace_me_with_a_long_random_string_at_least_32_chars"
+
+
+def check_production_secrets(s: Settings) -> None:
+    """운영 서버는 로그인 서명 키가 비었거나, 공개 저장소의 기본값이거나, 짧으면 켜지지 않는다.
+    (기본값으로 서명하면 누구나 아무 계정의 로그인 토큰을 만들 수 있다)"""
+    if (s.app_env or "").lower() != "production":
+        return
+    secret = (s.jwt_secret or "").strip()
+    if not secret or secret == DEFAULT_JWT_SECRET or len(secret) < 32:
+        raise RuntimeError("JWT_SECRET 이 비었거나 기본값이에요. Render → Environment 에 32자 이상 무작위 값을 넣어 주세요.")
+
+
 settings = get_settings()
+check_production_secrets(settings)
