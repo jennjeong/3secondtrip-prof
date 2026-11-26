@@ -7,7 +7,8 @@ from app.models._crypto_type import EncryptedString
 class SharedTrip(Base):
     __tablename__ = "shared_trips"
 
-    token = Column(String(64), primary_key=True)
+    token = Column(String(64), primary_key=True)          # 편집 링크
+    view_token = Column(String(64), nullable=True, unique=True, index=True)   # 보기 전용 링크(읽기만)
     data_json = Column(EncryptedString(), nullable=False)
     version = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)

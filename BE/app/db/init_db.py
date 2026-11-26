@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.db.database import Base, engine
 
 # 모델 import — Base.metadata 에 등록되도록
-from app.models import user, trip, schedule, booking, roadmap, blog, review, feedback, survey, trip_place, password_reset, feedback_attachment, local_course, email_verification   # noqa: F401
+from app.models import user, trip, schedule, booking, roadmap, blog, review, feedback, survey, trip_place, password_reset, feedback_attachment, local_course, email_verification, shared_trip, idempotency_key   # noqa: F401
 
 
 def _ensure_sqlite_dir() -> None:
@@ -34,6 +34,11 @@ def init_db() -> None:
         ensure_auth_columns()
     except Exception as e:
         import logging; logging.getLogger('init_db').warning('auth-col migrate skipped: %s', e)
+    try:
+        from app.db.migrate_shared_trip_view_token import ensure_shared_trip_view_token
+        ensure_shared_trip_view_token()
+    except Exception as e:
+        import logging; logging.getLogger('init_db').warning('shared-trip view_token migrate skipped: %s', e)
     # Seed popular roadmaps if empty
     try:
         from app.db.seed import seed_roadmaps_if_empty

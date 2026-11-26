@@ -54,7 +54,8 @@ app.add_middleware(
     allow_origins=sorted(o for o in _ALLOWED if o),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Manage-Key"],
+    allow_headers=["Content-Type", "Authorization", "X-Manage-Key", "Idempotency-Key"],
+    expose_headers=["Idempotent-Replayed"],
 )
 
 

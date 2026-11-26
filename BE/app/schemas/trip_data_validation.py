@@ -64,6 +64,13 @@ def validate_trip_data(data: dict) -> None:
     s, e = data.get("startDate"), data.get("endDate")
     if s and e and _date_ok(s) and _date_ok(e) and date.fromisoformat(str(e)) < date.fromisoformat(str(s)):
         raise ValueError("귀국일이 출발일보다 빨라요.")
+    if s and e and _date_ok(s) and _date_ok(e) and isinstance(days, list):
+        # 출발·귀국일(둘 다 포함) 밖의 날짜는 있을 수 없다
+        lo, hi = date.fromisoformat(str(s)), date.fromisoformat(str(e))
+        for i, d in enumerate(days):
+            ds = d.get("date")
+            if ds and not (lo <= date.fromisoformat(str(ds)) <= hi):
+                raise ValueError(f"{i + 1}일차 날짜가 여행 기간 밖이에요.")
     if not _money_ok(data.get("budget")):
         raise ValueError("예산 금액이 올바르지 않아요.")
     people = data.get("people")

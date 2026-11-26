@@ -47,14 +47,14 @@ class TripPlaceCreate(BaseModel):
 
 
 class TripPlaceUpdate(BaseModel):
-    day_number: Optional[int] = None
-    place_order: Optional[int] = None
-    place_name: Optional[str] = None
+    day_number: Optional[int] = Field(default=None, ge=1)
+    place_order: Optional[int] = Field(default=None, ge=1)
+    place_name: Optional[str] = Field(default=None, min_length=1, max_length=255)
     address: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     google_place_id: Optional[str] = None
-    stay_minutes: Optional[int] = None
+    stay_minutes: Optional[int] = Field(default=None, ge=0, le=1440)
 
 
 class TripPlacePublic(BaseModel):

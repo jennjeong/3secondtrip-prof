@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -35,9 +35,11 @@ class SharedTripUpdate(SharedTripWrite):
 
 
 class SharedTripPublic(BaseModel):
-    token: str
+    token: str                         # 요청에 쓴 링크 토큰(보기 전용 링크면 그 토큰)
     data: dict[str, Any]
     version: int
+    read_only: bool = False            # 보기 전용 링크로 연 경우 True — PUT/DELETE 는 403
+    view_token: Optional[str] = None   # 편집 링크로 연 경우에만: 남에게 줄 보기 전용 링크 토큰
 
 
 class SharedTripCreated(SharedTripPublic):

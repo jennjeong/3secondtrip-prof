@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core import jsonsafe
+from app.core.idempotency import idempotency_key_header, run_idempotent
 from app.db.database import get_db
 from app.models.trip import Trip
 from app.models.user import User
@@ -29,19 +30,24 @@ def _to_public(t: Trip) -> TripPublic:
 
 
 @router.post("", response_model=TripPublic, status_code=201)
-def create_trip(payload: TripCreate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
-    t = Trip(
-        user_id=current.id, title=payload.title,
-        departure_city=payload.departure_city,
-        destination_country=payload.destination_country, destination_city=payload.destination_city,
-        start_date=payload.start_date, end_date=payload.end_date,
-        companion_type=payload.companion_type, concept=payload.concept,
-        styles_json=json.dumps(payload.styles or [], ensure_ascii=False),
-        budget=payload.budget, currency=payload.currency or "KRW",
-        trip_data_json=(json.dumps(payload.trip_data, ensure_ascii=False) if payload.trip_data is not None else None),
-    )
-    db.add(t); db.commit(); db.refresh(t)
-    return _to_public(t)
+def create_trip(payload: TripCreate, db: Session = Depends(get_db), current: User = Depends(get_current_user),
+                idem_key: str | None = Depends(idempotency_key_header)):
+    def _create() -> TripPublic:
+        t = Trip(
+            user_id=current.id, title=payload.title,
+            departure_city=payload.departure_city,
+            destination_country=payload.destination_country, destination_city=payload.destination_city,
+            start_date=payload.start_date, end_date=payload.end_date,
+            companion_type=payload.companion_type, concept=payload.concept,
+            styles_json=json.dumps(payload.styles or [], ensure_ascii=False),
+            budget=payload.budget, currency=payload.currency or "KRW",
+            trip_data_json=(json.dumps(payload.trip_data, ensure_ascii=False) if payload.trip_data is not None else None),
+        )
+        db.add(t); db.flush(); db.refresh(t)
+        return _to_public(t)
+
+    return run_idempotent(db, key=idem_key, scope=f"u:{current.id}", endpoint="POST /trips",
+                          fingerprint=payload.model_dump(mode="json"), status_code=201, create=_create)
 
 
 @router.get("", response_model=list[TripPublic])
@@ -71,6 +77,9 @@ def update_trip(trip_id: int, payload: TripUpdate, db: Session = Depends(get_db)
         t.trip_data_json = json.dumps(td, ensure_ascii=False) if td is not None else None
     for k, v in data.items():
         setattr(t, k, v)
+    if t.start_date and t.end_date and t.start_date > t.end_date:
+        db.rollback()
+        raise HTTPException(422, "출발일이 귀국일보다 늦어요. 날짜를 다시 골라 주세요.")
     db.commit(); db.refresh(t)
     return _to_public(t)
 

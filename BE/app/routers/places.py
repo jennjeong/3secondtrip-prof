@@ -1,7 +1,9 @@
 """Places search + TripPlace CRUD."""
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.idempotency import idempotency_key_header, run_idempotent
 from app.db.database import get_db
 from app.models.trip import Trip
 from app.models.trip_place import TripPlace
@@ -33,6 +35,15 @@ async def places_search(payload: PlaceSearchRequest):
 
 
 # ── TripPlace CRUD ───────────────────────────────────────────────
+def _owned_place(db: Session, user: User, place_id: int) -> TripPlace:
+    """남의 여행 장소는 없는 장소와 똑같이 404 — 응답 문구로도 존재 여부를 알 수 없게 한다."""
+    tp = (db.query(TripPlace).join(Trip, Trip.id == TripPlace.trip_id)
+          .filter(TripPlace.id == place_id, Trip.user_id == user.id).first())
+    if not tp:
+        raise HTTPException(404, "TripPlace not found")
+    return tp
+
+
 def _assert_owns_trip(db: Session, user: User, trip_id: int) -> Trip:
     trip = db.query(Trip).filter(Trip.id == trip_id, Trip.user_id == user.id).first()
     if not trip:
@@ -53,7 +64,8 @@ def create_trip_place(payload: TripPlaceCreate,
 @router.post("/trip-places/bulk", response_model=list[TripPlacePublic], status_code=201)
 def bulk_replace_trip_places(items: list[TripPlaceCreate],
                              db: Session = Depends(get_db),
-                             current: User = Depends(get_current_user)):
+                             current: User = Depends(get_current_user),
+                             idem_key: str | None = Depends(idempotency_key_header)):
     """Atomic replace per (trip_id, day_number): delete existing for that day
     and re-insert in the provided order.  Use this from the map page after
     resolving all places.
@@ -65,15 +77,20 @@ def bulk_replace_trip_places(items: list[TripPlaceCreate],
     if any(i.trip_id != trip_id for i in items):
         raise HTTPException(400, "All items must share trip_id")
     _assert_owns_trip(db, current, trip_id)
-    db.query(TripPlace).filter(TripPlace.trip_id == trip_id, TripPlace.day_number.in_(days)).delete(synchronize_session=False)
-    out = []
-    for it in items:
-        tp = TripPlace(**it.model_dump())
-        db.add(tp); out.append(tp)
-    db.commit()
-    for tp in out:
-        db.refresh(tp)
-    return [TripPlacePublic.model_validate(tp) for tp in out]
+
+    def _replace() -> list[TripPlacePublic]:
+        db.query(TripPlace).filter(TripPlace.trip_id == trip_id, TripPlace.day_number.in_(days)).delete(synchronize_session=False)
+        out = []
+        for it in items:
+            tp = TripPlace(**it.model_dump())
+            db.add(tp); out.append(tp)
+        db.flush()
+        for tp in out:
+            db.refresh(tp)
+        return [TripPlacePublic.model_validate(tp) for tp in out]
+
+    return run_idempotent(db, key=idem_key, scope=f"u:{current.id}", endpoint="POST /api/trip-places/bulk",
+                          fingerprint=[i.model_dump(mode="json") for i in items], status_code=201, create=_replace)
 
 
 @router.get("/trip-places", response_model=list[TripPlacePublic])
@@ -93,13 +110,16 @@ def list_trip_places(trip_id: int = Query(...),
 def update_trip_place(place_id: int, payload: TripPlaceUpdate,
                       db: Session = Depends(get_db),
                       current: User = Depends(get_current_user)):
-    tp = db.query(TripPlace).filter(TripPlace.id == place_id).first()
-    if not tp:
-        raise HTTPException(404, "TripPlace not found")
-    _assert_owns_trip(db, current, tp.trip_id)
+    tp = _owned_place(db, current, place_id)
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(tp, k, v)
-    db.commit(); db.refresh(tp)
+    try:
+        db.commit()
+    except IntegrityError:
+        # 같은 날·같은 순서에 다른 장소가 있다 — 서버 오류(500) 대신 무엇이 겹쳤는지 알려 준다
+        db.rollback()
+        raise HTTPException(409, "같은 날 같은 순서에 다른 장소가 있어요. 순서를 바꾼 뒤 다시 저장해 주세요.")
+    db.refresh(tp)
     return TripPlacePublic.model_validate(tp)
 
 
@@ -107,8 +127,5 @@ def update_trip_place(place_id: int, payload: TripPlaceUpdate,
 def delete_trip_place(place_id: int,
                       db: Session = Depends(get_db),
                       current: User = Depends(get_current_user)):
-    tp = db.query(TripPlace).filter(TripPlace.id == place_id).first()
-    if not tp:
-        raise HTTPException(404, "TripPlace not found")
-    _assert_owns_trip(db, current, tp.trip_id)
+    tp = _owned_place(db, current, place_id)
     db.delete(tp); db.commit()

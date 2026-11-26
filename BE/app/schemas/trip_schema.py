@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import Optional, Any
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 
 class TripBase(BaseModel):
@@ -16,6 +16,12 @@ class TripBase(BaseModel):
     budget: Optional[float] = None
     currency: Optional[str] = "KRW"
     trip_data: Optional[dict[str, Any]] = None
+
+    @model_validator(mode="after")
+    def _dates_in_order(self):
+        if self.start_date and self.end_date and self.start_date > self.end_date:
+            raise ValueError("출발일이 귀국일보다 늦어요. 날짜를 다시 골라 주세요.")
+        return self
 
 
 class TripCreate(TripBase): ...
