@@ -14,6 +14,16 @@
   var hideNative = function () {
     try { window.Capacitor.Plugins.SplashScreen.hide({ fadeOutDuration: 120 }).catch(function () {}); } catch (e) { /* 웹 */ }
   };
+  // 웹에서는 덮개가 헤더·제목·검색을 가리지 않게 비행 연출을 쓰지 않는다(항로 움직임은 홈 지구본이 맡는다).
+  // 앱(Capacitor)만 이륙 장면을 보여 준다. 웹은 덮개를 바로 걷어 제목·검색을 처음부터 누를 수 있게 한다.
+  var native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  if (host && !native) {
+    host.classList.add('is-web');
+    // 스타일과 기본 화면(HTML)이 준비되는 때 — 홈 데이터를 기다리지 않는다
+    var lift = function () { if (host.parentNode) host.parentNode.removeChild(host); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', lift, { once: true }); else lift();
+    return;
+  }
   if (!ctx || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
   var INTRO = 0.55;                 // 항로가 그려지는 시간(초)

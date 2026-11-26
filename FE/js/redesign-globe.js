@@ -40,6 +40,10 @@ export const CITY_POS = {
 const HUBS = ['파리', '뉴욕', '런던', '시드니', '두바이', '로스앤젤레스', '로마', '이스탄불', '바르셀로나', '카이로', '케이프타운', '리우', '멕시코시티', '호놀룰루', '밴쿠버', '오클랜드', '델리', '싱가포르', '발리', '레이캬비크', '나이로비', '리마'];
 const SKIP = new Set(['하와이']);              // 호놀룰루와 같은 자리 — 코스가 있을 때만 쓴다
 const HOME = '서울';
+// 이름을 늘 보여 주는 주요 도시 — 나머지는 점만 찍고, 누르거나(이름표) 도시 바로가기·검색으로 찾는다.
+// 서울 옆의 제주·부산·오사카는 이름이 서로 겹치므로 서울·도쿄만 이름을 단다.
+const LABELS_NARROW = new Set(['도쿄', '방콕', '싱가포르', '타이베이', '홍콩', '하노이', '발리', '두바이', '델리', '파리', '런던', '로마', '뉴욕', '로스앤젤레스', '시드니', '호놀룰루', '카이로', '이스탄불', '리우', '멕시코시티', '케이프타운', '울란바토르', '베이징', '모스크바']);
+const LABELS_WIDE = new Set([...LABELS_NARROW, '상하이', '마닐라', '세부', '다낭', '호치민', '쿠알라룸푸르', '푸켓', '치앙마이', '바르셀로나', '프라하', '밴쿠버', '오클랜드', '리마', '나이로비', '레이캬비크', '타슈켄트', '알마티', '카트만두', '삿포로']);
 const D = Math.PI / 180;
 
 function _inside(la, lo, P) {
@@ -175,13 +179,14 @@ export function initGlobe(canvas, { cities = [], onCity } = {}) {
     // 이름표 — 먼저 있던 이름이 자리를 지키고, 새 이름은 빈 곳에만. 나타나고 사라질 때는 서서히
     const shown = new Set();
     const order = marks.map((m, k) => ({ m, k: m.n === HOME ? -2 : m.n === hover ? -1 : k - ((seen.get(m.n)?.a || 0) > .4 ? 12 : 0) })).sort((a, b) => a.k - b.k);
+    const labelOk = (n) => n === HOME || n === hover || (w < 768 ? LABELS_NARROW : LABELS_WIDE).has(n);
     order.forEach(({ m: { n, x: X, y: Y, z } }) => {
       const tw = ctx.measureText(n).width, g = s * 3.6 + 4;
       const st8 = seen.get(n) || { a: 0, p: 0 };
       const spots = [[X + g, Y], [X - g - tw, Y], [X - tw / 2, Y + fs * 1.2], [X - tw / 2, Y - fs * 1.2]];
       const pickOrder = [st8.p, 0, 1, 2, 3].filter((v, i, a) => a.indexOf(v) === i);
       let box = null;
-      for (const p of pickOrder) {
+      for (const p of (labelOk(n) ? pickOrder : [])) {
         const [lx, ly] = spots[p];
         const b = [lx - 4, ly - fs * .68, lx + tw + 4, ly + fs * .68];
         if (b[0] < 6 || b[2] > w - 6 || b[3] > h - 6 || b[1] < cy - R - 4 || boxes.some(o => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1])) continue;

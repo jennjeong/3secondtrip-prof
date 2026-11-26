@@ -115,6 +115,8 @@ html.theme-dark, html.theme-dark body { background: #111418; }
 #bootSplash.is-flying { background: none; }
 #bootSplash.is-flying img { visibility: hidden; }
 #bootSplash.is-done { opacity: 0; pointer-events: none; }
+#bootSplash.is-web { pointer-events: none; transition-duration: .12s; }
+#bootSplash.is-web img { display: none; }   /* 웹: 가운데 로고가 헤더 로고와 겹쳐 보이지 않게 */
 @keyframes bootSplashOut { to { opacity: 0; visibility: hidden; } }   /* 스크립트가 실패해도 6초 뒤 사라짐 */
 </style>
 <script>
