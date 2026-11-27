@@ -14,7 +14,7 @@ import subprocess
 from html import escape
 from pathlib import Path
 
-SITE = "https://3secondtrip-prof.vercel.app"
+SITE = "https://3secondtrip.com"
 FE = Path(__file__).resolve().parent.parent
 
 # BE/app/db/seed.py 의 예시 코스와 같은 목록 (slug, 도시, 나라, 일수, 제목, 여행 스타일)

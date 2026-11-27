@@ -13,16 +13,20 @@ import { closeTopDialog } from './redesign-dialog.js';
 const cap = (typeof window !== 'undefined') ? window.Capacitor : null;
 export const NATIVE = !!cap?.isNativePlatform?.();
 export const PLATFORM = NATIVE ? cap.getPlatform() : 'web';
-export const PUBLIC_WEB = 'https://3secondtrip-prof.vercel.app/';
+export const PUBLIC_WEB = 'https://3secondtrip.com/';
+/** 운영 주소(새 도메인·www·Vercel 기본 주소)에서는 공유 링크를 대표 주소로 통일한다. 로컬 개발 주소는 그대로 둔다. */
+const ON_PUBLIC_HOST = typeof location !== 'undefined'
+  && /(^|\.)3secondtrip\.com$|\.vercel\.app$/.test(location.hostname);
+const USE_PUBLIC = NATIVE || ON_PUBLIC_HOST;
 const P = () => cap?.Plugins || {};
 
-/** 공유용 주소 — 앱이면 공개 웹 주소, 웹이면 지금 주소 기준. hash 는 '#page=...' 형태. */
+/** 공유용 주소 — 앱·운영 웹이면 대표 주소, 로컬 개발이면 지금 주소 기준. hash 는 '#page=...' 형태. */
 export function publicLink(hash = '') {
-  return NATIVE ? PUBLIC_WEB + hash : `${location.origin}${location.pathname}${hash}`;
+  return USE_PUBLIC ? PUBLIC_WEB + hash : `${location.origin}${location.pathname}${hash}`;
 }
 /** 공개 웹의 다른 경로(예: 'trips/tokyo.html') */
 export function publicPath(path) {
-  return NATIVE ? PUBLIC_WEB + path.replace(/^\//, '') : `${location.origin}/${path.replace(/^\//, '')}`;
+  return USE_PUBLIC ? PUBLIC_WEB + path.replace(/^\//, '') : `${location.origin}/${path.replace(/^\//, '')}`;
 }
 
 /** 기기 공유 시트. 공유했거나 사용자가 닫았으면 true, 공유 기능이 없으면 false(호출한 쪽이 복사로 대신). */
