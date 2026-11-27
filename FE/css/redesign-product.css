@@ -2152,5 +2152,9 @@ body:has(#homePage.is-active) #appTopbar a.topbar-brand { padding: 0 !important;
 }
 /* 넓은 화면은 일정과 지도가 나란히 보이므로 아래 ‘지도로 보기’ 전환은 쓰지 않는다 */
 @media (min-width: 1024px) { #schedulePage #mapSec { display: none !important; } }
+/* 버튼 모서리 — 모든 버튼을 둥근 알약 모양으로(입력칸·카드는 그대로) */
+/* 페이지별 id 규칙(#schedulePage #scheduleActions …)보다 앞서도록 :is 안에 쓰지 않는 id 넷으로 우선순위를 올린다 */
+html body :is(.btn, .ts-go, .hw-go, .social-btn, .action-btn, .chip, .chip-mini, .dest-chip, .stepper button, #_r#_r#_r#_r) { border-radius: 999px !important; }
+html body .bottom-tab-nav .tab-button:focus-visible { border-radius: 999px !important; }
 /* POLISH-END */
 }
