@@ -2156,5 +2156,13 @@ body:has(#homePage.is-active) #appTopbar a.topbar-brand { padding: 0 !important;
 /* 페이지별 id 규칙(#schedulePage #scheduleActions …)보다 앞서도록 :is 안에 쓰지 않는 id 넷으로 우선순위를 올린다 */
 html body :is(.btn, .ts-go, .hw-go, .social-btn, .action-btn, .chip, .chip-mini, .dest-chip, .stepper button, #_r#_r#_r#_r) { border-radius: 999px !important; }
 html body .bottom-tab-nav .tab-button:focus-visible { border-radius: 999px !important; }
+/* 입력칸 모서리 — 버튼과 같은 알약 모양. 여러 줄 입력은 둥근 사각형, 글자가 곡선에 붙지 않게 안쪽 여백을 넓힌다 */
+html body :is(.form-input, .ts-field, .search-card, .date-trigger, .budget-input-wrap, .city-search-wrap input, #_r#_r#_r#_r):not(textarea, .form-textarea) { border-radius: 999px !important; }
+html body :is(textarea.form-input, .form-textarea, #_r#_r#_r#_r) { border-radius: 20px !important; }
+html body :is(input.form-input, select.form-input, .date-trigger, #_r#_r#_r#_r) { padding-left: 20px !important; }
+html body :is(textarea.form-input, .form-textarea, #_r#_r#_r#_r) { padding-left: 18px !important; padding-right: 18px !important; }
+html body :is(.acct-field--float input.form-input, #_r#_r#_r#_r) { padding-left: 24px !important; }
+html body :is(.acct-field--float .form-label, #_r#_r#_r#_r) { left: 20px !important; }
+html body :is(#explorePage .search-card, #_r#_r#_r#_r) { padding-left: 20px !important; }
 /* POLISH-END */
 }
