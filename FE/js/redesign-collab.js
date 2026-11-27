@@ -30,7 +30,7 @@ const VIEW_KEY = 'tst_collab_view_v1';   // 내가 만든 링크의 보기 전�
 // 기기마다 다른 값(내 계정의 저장 번호)은 공유 데이터에 싣지 않는다 — 실으면 받은 사람 계정에 사본이 계속 생긴다.
 function _strip(g) {
   if (!g) return g;
-  const { savedScheduleId, sharedView, ...rest } = g;
+  const { savedScheduleId, sharedView, viewOnly, ...rest } = g;
   return rest;
 }
 function _json(g) { return JSON.stringify(_strip(g)); }
@@ -98,7 +98,7 @@ function _applyRemote(remote) {
   // 내 계정에 저장해 둔 같은 여행이면 내 저장 번호를 그대로 쓴다.
   if (cur?.savedScheduleId && (cur === sharedObj || (cur.tripUid && cur.tripUid === data.tripUid))) data.savedScheduleId = cur.savedScheduleId;
   lastSynced = _json(data);
-  if (readOnly) data.sharedView = true;     // 보기 전용 — 편집 버튼을 감추고 올리지 않는다
+  if (readOnly) { data.sharedView = true; data.viewOnly = true; }     // 보기 전용 — 편집·다시 만들기를 감추고 올리지 않는다
   appState.generated = data;
   sharedObj = data;
   rerender();

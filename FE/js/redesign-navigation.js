@@ -193,6 +193,17 @@ function _parseHash() {
 
 /* ============ Setup ============ */
 export function initNavigation() {
+  // 홈 — 내려가 있는 동안 로고가 카드 위에 겹치지 않게 숨긴다(맨 위 근처에서 다시 보인다)
+  const homeScroll = document.querySelector('#homePage .page-scroll');
+  const topbarEl = document.getElementById('appTopbar');
+  if (homeScroll && topbarEl) {
+    let raf = 0;
+    homeScroll.addEventListener('scroll', () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = 0; topbarEl.classList.toggle('is-scrolled-away', homeScroll.scrollTop > 120); });
+    }, { passive: true });
+    document.addEventListener('redesign:nav', (e) => { if (e.detail?.page !== 'home') topbarEl.classList.remove('is-scrolled-away'); });
+  }
   // Maps the My page's data-my-nav tiles to actual destination pages.
   // (data-my-nav exists on tiles like "저장한 일정", "내 후기", etc.  Before
   //  this handler existed, clicking them did nothing.)

@@ -2157,16 +2157,30 @@ body:has(#homePage.is-active) #appTopbar a.topbar-brand { padding: 0 !important;
 html body :is(.btn, .ts-go, .hw-go, .social-btn, .action-btn, .chip, .chip-mini, .dest-chip, .stepper button, #_r#_r#_r#_r) { border-radius: 999px !important; }
 html body .bottom-tab-nav .tab-button:focus-visible { border-radius: 999px !important; }
 /* 입력칸 모서리 — 버튼과 같은 알약 모양. 여러 줄 입력은 둥근 사각형, 글자가 곡선에 붙지 않게 안쪽 여백을 넓힌다 */
-html body :is(.form-input, .ts-field, .search-card, .date-trigger, .budget-input-wrap, .city-search-wrap input, #_r#_r#_r#_r):not(textarea, .form-textarea) { border-radius: 999px !important; }
+html body :is(.form-input, .ts-field, .search-card, .date-trigger, .city-search-wrap input, #_r#_r#_r#_r):not(textarea, .form-textarea, .budget-input) { border-radius: 999px !important; }
 html body :is(textarea.form-input, .form-textarea, #_r#_r#_r#_r) { border-radius: 20px !important; }
-html body :is(input.form-input, select.form-input, .date-trigger, #_r#_r#_r#_r) { padding-left: 20px !important; }
+html body :is(input.form-input, select.form-input, .date-trigger, #_r#_r#_r#_r):not(.budget-input) { padding-left: 20px !important; }
+/* 예산 큰 숫자 입력은 밑줄형 — 알약·안쪽 여백 규칙에서 뺀다 */
 html body :is(textarea.form-input, .form-textarea, #_r#_r#_r#_r) { padding-left: 18px !important; padding-right: 18px !important; }
-html body :is(.acct-field--float input.form-input, #_r#_r#_r#_r) { padding-left: 24px !important; }
-html body :is(.acct-field--float .form-label, #_r#_r#_r#_r) { left: 20px !important; }
+/* 떠 있는 이름표 글자(왼쪽 18 + 안쪽 6)와 입력 글자(24)를 같은 세로선에 맞춘다 */
+html body :is(.acct-field--float input.form-input, #_r#_r#_r#_r#_r) { padding-left: 24px !important; }
+html body :is(.acct-field--float .form-label, #_r#_r#_r#_r#_r) { left: 18px !important; }
 html body :is(#explorePage .search-card, #_r#_r#_r#_r) { padding-left: 20px !important; }
 /* 제목 글씨 — 사용자 선호에 따라 얇게. 큰 화면 제목은 300, 구역·시트 제목은 400(크기로 위계를 둔다) */
 html body :is(h2, h3, .section-title, .hw-title, .sub-name, .cost-summary-title, .my-group-h, #_r#_r#_r#_r):not(.sr-only) { font-weight: 400 !important; }
 html body :is(h1, .nh-title, .page-title, .acct-title, .create-q, .step-h, .after-h, .sub-hero-title, #_r#_r#_r#_r):not(.sr-only) { font-weight: 300 !important; }
 html body :is(.nh-title span, .page-title span, .acct-title span, h1 span, #_r#_r#_r#_r) { font-weight: inherit !important; }
+/* 홈 맨 아래 안내 줄 — 다른 구역과 같은 좌우 여백(넓이 100% - 32px) */
+html body #homePage .home-foot.home-foot { width: min(1120px, 100% - 32px) !important; margin: 40px auto 0 !important; }
+/* 홈을 내리면 로고가 카드·글 위에 겹쳐 보였다 — 내려가 있는 동안은 로고를 숨기고, 맨 위 근처에서 다시 보인다 */
+@media (max-width: 1023px) {
+  html body:has(#homePage.is-active) #appTopbar.app-topbar.is-scrolled-away { opacity: 0 !important; pointer-events: none !important; transform: translateY(-8px) !important; }
+  html body #appTopbar.app-topbar { transition: opacity 160ms ease, transform 160ms ease !important; }
+}
+@media (prefers-reduced-motion: reduce) { html body #appTopbar.app-topbar { transition: none !important; } }
+/* 비회원이 공유받은 일정 등 숨은 탭(내 일정)의 화면에 있을 때 — 활성 표시가 엉뚱하게 ‘로그인’ 위에 서지 않게 숨긴다 */
+@media (max-width: 1023px) {
+  :root[data-auth="guest"] .bottom-tab-nav:has(.tab-button:nth-child(n+5).is-active)::before { opacity: 0 !important; }
+}
 /* POLISH-END */
 }

@@ -196,6 +196,13 @@ export function renderSchedule() {
   if (cost) cost.hidden = !!g.hideCost;
   const sb = $('#sharedBanner');
   if (sb) sb.hidden = !g.sharedView;
+  // 보기 전용 링크로 연 일정 — 보낸 사람만 고칠 수 있으니 편집·다시 만들기를 감추고 안내를 바꾼다
+  const sbText = sb?.querySelector('p, span') || sb;
+  if (sb && g.sharedView) {
+    if (!sb.dataset.copyText) sb.dataset.copyText = sbText.textContent;
+    sbText.textContent = g.viewOnly ? '보기 전용으로 공유받은 일정이에요. 보낸 사람만 고칠 수 있어요. ‘일정 저장’으로 내 계정에 보관해 둘 수 있어요.' : sb.dataset.copyText;
+  }
+  ['#btnEditToggle', '#btnRegen'].forEach(s => { const b = $(s); if (b) b.hidden = !!g.viewOnly; });
   if (cta) cta.hidden = false;
   if (review) review.hidden = false;
 
@@ -547,7 +554,7 @@ function _renderTimeline(g) {
         el('span', { class: 'sc-num', 'aria-hidden': 'true' }, String(ai + 1)),
       ]),
       el('div', { class: 'schedule-card-main' }, [
-        editMode ? null : el('button', {
+        editMode || g.viewOnly ? null : el('button', {     // 보기 전용 링크는 장소별 편집·고정도 숨긴다
           type: 'button', class: 'sc-more', 'aria-label': `${placeName} 더보기 — 편집·고정`, 'aria-expanded': 'false',
           'aria-controls': `scAct${ai}`,
           onclick: (e) => { e.stopPropagation(); _toggleCardActions(e.currentTarget.closest('.schedule-card'), e.currentTarget); },

@@ -134,6 +134,7 @@ export function initAuth(state) {
     if (e.target.value.length === 6) _verifyCode();
   });
   $('#verifyResend')?.addEventListener('click', _resend);
+  ['#suEmail', '#suNick'].forEach(s => $(s)?.addEventListener('input', _saveDraft));
   $('#verifyEdit')?.addEventListener('click', () => _step('info', { focus: '#suEmail' }));
   $('#signupContinue')?.addEventListener('click', () => _goReturn());
 
@@ -166,6 +167,12 @@ export function initAuth(state) {
 
   _renderProfile();
   _initFeatures();
+  _restoreDraft();      // 새로고침으로 가입 화면에 바로 들어온 경우(첫 이동 알림이 이보다 먼저 지나간다)
+  // 새로고침 직후 가입 화면이면 단계(정보 입력·이메일 인증)도 되살린다
+  try {
+    const q = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+    if (q.get('page') === 'signup') _enterSignup({ step: q.get('step') || undefined });
+  } catch (_) {}
 }
 
 /* ============ 로그인 뒤 돌아갈 곳 ============ */
@@ -235,11 +242,40 @@ function _step(step, { focus } = {}) {
     if (li.dataset.step === step) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
   });
   if (step === 'verify') _paintVerify();
+  if (step === 'info') {          // 인증 단계에서 돌아오면 보낸 주소·닉네임을 그대로 채운다
+    const p = _ss.get(SIGNUP_KEY) || _ss.get(DRAFT_KEY) || {};
+    [['#suEmail', p.email], ['#suNick', p.nickname]].forEach(([sel, v]) => {
+      const e = $(sel);
+      if (e && !e.value && v) { e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); }
+    });
+  }
+  // 주소의 단계 표시를 화면과 맞춘다(새로고침해도 같은 단계가 열린다)
+  try {
+    const q = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+    if (q.get('page') === 'signup') {
+      if (step === 'verify') q.set('step', 'verify'); else q.delete('step');
+      const h = '#' + q.toString();
+      if (h !== location.hash) history.replaceState(history.state, '', h);
+    }
+  } catch (_) {}
   requestAnimationFrame(() => { const f = focus ? $(focus) : (step === 'verify' ? $('#verifyCode') : step === 'done' ? $('#signupContinue') : null); f?.focus(); });
+}
+
+/* 가입 초안 — 새로고침·앱 전환 뒤에도 이메일·닉네임만 되살린다(비밀번호·동의는 저장하지 않는다) */
+const DRAFT_KEY = 'tst_signup_draft_v1';
+function _saveDraft() { _ss.set(DRAFT_KEY, { email: $('#suEmail')?.value || '', nickname: $('#suNick')?.value || '' }); }
+function _restoreDraft() {
+  const d = _ss.get(DRAFT_KEY);
+  if (!d) return;
+  [['#suEmail', d.email], ['#suNick', d.nickname]].forEach(([s, v]) => {
+    const e = $(s);
+    if (e && !e.value && v) { e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); }
+  });
 }
 
 function _enterSignup(meta) {
   if (appState.currentUser && _signupStep !== 'done') { navigate('my', { replace: true }); return; }
+  _restoreDraft();
   const pending = _ss.get(SIGNUP_KEY);
   if (_signupStep === 'done' && appState.currentUser) _step('done');
   else if ((meta?.step === 'verify' || _signupStep === 'verify') && pending) _step('verify');
@@ -271,7 +307,7 @@ async function _signup() {
   _busy(btn, true, '보내는 중…');
   try {
     const r = await api.signup({ email, password: pw, nickname: nick, agree_terms: true, agree_privacy: true, agree_age: true });
-    _ss.set(SIGNUP_KEY, { email: r?.email || email, nickname: nick, at: Date.now(), resendAt: Date.now() + (Number(r?.resend_after) || 0) * 1000, devCode: r?.dev_code || null, sent: !!r?.sent });
+    _ss.set(SIGNUP_KEY, { email: r?.email || email, nickname: nick, at: Date.now(), resendAt: Date.now() + (Number(r?.resend_after) || 0) * 1000, devCode: r?.dev_code || null, sent: !!r?.sent, sendError: r?.send_error || null });
     $('#suPw').value = ''; $('#suPw2').value = '';       // 비밀번호는 인증 단계로 가져가지 않는다
     _step('verify');
   } catch (e) {
@@ -292,12 +328,17 @@ let _resendTimer = 0;
 function _paintVerify() {
   const p = _ss.get(SIGNUP_KEY) || {};
   const lead = $('#verifyLead');
+  const failed = !!p.sendError && !p.devCode;
   if (lead) lead.replaceChildren(
-    document.createTextNode('아래 주소로 6자리 인증 코드를 보냈어요. 15분 동안 쓸 수 있어요.'),
+    document.createTextNode(failed ? '아래 주소로 인증 메일을 보내지 못했어요. 입력한 내용은 그대로 있으니 ‘코드 다시 받기’로 다시 보내 주세요.'
+      : '아래 주소로 6자리 인증 코드를 보냈어요. 15분 동안 쓸 수 있어요.'),
     Object.assign(document.createElement('strong'), { className: 'acct-mail', textContent: p.email || '' }),
   );
   const hint = $('#verifyHint');
-  if (hint) hint.textContent = p.devCode
+  if (hint) hint.textContent = failed
+    ? (p.sendError === 'network' ? '메일 서버에 연결하지 못했어요. 잠시 뒤 다시 보내 주세요.'
+      : '메일 서비스가 발송을 받아 주지 않았어요. 계속되면 마이 › 의견 보내기로 알려 주세요.')
+    : p.devCode
     ? `개발용 서버라 메일 대신 여기에 코드를 보여 드려요: ${p.devCode}`
     : '메일이 안 보이면 스팸함을 확인하거나 코드를 다시 받아 주세요. 다른 기기에서는 메일 속 링크를 눌러도 인증돼요.';
   _tickResend();
@@ -346,6 +387,7 @@ async function _verified(res) {
   const intent = peekPendingIntent();
   if (intent) setPendingIntent({ ...intent, viaSignup: true });   // 저장하러 왔다면 가입 완료를 알리고 곧장 그 일정으로
   _ss.set(SIGNUP_KEY, null);
+  _ss.set(DRAFT_KEY, null);
   $('#verifyCode').value = '';
   _step('done');
   await refreshCurrentUser({ stay: true });
@@ -364,10 +406,11 @@ async function _resend() {
   _resendBusy = true;
   try {
     const r = await api.resendVerification(p.email);
-    _ss.set(SIGNUP_KEY, { ...p, resendAt: Date.now() + (Number(r?.resend_after) || 60) * 1000, devCode: r?.dev_code || null });
+    const sendError = r?.send_error || null;
+    _ss.set(SIGNUP_KEY, { ...p, resendAt: Date.now() + (sendError ? 0 : (Number(r?.resend_after) || 60) * 1000), devCode: r?.dev_code || null, sendError });
     _err('verifyErr', '');
     _paintVerify();
-    showToast('새 인증 코드를 보냈어요. 이전 코드는 더 쓸 수 없어요');
+    showToast(sendError ? '인증 메일을 다시 보내지 못했어요. 잠시 뒤 다시 시도해 주세요' : '새 인증 코드를 보냈어요. 이전 코드는 더 쓸 수 없어요');
   } catch (e) {
     const wait = Number(_detail(e)?.retry_after) || 0;
     if (wait) _ss.set(SIGNUP_KEY, { ...p, resendAt: Date.now() + wait * 1000 });

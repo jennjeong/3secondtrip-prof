@@ -153,7 +153,8 @@ export function renderReviewPreview() {
   const wrap = $('#reviewPreviewList');
   const sec = $('#reviewPreviewSection');
   if (!wrap || !sec) return;
-  const list = _allReviews().slice(0, 4);
+  // 홈에서는 실제로 쓴 후기만 — 예시 후기는 실제 후기처럼 읽힐 수 있어 실후기가 생길 때까지 섹션을 숨긴다
+  const list = _allReviews().filter(r => !r.sample).slice(0, 4);
   if (list.length === 0) { sec.hidden = true; return; }
   sec.hidden = false;
   wrap.innerHTML = '';
@@ -167,7 +168,7 @@ function _itemEl(r) {
       r.sample ? el('span', { class: 'rv-sample' }, '예시') : null,
     ]),
     el('div', { class: 'rv-text' }, r.text),
-    el('div', { class: 'rv-meta' }, `${r.city || ''} · ${(r.tags || []).join(' · ') || ''} · ${r.at || ''}`),
+    el('div', { class: 'rv-meta' }, [r.city, (r.tags || []).join(' · '), r.sample ? '이용 예시' : r.at].filter(Boolean).join(' · ')),
   ]);
 }
 
@@ -178,6 +179,6 @@ function _previewEl(r) {
       r.sample ? el('span', { class: 'rv-sample' }, '예시') : null,
     ]),
     el('div', { class: 'rv-text' }, r.text),
-    el('div', { class: 'rv-meta' }, `${r.city || ''} · ${r.at || ''}`),
+    el('div', { class: 'rv-meta' }, [r.city, r.sample ? '이용 예시' : r.at].filter(Boolean).join(' · ')),
   ]);
 }
