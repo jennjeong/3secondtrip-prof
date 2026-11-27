@@ -66,9 +66,16 @@ def issue(db: Session, user: User) -> dict:
         f"다른 기기에서 열었다면 이 링크를 눌러도 인증돼요.\n{url}\n\n"
         "직접 가입하지 않았다면 이 메일을 무시해 주세요. 인증하지 않은 계정은 쓸 수 없어요."
     )
-    sent = mail_service.send(user.email, "[3초 여행] 이메일 인증 코드", body)
+    error = mail_service.send_detailed(user.email, "[3초 여행] 이메일 인증 코드", body)
+    sent = error == ""
     dev_code = code if (not sent and mail_service.is_dev()) else None
-    return {"sent": sent, "dev_code": dev_code, "expires_in": int(CODE_TTL.total_seconds())}
+    if not sent and not dev_code:
+        # 전달되지 않은 코드는 쓸 수 없으니 지운다 — 60초를 기다리지 않고 바로 다시 보낼 수 있다
+        db.query(EmailVerification).filter(EmailVerification.user_id == user.id, EmailVerification.link_hash == _hash(link)) \
+            .delete(synchronize_session=False)
+        db.commit()
+    return {"sent": sent, "dev_code": dev_code, "send_error": None if sent or dev_code else error,
+            "expires_in": int(CODE_TTL.total_seconds())}
 
 
 def verify_code(db: Session, user: User, code: str) -> str:

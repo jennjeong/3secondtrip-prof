@@ -158,3 +158,64 @@ def test_stale_unverified_signups_are_purged(client):
     db = SessionLocal()
     assert db.query(User).filter(User.email == email).count() == 0
     db.close()
+
+
+def test_provider_rejection_is_reported_and_can_be_retried_at_once(client, monkeypatch):
+    """운영처럼 메일이 설정됐지만 제공자가 거절하면: 이유를 알려 주고, 60초를 기다리지 않고 다시 보낼 수 있다."""
+    from app.services import mail_service
+    calls = []
+    monkeypatch.setattr(mail_service, "configured", lambda: True)
+    monkeypatch.setattr(mail_service, "is_dev", lambda: False)
+    monkeypatch.setattr(mail_service, "send_detailed", lambda *a, **k: calls.append(1) or "rejected")
+    email, nick = _new("f")
+    r = _signup(client, email, nick)
+    assert r.status_code == 202 and r.json()["sent"] is False
+    assert r.json()["send_error"] == "rejected" and r.json()["dev_code"] is None and r.json()["resend_after"] == 0
+    r = client.post("/users/verify-email/resend", json={"email": email})
+    assert r.status_code == 202 and r.json()["send_error"] == "rejected" and r.json()["resend_after"] == 0
+    # 제공자가 다시 받아 주면 정상 발송, 그 뒤엔 60초 대기
+    monkeypatch.setattr(mail_service, "send_detailed", lambda *a, **k: "")
+    r = client.post("/users/verify-email/resend", json={"email": email})
+    assert r.status_code == 202 and r.json()["sent"] is True and r.json()["resend_after"] > 0
+    assert client.post("/users/verify-email/resend", json={"email": email}).status_code == 429
+    assert len(calls) == 2
+
+
+def test_mail_send_reasons(monkeypatch):
+    from app.services import mail_service
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "resend_api_key", "")
+    assert mail_service.send_detailed("a@example.com", "s", "t") == "not_configured"
+    monkeypatch.setattr(settings, "resend_api_key", "k"); monkeypatch.setattr(settings, "mail_from", "x <a@b.c>")
+
+    class R:
+        def __init__(self, code): self.status_code = code
+    monkeypatch.setattr(mail_service.httpx, "post", lambda *a, **k: R(403))
+    assert mail_service.send_detailed("a@example.com", "s", "t") == "rejected"
+    def boom(*a, **k): raise TimeoutError()
+    monkeypatch.setattr(mail_service.httpx, "post", boom)
+    assert mail_service.send_detailed("a@example.com", "s", "t") == "network"
+    monkeypatch.setattr(mail_service.httpx, "post", lambda *a, **k: R(200))
+    assert mail_service.send_detailed("a@example.com", "s", "t") == ""
+
+
+def test_features_shows_mail_status_without_secrets(client):
+    f = client.get("/api/features").json()
+    assert set(f["email"]) == {"configured", "link_base"} and f["email"]["link_base"].startswith("http")
+
+
+def test_expired_code_is_refused_and_resend_recovers(client):
+    from datetime import datetime, timedelta
+    from app.models.email_verification import EmailVerification
+    email, nick = _new("x")
+    code = _signup(client, email, nick).json()["dev_code"]
+    db = SessionLocal()
+    u = db.query(User).filter(User.email == email).one()
+    row = db.query(EmailVerification).filter(EmailVerification.user_id == u.id).order_by(EmailVerification.id.desc()).first()
+    row.expires_at = datetime.utcnow() - timedelta(seconds=1)
+    row.created_at = datetime.utcnow() - timedelta(minutes=16)
+    db.commit(); db.close()
+    r = client.post("/users/verify-email", json={"email": email, "code": code})
+    assert r.status_code == 400 and r.json()["detail"]["code"] == "expired"
+    new = client.post("/users/verify-email/resend", json={"email": email}).json()["dev_code"]
+    assert client.post("/users/verify-email", json={"email": email, "code": new}).status_code == 200

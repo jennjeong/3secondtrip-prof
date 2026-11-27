@@ -63,8 +63,10 @@ def _replay(row: IdempotencyKey | None, req_hash: str):
 
 
 def run_idempotent(db: Session, *, key: str | None, scope: str, endpoint: str,
-                   fingerprint: Any, status_code: int, create: Callable[[], Any]):
-    """create() 는 db 에 추가·flush 만 하고 응답 객체를 돌려준다. commit 은 여기서 한다."""
+                   fingerprint: Any, status_code: int, create: Callable[[], Any],
+                   alive: Callable[[dict], bool] | None = None):
+    """create() 는 db 에 추가·flush 만 하고 응답 객체를 돌려준다. commit 은 여기서 한다.
+    alive(처음 응답) 가 거짓이면(그 뒤 사용자가 지웠다) 옛 응답 대신 새로 만든다."""
     if key is None:
         result = create()
         db.commit()
@@ -81,6 +83,16 @@ def run_idempotent(db: Session, *, key: str | None, scope: str, endpoint: str,
         ).first()
 
     existing = _find()
+    if existing is not None and alive is not None and existing.status_code is not None \
+            and existing.request_hash == req_hash:
+        try:
+            gone = not alive(json.loads(existing.response_json or "{}"))
+        except Exception:
+            gone = False
+        if gone:              # 처음 만든 것이 지워졌다 — 지워진 것을 돌려주지 않고 새 요청으로 처리
+            db.delete(existing)
+            db.flush()
+            existing = None
     if existing is not None:
         db.commit()   # 정리한 내용만 저장
         return _replay(existing, req_hash)

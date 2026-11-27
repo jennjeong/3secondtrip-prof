@@ -68,7 +68,9 @@ def create_schedule(payload: ScheduleCreate, db: Session = Depends(get_db), curr
         return _to_public(s)
 
     return run_idempotent(db, key=idem_key, scope=f"u:{current.id}", endpoint="POST /schedules",
-                          fingerprint=payload.model_dump(mode="json"), status_code=201, create=_create)
+                          fingerprint=payload.model_dump(mode="json"), status_code=201, create=_create,
+                          alive=lambda body: db.query(Schedule.id).filter(Schedule.id == body.get("id"),
+                                                                          Schedule.user_id == current.id).first() is not None)
 
 
 @router.get("", response_model=list[SchedulePublic])

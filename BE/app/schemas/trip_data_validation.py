@@ -8,6 +8,7 @@
   - 하루 장소 60개 이하, 전체 크기 1MB 이하
 """
 import json
+import re
 from datetime import date
 from typing import Any
 
@@ -33,6 +34,14 @@ def _date_ok(v: Any) -> bool:
         return True
     except ValueError:
         return False
+
+
+_TIME = re.compile(r"^([01]?\d|2[0-3]):[0-5]\d$")
+
+
+def _time_ok(v: Any) -> bool:
+    """시각은 'HH:MM'(00:00~23:59). 비어 있으면 '시각 미정'으로 본다."""
+    return isinstance(v, str) and bool(_TIME.match(v.strip()))
 
 
 def validate_trip_data(data: dict) -> None:
@@ -71,6 +80,24 @@ def validate_trip_data(data: dict) -> None:
             ds = d.get("date")
             if ds and not (lo <= date.fromisoformat(str(ds)) <= hi):
                 raise ValueError(f"{i + 1}일차 날짜가 여행 기간 밖이에요.")
+    if isinstance(days, list):
+        prev = None
+        for i, d in enumerate(days):
+            ds = d.get("date")
+            if ds and _date_ok(ds):
+                cur = date.fromisoformat(str(ds))
+                if prev is not None and cur <= prev:
+                    raise ValueError(f"{i + 1}일차 날짜({ds})가 앞 날과 같거나 빨라요. 날짜 순서대로 하루씩 넣어 주세요.")
+                prev = cur
+            for a in d.get("activities", []) or []:
+                t = a.get("time")
+                if t not in (None, "") and not _time_ok(t):
+                    name = str(a.get("name") or "장소")[:30]
+                    raise ValueError(f"{i + 1}일차 '{name}' 시각({str(t)[:10]})이 올바르지 않아요. 00:00~23:59 사이로 넣어 주세요.")
+        if s and e and _date_ok(s) and _date_ok(e):
+            span = (date.fromisoformat(str(e)) - date.fromisoformat(str(s))).days + 1
+            if len(days) > span:
+                raise ValueError(f"일정이 {len(days)}일인데 여행 기간은 {span}일이에요. 날짜를 늘리거나 남는 날을 지워 주세요.")
     if not _money_ok(data.get("budget")):
         raise ValueError("예산 금액이 올바르지 않아요.")
     people = data.get("people")

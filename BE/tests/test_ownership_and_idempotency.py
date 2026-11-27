@@ -263,3 +263,58 @@ def test_place_order_clash_is_409_not_500(client):
     assert r.status_code == 409
     assert client.patch(f"/api/trip-places/{rows[1]['id']}", json={"place_order": 0}, headers=h).status_code == 422
     assert client.patch(f"/api/trip-places/{rows[1]['id']}", json={"place_order": 3}, headers=h).status_code == 200
+
+
+def test_trip_data_rejects_bad_times_and_day_order():
+    import pytest
+    from app.schemas.trip_data_validation import validate_trip_data
+    base = {"startDate": "2026-12-01", "endDate": "2026-12-03"}
+    bad = [
+        {**base, "days": [{"date": "2026-12-01", "activities": [{"name": "a", "time": "25:99"}]}]},
+        {**base, "days": [{"date": "2026-12-01"}, {"date": "2026-12-01"}]},
+        {**base, "days": [{"date": "2026-12-02"}, {"date": "2026-12-01"}]},
+        {**base, "days": [{"date": None}] * 4},
+    ]
+    for d in bad:
+        with pytest.raises(ValueError):
+            validate_trip_data(d)
+    validate_trip_data({**base, "days": [{"date": "2026-12-01", "activities": [{"name": "a", "time": "9:05"}, {"name": "b", "time": ""}]},
+                                          {"date": "2026-12-02"}]})
+
+
+def test_resave_after_delete_creates_a_new_row_not_a_ghost(client):
+    """저장 → 삭제 → 같은 내용 다시 저장(같은 키): 지워진 일정의 옛 응답을 돌려주면 안 된다."""
+    me = _login(client, "i9")
+    k = _key()
+    body = {"title": "도쿄", "schedule_data": SCHED}
+    a = client.post("/schedules", json=body, headers={**me, **k}).json()
+    assert client.delete(f"/schedules/{a['id']}", headers=me).status_code == 204
+    b = client.post("/schedules", json=body, headers={**me, **k})
+    # 새로 만들었다(옛 응답 재생 아님) — 시험용 SQLite 는 지운 번호를 다시 쓸 수 있어 번호 대신 재생 표시와 실제 존재를 본다
+    assert b.status_code == 201 and "Idempotent-Replayed" not in b.headers
+    assert client.get(f"/schedules/{b.json()['id']}", headers=me).status_code == 200
+    t = client.post("/trips", json=TRIP, headers={**me, **k}).json()
+    assert client.delete(f"/trips/{t['id']}", headers=me).status_code in (200, 204)
+    t2 = client.post("/trips", json=TRIP, headers={**me, **k})
+    assert t2.status_code == 201 and "Idempotent-Replayed" not in t2.headers
+    assert client.get(f"/trips/{t2.json()['id']}", headers=me).status_code == 200
+    # 지우지 않았으면 같은 키 재시도는 여전히 처음 응답을 그대로 돌려준다
+    again = client.post("/trips", json=TRIP, headers={**me, **k})
+    assert again.headers.get("Idempotent-Replayed") == "true" and again.json()["id"] == t2.json()["id"]
+
+
+def test_legacy_share_link_without_view_token_keeps_working(client):
+    """보기 전용 링크가 생기기 전 만든 함께 편집 링크: 그대로 편집되고, 시작 시 보기 전용 토큰이 채워진다."""
+    from app.db.migrate_shared_trip_view_token import ensure_shared_trip_view_token
+    r = client.post("/api/shared-trips", json={"data": SHARED})
+    assert r.status_code in (200, 201), r.text
+    tok = r.json()["token"]
+    with engine.begin() as c:
+        c.execute(text("UPDATE shared_trips SET view_token = NULL WHERE token = :t"), {"t": tok})
+    ensure_shared_trip_view_token()
+    got = client.get(f"/api/shared-trips/{tok}").json()
+    assert got.get("read_only") in (False, None) and got["view_token"]
+    v = client.get(f"/api/shared-trips/{got['view_token']}").json()
+    assert v["read_only"] is True and v["data"] == got["data"]
+    assert client.put(f"/api/shared-trips/{got['view_token']}", json={"data": SHARED, "version": v["version"]}).status_code == 403
+    assert client.put(f"/api/shared-trips/{tok}", json={"data": SHARED, "version": got["version"]}).status_code == 200

@@ -35,6 +35,7 @@ def _pending(db: Session, user: User, issued: dict | None) -> SignupPending:
         email=user.email, expires_in=int(ev.CODE_TTL.total_seconds()),
         resend_after=ev.seconds_until_resend(db, user),
         sent=bool(issued and issued.get("sent")), dev_code=(issued or {}).get("dev_code"),
+        send_error=(issued or {}).get("send_error"),
     )
 
 @router.post("/signup", response_model=SignupPending, status_code=202, dependencies=[Depends(_signup_limit)])
@@ -88,7 +89,9 @@ def resend_verification(payload: ResendVerificationRequest, db: Session = Depend
     if wait > 0:
         raise HTTPException(status_code=429, detail={"code": "too_soon", "message": f"{wait}초 뒤에 다시 받을 수 있어요.", "retry_after": wait})
     issued = ev.issue(db, user)
-    return {"ok": True, "resend_after": int(ev.RESEND_AFTER.total_seconds()), "sent": issued["sent"], "dev_code": issued["dev_code"]}
+    wait_next = 0 if issued.get("send_error") else int(ev.RESEND_AFTER.total_seconds())   # 못 보냈으면 바로 다시 시도
+    return {"ok": True, "resend_after": wait_next, "sent": issued["sent"], "dev_code": issued["dev_code"],
+            "send_error": issued.get("send_error")}
 
 @router.post("/login", response_model=SignupResponse, dependencies=[Depends(_login_limit)])
 def login(payload: PasswordLoginRequest, db: Session = Depends(get_db)):

@@ -21,9 +21,11 @@ def is_dev() -> bool:
     return (settings.app_env or "").lower() in DEV_ENVS
 
 
-def send(to: str, subject: str, text: str) -> bool:
+def send_detailed(to: str, subject: str, text: str) -> str:
+    """보내고 실패 이유를 돌려준다 — '' 성공 | 'not_configured' 설정 없음 |
+    'rejected' 메일 제공자가 거절(키·발신 도메인 확인 필요) | 'network' 연결 실패·시간 초과."""
     if not configured():
-        return False
+        return "not_configured"
     try:
         r = httpx.post(
             "https://api.resend.com/emails",
@@ -31,10 +33,15 @@ def send(to: str, subject: str, text: str) -> bool:
             json={"from": settings.mail_from, "to": [to], "subject": subject, "text": text},
             timeout=10,
         )
-        if r.status_code >= 300:
-            logger.warning("mail failed: status=%s subject=%s", r.status_code, subject)
-            return False
-        return True
-    except Exception:
-        logger.exception("mail failed: subject=%s", subject)
-        return False
+    except Exception as exc:          # 받는 주소·본문은 남기지 않는다
+        logger.warning("mail failed: network error=%s subject=%s", type(exc).__name__, subject)
+        return "network"
+    if r.status_code >= 300:
+        # 401·403: 키가 틀렸거나 발신 도메인이 인증되지 않음, 422: 발신 주소 형식, 429: 한도 초과
+        logger.warning("mail failed: provider status=%s subject=%s", r.status_code, subject)
+        return "rejected"
+    return ""
+
+
+def send(to: str, subject: str, text: str) -> bool:
+    return send_detailed(to, subject, text) == ""

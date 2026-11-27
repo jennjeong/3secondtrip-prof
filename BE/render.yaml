@@ -43,8 +43,12 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: RESEND_API_KEY
+        sync: false             # 가입 인증·비밀번호 재설정 메일(Resend). 없으면 운영에서 이메일 가입이 닫힌다
+      - key: MAIL_FROM
+        sync: false             # 예: 3초 여행 <no-reply@인증한-도메인> — Resend 에서 인증한 도메인 주소여야 한다
       - key: FRONTEND_ORIGIN
-        sync: false             # e.g. https://your-app.netlify.app
+        sync: false             # 메일 속 인증 링크가 여는 화면 주소, 예: https://3secondtrip-prof.vercel.app
       - key: FRONTEND_CALLBACK_PATH
         value: /index-redesign.html
       - key: CORS_ORIGINS

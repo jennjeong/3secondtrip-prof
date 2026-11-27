@@ -79,6 +79,7 @@ class SignupPending(BaseModel):
     resend_after: int
     sent: bool
     dev_code: Optional[str] = None   # 개발 환경 + 메일 미설정일 때만(운영에서는 늘 비어 있다)
+    send_error: Optional[str] = None  # 메일을 못 보냈을 때 이유: rejected | network | not_configured
 
 
 class VerifyEmailRequest(BaseModel):

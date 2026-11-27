@@ -20,15 +20,18 @@
 
 ## 🗂 구성
 
-HTTP로 통신하는 3개의 독립 모듈로 이루어져 있습니다.
+한 Git 저장소(`jennjeong/3secondtrip-prof`)에 아래 폴더가 모두 들어 있습니다.
 
-| 폴더      | 역할              | 스택                                | 로컬 포트 |
-| --------- | ----------------- | ----------------------------------- | -------- |
-| `BE/`     | API 서버          | FastAPI + SQLAlchemy 2 + SQLite     | 8000     |
-| `FE/`     | 사용자 웹앱(SPA)  | 바닐라 ES module JS (빌드 도구 없음) | 8080     |
-| `admin/`  | 관리자 패널       | 정적 HTML/JS                        | 8090     |
+| 폴더      | 역할                         | 스택                                         | 로컬 포트 | 운영 배포 |
+| --------- | ---------------------------- | -------------------------------------------- | -------- | -------- |
+| `BE/`     | API 서버                     | FastAPI + SQLAlchemy 2 (로컬 SQLite / 운영 Postgres) | 8000     | Render (main 푸시 시 자동) |
+| `FE/`     | 사용자 웹앱(SPA)·PWA          | 바닐라 ES module JS (빌드 도구 없음) + 서비스 워커 | 8080     | Vercel (CLI로 직접 배포, 아래 참고) |
+| `admin/`  | 관리자 패널                  | 정적 HTML/JS                                 | 8090     | — |
+| `app/`    | iOS·Android 앱 껍데기        | Capacitor (`app/www`에 FE 묶음)               | —        | 스토어 빌드 |
+| `tests/`  | 화면 로직 테스트             | `node --test`                                | —        | CI |
+| `design/` | 로고·아이콘 시안             | —                                            | —        | — |
 
-> ℹ️ 현재 `BE/`만 git 저장소이며, `FE/`·`admin/`은 버전 관리에 포함되어 있지 않습니다.
+> ℹ️ 예전에는 `BE/`만 Git으로 관리했지만, 지금은 위 폴더가 모두 커밋돼 있습니다. `.env`·로컬 DB(`*.sqlite3`)는 `.gitignore`로 빠집니다.
 
 ---
 
@@ -96,7 +99,9 @@ cp .env.example .env
 | `FRONTEND_ORIGIN` / `CORS_ORIGINS` | CORS 허용 출처 |
 | `DATABASE_URL` | 기본값 `sqlite:///./data/travel_app.sqlite3` |
 
-프론트엔드는 백엔드 주소를 `index-redesign.html`의 `window.__API_BASE_URL`에서 읽으며, localhost에서는 `http://localhost:8000`을 자동 감지합니다.
+프론트엔드는 백엔드 주소를 `index-redesign.html`의 `window.__API_BASE_URL`에서 읽습니다. 배포된 화면은 운영 서버(`https://threesecondtrip-prof.onrender.com`)를 쓰고, localhost에서는 브라우저 저장값 `tst_dev_api`에 넣은 주소를 씁니다(예: 개발자 도구 콘솔에서 `localStorage.setItem('tst_dev_api','http://localhost:8000')`). 값이 없으면 서버 호출을 하지 않습니다.
+
+이메일 가입·비밀번호 재설정 메일은 `RESEND_API_KEY`와 `MAIL_FROM`(Resend에서 인증한 도메인의 주소)이 **둘 다** 있어야 운영에서 열립니다. 하나라도 없으면 `/api/features`의 `email_signup`이 `false`가 되고 가입 버튼이 잠깁니다. `APP_ENV=development`에서는 메일 대신 화면에 인증 코드를 보여 줍니다.
 
 ### 관리자 권한 부여
 ```bash
@@ -118,18 +123,27 @@ python make_admin.py <이메일-또는-사용자ID>     # 해제는 끝에 --off
 
 Render Blueprint(`BE/render.yaml`)로 백엔드 + Postgres를 한 번에 배포합니다.
 
-1. `BE/`를 Git 저장소에 push
+1. 저장소를 GitHub에 push (Blueprint의 `rootDir`은 `BE`)
 2. Render 대시보드 → New → Blueprint → 저장소 연결 → confirm
    - Blueprint가 **무료 Postgres DB(`3sec-trip-db`)** 를 자동 생성하고, `DATABASE_URL`을 웹 서비스에 자동 주입합니다 (수동 입력 불필요).
-3. 시크릿 환경변수(`JWT_SECRET`, `DB_ENCRYPTION_KEY`, `GOOGLE_*`, `OPENAI_API_KEY` 등)를 대시보드에서 직접 입력 (`.env`는 커밋 금지)
+3. 시크릿 환경변수(`JWT_SECRET`, `DB_ENCRYPTION_KEY`, `RESEND_API_KEY`, `MAIL_FROM`, `FRONTEND_ORIGIN`, `GOOGLE_*`, `OPENAI_API_KEY` 등)를 대시보드에서 직접 입력 (`.env`는 커밋 금지)
+4. 배포 뒤 `https://<서버>/api/features`의 `email.configured`가 `true`인지, `email.link_base`가 공개 화면 주소인지 확인합니다(키 값은 나오지 않습니다).
 
 > 💾 **데이터 영속성**: 앱은 `DATABASE_URL`만 보고 DB를 고릅니다 — 로컬은 SQLite, 프로덕션은 Postgres. Render 웹 서비스 디스크는 휘발성이지만 데이터는 별도 Postgres에 저장되므로 **재배포/콜드스타트에도 보존**됩니다. (코드가 `postgres://` 스킴을 psycopg3로 자동 정규화 — `app/db/database.py`)
 
-프론트엔드는 Netlify 등 정적 호스팅에 올리고, `window.__API_BASE_URL`을 배포된 백엔드 주소로 설정합니다.
+프론트엔드(`FE/`)는 Vercel 프로젝트 `3secondtrip-prof`에 올립니다. 이 프로젝트는 GitHub와 연결돼 있지 않아 푸시만으로는 배포되지 않습니다. 커밋한 `FE/`를 꺼내 Vercel CLI로 배포합니다.
+
+```bash
+git archive HEAD FE | tar -x -C /tmp/fe-deploy && cd /tmp/fe-deploy/FE
+npx vercel@latest link --yes --project 3secondtrip-prof
+npx vercel@latest deploy --prod --yes
+```
+
+화면 파일을 바꾸면 `FE/sw.js`의 `CACHE` 이름(예: `tst-shell-v47`)을 올려야 설치된 앱도 새 파일 묶음으로 바뀝니다. 서버와 화면을 같이 바꿨다면 **서버를 먼저** 배포합니다.
 
 ---
 
 ## 📌 참고
 
-- 테스트 스위트·린터·빌드 파이프라인은 아직 없습니다.
-- 아키텍처 상세는 [`CLAUDE.md`](./CLAUDE.md)를 참고하세요.
+- 테스트: 서버 `cd BE && .venv/bin/python -m pytest -q`, 화면 `node --test tests/fe/*.test.mjs` · `node tests/fe/check-shell.mjs`. GitHub Actions(`.github/workflows/ci.yml`)가 main 푸시·PR마다 둘 다 돌립니다.
+- 서버 설정 값의 기본값과 설명은 `BE/app/core/config.py`, 배포 환경변수 목록은 `BE/render.yaml`에 있습니다.

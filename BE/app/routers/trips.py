@@ -47,7 +47,9 @@ def create_trip(payload: TripCreate, db: Session = Depends(get_db), current: Use
         return _to_public(t)
 
     return run_idempotent(db, key=idem_key, scope=f"u:{current.id}", endpoint="POST /trips",
-                          fingerprint=payload.model_dump(mode="json"), status_code=201, create=_create)
+                          fingerprint=payload.model_dump(mode="json"), status_code=201, create=_create,
+                          alive=lambda body: db.query(Trip.id).filter(Trip.id == body.get("id"),
+                                                                      Trip.user_id == current.id).first() is not None)
 
 
 @router.get("", response_model=list[TripPublic])
