@@ -40,6 +40,9 @@ app = FastAPI(title="3초 여행 Backend", version="2.0.0")
 #   CORS_ORIGINS 환경변수에 콤마 구분으로 추가 (예: "https://myapp.netlify.app,https://www.foo.com")
 _DEFAULT_ALLOWED = {
     settings.frontend_origin,
+    # 운영 화면 주소 — Vercel 기본 주소와 연결한 도메인
+    "https://3secondtrip-prof.vercel.app",
+    "https://3secondtrip.com", "https://www.3secondtrip.com",
     "http://localhost:5500", "http://127.0.0.1:5500",
     "https://localhost:5500", "https://127.0.0.1:5500",
     "http://localhost:8080", "http://127.0.0.1:8080",
