@@ -2164,5 +2164,9 @@ html body :is(textarea.form-input, .form-textarea, #_r#_r#_r#_r) { padding-left:
 html body :is(.acct-field--float input.form-input, #_r#_r#_r#_r) { padding-left: 24px !important; }
 html body :is(.acct-field--float .form-label, #_r#_r#_r#_r) { left: 20px !important; }
 html body :is(#explorePage .search-card, #_r#_r#_r#_r) { padding-left: 20px !important; }
+/* 제목 글씨 — 사용자 선호에 따라 얇게. 큰 화면 제목은 300, 구역·시트 제목은 400(크기로 위계를 둔다) */
+html body :is(h2, h3, .section-title, .hw-title, .sub-name, .cost-summary-title, .my-group-h, #_r#_r#_r#_r):not(.sr-only) { font-weight: 400 !important; }
+html body :is(h1, .nh-title, .page-title, .acct-title, .create-q, .step-h, .after-h, .sub-hero-title, #_r#_r#_r#_r):not(.sr-only) { font-weight: 300 !important; }
+html body :is(.nh-title span, .page-title span, .acct-title span, h1 span, #_r#_r#_r#_r) { font-weight: inherit !important; }
 /* POLISH-END */
 }
