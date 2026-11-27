@@ -1,6 +1,12 @@
 {
   "redirects": [
     {
+      "source": "/",
+      "has": [{ "type": "host", "value": "www.3secondtrip.com" }],
+      "destination": "https://3secondtrip.com/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "www.3secondtrip.com" }],
       "destination": "https://3secondtrip.com/:path*",
