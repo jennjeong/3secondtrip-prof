@@ -64,6 +64,14 @@ export function initAuth(state) {
 
   document.querySelectorAll('[data-oauth-provider]').forEach(b => b.addEventListener('click', (e) => {
     e.preventDefault();
+    if (b.getAttribute('aria-disabled') === 'true') {
+      const note = $('#authSocialNote');
+      if (note) {
+        note.textContent = `${b.querySelector('.social-dot__label')?.textContent || '이'} 로그인은 준비 중이에요. 지금은 이메일이나 다른 방법으로 로그인해 주세요.`;
+        note.hidden = false;
+      }
+      return;
+    }
     startSocialLogin(b.dataset.oauthProvider);
   }));
   document.querySelectorAll('[data-pw-toggle]').forEach(b => b.addEventListener('click', () => {
@@ -674,17 +682,21 @@ async function _showPolicy(doc) {
 }
 
 /* ============ 서버 기능 ============ */
-let _socialOn = false;
+let _socialOn = true;
 async function _initFeatures() {
   const f = await api.features();
   const forgot = $('#authForgot'); if (forgot) forgot.hidden = !f.passwordReset;
-  let any = false;       // 서버에 연결된 소셜 로그인만 보인다
+  // 네 가지 간편 로그인을 늘 보여 주고, 서버에 아직 연결되지 않은 것은 '준비 중'으로 흐리게 둔다.
+  // 서버 상태를 모르면(깨어나는 중) 모두 누를 수 있게 둔다.
   document.querySelectorAll('[data-oauth-provider]').forEach(b => {
-    const on = !!f.oauth?.[b.dataset.oauthProvider];
-    b.hidden = !on; any = any || on;
+    const on = f.unknown || !f.oauth || !!f.oauth[b.dataset.oauthProvider];
+    b.setAttribute('aria-disabled', String(!on));
+    b.classList.toggle('is-off', !on);
+    const label = b.querySelector('.social-dot__label');
+    if (label) label.dataset.soon = on ? '' : '준비 중';
   });
-  _socialOn = any;
-  const box = $('#authSocial'); if (box && $('#resetForm').hidden) box.hidden = !any;
+  _socialOn = true;
+  const box = $('#authSocial'); if (box && $('#resetForm').hidden) box.hidden = false;
   if (f.emailSignup === false && !f.unknown) {
     const b = $('#suSubmit'); if (b) { b.disabled = true; b.title = '지금은 가입할 수 없어요'; }
     _err('suFormErr', '인증 메일을 보낼 수 없어 지금은 가입을 받지 않아요. 잠시 뒤 다시 시도해 주세요.');

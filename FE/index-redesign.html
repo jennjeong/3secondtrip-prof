@@ -1036,14 +1036,27 @@ html.theme-dark, html.theme-dark body { background: #111418; }
             <button type="submit" class="btn btn-primary btn-block acct-main" id="authSubmit">로그인</button>
           </form>
 
-          <div class="acct-social" id="authSocial" hidden>
+          <div class="acct-social" id="authSocial">
             <div class="auth-divider"><span>다른 방법으로 로그인</span></div>
-            <div class="social-stack">
-              <button type="button" class="social-btn social-btn--kakao" data-oauth-provider="kakao" hidden><span class="social-ico">💬</span>카카오로 계속하기</button>
-              <button type="button" class="social-btn social-btn--naver" data-oauth-provider="naver" hidden><span class="social-ico">N</span>네이버로 계속하기</button>
-              <button type="button" class="social-btn social-btn--google" data-oauth-provider="google" hidden><span class="social-ico">G</span>Google로 계속하기</button>
-              <button type="button" class="social-btn social-btn--apple" data-oauth-provider="apple" hidden><span class="social-ico"></span>Apple로 계속하기</button>
+            <div class="social-row" role="group" aria-label="간편 로그인">
+              <button type="button" class="social-dot social-dot--kakao" data-oauth-provider="kakao" aria-label="카카오로 로그인">
+                <span class="social-dot__ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="#191600" d="M12 4C7 4 3 7.1 3 11c0 2.5 1.7 4.7 4.2 6l-.9 3.3c-.1.3.3.6.6.4l3.9-2.6c.4 0 .8.1 1.2.1 5 0 9-3.1 9-7S17 4 12 4z"/></svg></span>
+                <span class="social-dot__label">카카오</span>
+              </button>
+              <button type="button" class="social-dot social-dot--naver" data-oauth-provider="naver" aria-label="네이버로 로그인">
+                <span class="social-dot__ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="#fff" d="M14.6 12.6 9.1 4.7H4.5v14.6h4.9v-7.9l5.5 7.9h4.6V4.7h-4.9z"/></svg></span>
+                <span class="social-dot__label">네이버</span>
+              </button>
+              <button type="button" class="social-dot social-dot--google" data-oauth-provider="google" aria-label="Google로 로그인">
+                <span class="social-dot__ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="#4285F4" d="M22.5 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9c-.3 1.4-1 2.5-2.2 3.3v2.7h3.6c2-1.9 3.2-4.7 3.2-8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.7c-1 .7-2.2 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.5H2.1v2.8C3.9 20.6 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.8 14.2c-.2-.7-.4-1.4-.4-2.2s.1-1.5.4-2.2V7H2.1C1.4 8.5 1 10.2 1 12s.4 3.5 1.1 5l3.7-2.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2C17.5 2.1 15 1 12 1 7.7 1 3.9 3.4 2.1 7l3.7 2.8C6.7 7.3 9.1 5.4 12 5.4z"/></svg></span>
+                <span class="social-dot__label">Google</span>
+              </button>
+              <button type="button" class="social-dot social-dot--apple" data-oauth-provider="apple" aria-label="Apple로 로그인">
+                <span class="social-dot__ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="#fff" d="M16.4 12.6c0-2.5 2-3.7 2.1-3.8-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.8-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.8 1.2 1.8 2.6 3.1 2.5 1.3-.1 1.7-.8 3.3-.8 1.5 0 1.9.8 3.3.8 1.4 0 2.2-1.2 3-2.5 1-1.4 1.3-2.7 1.4-2.8-.1 0-2.6-1-2.6-4.3zM14 5.2c.7-.8 1.2-2 1-3.2-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1.1 3.1 1.1.1 2.3-.6 3-1.4z"/></svg></span>
+                <span class="social-dot__label">Apple</span>
+              </button>
             </div>
+            <p class="social-note" id="authSocialNote" role="status" hidden></p>
           </div>
 
           <form class="acct-form" id="resetForm" hidden novalidate>

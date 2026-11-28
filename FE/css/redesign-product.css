@@ -2184,3 +2184,23 @@ html body #homePage .home-foot.home-foot { width: min(1120px, 100% - 32px) !impo
 }
 /* POLISH-END */
 }
+
+/* 간편 로그인 — 브랜드 로고 원 네 개를 한 줄로. 주 버튼(흰 로그인)보다 가볍게 */
+#authPage .social-row { display: flex; justify-content: center; gap: 20px; margin: 20px 0 0; }
+#authPage .social-dot { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 56px; padding: 0; background: none; border: 0; color: #C9D0DC; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+#authPage .social-dot__ico { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 999px; transition: transform .14s; }
+#authPage .social-dot:active .social-dot__ico { transform: scale(.94); }
+#authPage .social-dot:focus-visible { outline: none; }
+#authPage .social-dot:focus-visible .social-dot__ico { outline: 2px solid #FFFFFF; outline-offset: 3px; }
+#authPage .social-dot--kakao .social-dot__ico { background: #FEE500; }
+#authPage .social-dot--naver .social-dot__ico { background: #03C75A; }
+#authPage .social-dot--google .social-dot__ico { background: #FFFFFF; }
+#authPage .social-dot--apple .social-dot__ico { background: #000000; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28); }
+#authPage .social-dot__label { font-size: 12.5px; line-height: 1.2; text-align: center; }
+#authPage .social-dot__label[data-soon]:not([data-soon=""])::after { content: attr(data-soon); display: block; margin-top: 2px; font-size: 11px; color: #8A93A3; }
+#authPage .social-dot.is-off .social-dot__ico { opacity: .45; }
+#authPage .social-note { margin: 14px 0 0; font-size: 13px; line-height: 1.5; color: #C9D0DC; text-align: center; }
+#authPage .social-note[hidden] { display: none; }
+@media (max-width: 340px) { #authPage .social-row { gap: 12px; } }
+/* 이메일 저장·비밀번호 찾기 — 입력칸 글자 시작선에 맞춰 살짝 안쪽으로 */
+#authPage .acct-row.acct-row { padding: 0 14px !important; }
